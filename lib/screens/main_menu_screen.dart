@@ -34,36 +34,6 @@ class MainMenuScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Welcome Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.inventory_2,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Hoş Geldiniz',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Barkodlu sayım sistemine hoş geldiniz',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
             // Menu Buttons
             Expanded(
               child: GridView.count(

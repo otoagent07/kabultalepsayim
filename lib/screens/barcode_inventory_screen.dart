@@ -433,8 +433,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _showProductQuantityDialog(String barcode, String itemName) {
-    final TextEditingController quantityInputController =
-        TextEditingController();
+    // Mevcut miktarı al, yoksa 1
+    final currentQuantity = _countedItems[barcode] ?? 1;
+    final TextEditingController quantityInputController = TextEditingController(
+      text: currentQuantity.toString(),
+    );
     final FocusNode quantityFocusNode = FocusNode();
 
     showDialog(
@@ -1024,39 +1027,26 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Barkod girişi
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: barcodeInputController,
-                        focusNode: barcodeFocusNode,
-                        readOnly: true,
-                        showCursor: true,
-                        enableInteractiveSelection: true,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                        decoration: const InputDecoration(
-                          labelText: 'Barkod',
-                          hintText: 'Barkod numarasını girin',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        onTap: () {
-                          setDialogState(() {
-                            isBarcodeFocused = true;
-                            barcodeFocusNode.requestFocus();
-                          });
-                        },
-                      ),
+                TextField(
+                  controller: barcodeInputController,
+                  focusNode: barcodeFocusNode,
+                  readOnly: true,
+                  showCursor: true,
+                  enableInteractiveSelection: true,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    labelText: 'Barkod',
+                    hintText: 'Barkod numarasını girin',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
+                    suffixIcon: IconButton(
                       icon: const Icon(Icons.content_paste),
                       onPressed: () async {
                         final clipboardData = await Clipboard.getData(
@@ -1075,7 +1065,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       },
                       tooltip: 'Yapıştır',
                     ),
-                  ],
+                  ),
+                  onTap: () {
+                    setDialogState(() {
+                      isBarcodeFocused = true;
+                      barcodeFocusNode.requestFocus();
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
                 // Miktar girişi
@@ -1260,84 +1256,79 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         final countedQuantity =
                             _countedItems[item.barcode] ?? 0;
                         final isCounted = countedQuantity > 0;
-                        final isOverCount =
-                            countedQuantity > item.quantity.toInt();
-                        final isFullCount =
-                            countedQuantity == item.quantity.toInt();
                         final isCompleted =
                             countedQuantity >= item.quantity.toInt();
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          color: isCounted
-                              ? (isOverCount
-                                    ? Colors.red
-                                    : isFullCount
-                                    ? Colors.green
+
+                        return Column(
+                          children: [
+                            ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isCounted
+                                    ? Theme.of(context).colorScheme.primary
                                     : Theme.of(
                                         context,
-                                      ).colorScheme.primaryContainer)
-                              : null,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: isCounted
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
-                              child: Text(
-                                '${index + 1}',
-                                style: TextStyle(
-                                  color: isCounted
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              item.name,
-                              style: TextStyle(
-                                color: isCompleted ? Colors.white : null,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Barkod: ${item.barcode}',
-                              style: TextStyle(
-                                color: isCompleted ? Colors.white70 : null,
-                              ),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$countedQuantity/${item.quantity.toInt()}',
+                                      ).colorScheme.surfaceContainerHighest,
+                                child: Text(
+                                  '${index + 1}',
                                   style: TextStyle(
-                                    color: isCompleted
-                                        ? Colors.white
-                                        : _getCountColor(
-                                            countedQuantity,
-                                            item.quantity.toInt(),
-                                          ),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    color: isCounted
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: const Icon(Icons.add),
-                                  onPressed: () => _showProductQuantityDialog(
-                                    item.barcode,
-                                    item.name,
-                                  ),
+                              ),
+                              title: Text(
+                                item.name,
+                                style: TextStyle(
+                                  color: isCompleted ? Colors.white : null,
                                 ),
-                              ],
+                              ),
+                              subtitle: Text(
+                                'Barkod: ${item.barcode}',
+                                style: TextStyle(
+                                  color: isCompleted ? Colors.white70 : null,
+                                ),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '$countedQuantity/${item.quantity.toInt()}',
+                                    style: TextStyle(
+                                      color: isCompleted
+                                          ? Colors.white
+                                          : _getCountColor(
+                                              countedQuantity,
+                                              item.quantity.toInt(),
+                                            ),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.add),
+                                    onPressed: () => _showProductQuantityDialog(
+                                      item.barcode,
+                                      item.name,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                            if (index < _inventoryItems.length - 1)
+                              const Divider(
+                                height: 1,
+                                thickness: 1,
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+                          ],
                         );
                       },
                     ),
@@ -1502,7 +1493,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           // Lazer okuyucu TextField
           Expanded(
             child: Card(
-              margin: const EdgeInsets.only(right: 8,left: 5),
+              margin: const EdgeInsets.only(right: 5, left: 15),
               elevation: 2,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
