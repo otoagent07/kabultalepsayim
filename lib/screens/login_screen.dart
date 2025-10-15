@@ -12,11 +12,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(text: "mehmet@rmosyazilim.com");
+  final _usernameController = TextEditingController(
+    text: "mehmet@rmosyazilim.com",
+  );
   final _passwordController = TextEditingController(text: "7266");
   final _hotelIdController = TextEditingController(text: "15");
   bool _isLoading = false;
-
+  bool _isPasswordVisible = false;
 
   @override
   void dispose() {
@@ -64,10 +66,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Stack(
           children: [
-            Padding(
+            SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
                 key: _formKey,
@@ -116,11 +119,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Password Field
                     TextFormField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Şifre',
-                        prefixIcon: Icon(Icons.lock),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: !_isPasswordVisible,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Şifre gerekli';
@@ -158,6 +173,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Giriş Yap'),
                     ),
                     const SizedBox(height: 24),
+                    // Ekstra boşluk klavye için
+                    SizedBox(
+                      height: MediaQuery.of(context).viewInsets.bottom + 50,
+                    ),
                   ],
                 ),
               ),

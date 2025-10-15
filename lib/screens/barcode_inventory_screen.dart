@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
@@ -450,6 +451,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return _buildMainWidget();
+  }
+
+  Widget _buildMainWidget() {
     final totalItems = _inventoryItems.length;
     // Tamamlanan ürünleri say (hedef miktara ulaşan veya aşan)
     final completedCount = _inventoryItems.where((item) {
@@ -469,6 +474,9 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
               child: TextField(
                 controller: _manualBarcodeController,
+                autofocus: true, // Otomatik focus
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.go,
                 decoration: InputDecoration(
                   hintText: 'Barkod yazın...',
                   border: InputBorder.none,
@@ -484,13 +492,28 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         : 'Kamera ile Tara',
                   ),
                 ),
+                onChanged: (value) {
+                  // Lazer okuyucu verisi kontrolü
+                  print('TextField değişti: $value');
+
+                  // 8+ karakter ve Enter ile bitiyorsa işle
+                  if (value.length >= 8 && value.endsWith('\n')) {
+                    final barcode = value.replaceAll('\n', '').trim();
+                    if (barcode.isNotEmpty) {
+                      print('Lazer okuyucu barkod tespit edildi: $barcode');
+                      _processBarcode(barcode);
+                      _manualBarcodeController.clear();
+                    }
+                  }
+                },
                 onSubmitted: (value) {
+                  // Enter tuşu işleme
                   if (value.isNotEmpty) {
+                    print('Manuel giriş barkod: $value');
                     _processBarcode(value);
                     _manualBarcodeController.clear();
                   }
                 },
-                textInputAction: TextInputAction.search,
               ),
             ),
           ),
@@ -527,9 +550,9 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
 
-          // Selection Cards Row
+          // Selection Cards Row - Movfast Ranger 2 için optimize edilmiş
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
                 // Date Selection
@@ -615,30 +638,45 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             ),
           ),
 
-          // Action Buttons
+          // Action Buttons - Endüstriyel cihaz için büyük butonlar
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _loadInventory,
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh),
-                    label: Text(_isLoading ? 'Yükleniyor...' : 'Listele'),
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _loadInventory,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, size: 20),
+                      label: Text(
+                        _isLoading ? 'Yükleniyor...' : 'Listele',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isScanning ? _stopScanning : _startScanning,
-                    icon: Icon(_isScanning ? Icons.stop : Icons.camera_alt),
-                    label: Text(_isScanning ? 'Durdur' : 'Kamera'),
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: _isScanning ? _stopScanning : _startScanning,
+                      icon: Icon(
+                        _isScanning ? Icons.stop : Icons.camera_alt,
+                        size: 20,
+                      ),
+                      label: Text(
+                        _isScanning ? 'Durdur' : 'Kamera',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -699,11 +737,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                 final countedQuantity =
                                     _countedItems[item.barcode] ?? 0;
                                 final isCounted = countedQuantity > 0;
-
-                                final countColor = _getCountColor(
-                                  countedQuantity,
-                                  item.quantity.toInt(),
-                                );
                                 final isOverCount =
                                     countedQuantity > item.quantity.toInt();
                                 final isFullCount =
