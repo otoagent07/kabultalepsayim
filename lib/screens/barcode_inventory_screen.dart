@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -25,6 +26,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   final TextEditingController _manualBarcodeController =
       TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
+  final FocusNode _barcodeFocusNode = FocusNode(
+    debugLabel: 'BarcodeInput',
+    skipTraversal: true,
+  );
 
   final List<String> _departments = ['Ana Depo', 'Yemek Sepeti'];
 
@@ -33,6 +38,19 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     super.initState();
     _quantityController.text = '1';
     _requestCameraPermission();
+
+    // Klavye açılmasını engelle
+    _barcodeFocusNode.addListener(() {
+      if (_barcodeFocusNode.hasFocus) {
+        // Klavye açılmaya çalışırsa kapat
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      }
+    });
+
+    // Lazer okuyucu için odaklanma
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _barcodeFocusNode.requestFocus();
+    });
   }
 
   @override
@@ -40,6 +58,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     _scannerController?.dispose();
     _manualBarcodeController.dispose();
     _quantityController.dispose();
+    _barcodeFocusNode.dispose();
     super.dispose();
   }
 
@@ -474,9 +493,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
               child: TextField(
                 controller: _manualBarcodeController,
-                autofocus: true, // Otomatik focus
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.go,
+                focusNode: _barcodeFocusNode,
+                keyboardType: TextInputType.none, // Klavye türünü none yap
+                textInputAction:
+                    TextInputAction.none, // TextInputAction'ı none yap
+                enableInteractiveSelection: false, // Klavye açılmasını engelle
+                showCursor: false, // Cursor'u gizle
+                readOnly: false, // ReadOnly değil ama klavye açılmasın
                 decoration: InputDecoration(
                   hintText: 'Barkod yazın...',
                   border: InputBorder.none,
@@ -503,6 +526,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       print('Lazer okuyucu barkod tespit edildi: $barcode');
                       _processBarcode(barcode);
                       _manualBarcodeController.clear();
+                      // Odaklanmayı koru
+                      _barcodeFocusNode.requestFocus();
                     }
                   }
                 },
@@ -512,6 +537,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                     print('Manuel giriş barkod: $value');
                     _processBarcode(value);
                     _manualBarcodeController.clear();
+                    // Odaklanmayı koru
+                    _barcodeFocusNode.requestFocus();
                   }
                 },
               ),
