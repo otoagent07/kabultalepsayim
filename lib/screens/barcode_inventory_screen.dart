@@ -55,7 +55,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
   @override
   void dispose() {
-    _scannerController?.dispose();
+    try {
+      _scannerController?.dispose();
+    } catch (e) {
+      print('Kamera dispose hatası: $e');
+    }
     _manualBarcodeController.dispose();
     _quantityController.dispose();
     _barcodeFocusNode.dispose();
@@ -102,6 +106,24 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               openAppSettings();
             },
             child: const Text('Ayarlar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCameraErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kamera Hatası'),
+        content: const Text(
+          'Kamera başlatılamadı. Lütfen uygulamayı yeniden başlatın.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
           ),
         ],
       ),
@@ -284,6 +306,9 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _startScanning() {
+    if (_scannerController == null) {
+      _initializeScanner();
+    }
     setState(() {
       _isScanning = true;
     });
@@ -293,7 +318,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     setState(() {
       _isScanning = false;
     });
-    _scannerController?.stop();
+    try {
+      _scannerController?.stop();
+    } catch (e) {
+      print('Kamera durdurma hatası: $e');
+    }
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
@@ -372,22 +401,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               Text('Barkod: $barcode'),
               const SizedBox(height: 16),
               // Miktar gösterimi
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _quantityController.text,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              _buildQuantityDisplay(),
               const SizedBox(height: 16),
               // Özel sayısal klavye
               _buildCustomNumericKeyboard(setDialogState),
@@ -414,6 +428,82 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showProductQuantityDialog(String barcode, String itemName) {
+    final TextEditingController quantityInputController =
+        TextEditingController();
+    final FocusNode quantityFocusNode = FocusNode();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text('Miktar Girişi - $itemName'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Barkod: $barcode'),
+                const SizedBox(height: 16),
+                // Miktar girişi
+                TextField(
+                  controller: quantityInputController,
+                  focusNode: quantityFocusNode,
+                  readOnly: true,
+                  showCursor: true,
+                  enableInteractiveSelection: true,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    labelText: 'Miktar',
+                    hintText: 'Miktar girin',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Özel sayısal klavye - Sadece miktar girişi
+                _buildProductQuantityKeyboard(
+                  quantityInputController,
+                  setDialogState,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('İptal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final quantityText = quantityInputController.text.trim();
+                  final quantity = quantityText.isEmpty
+                      ? 1
+                      : int.tryParse(quantityText) ?? 1;
+
+                  setState(() {
+                    _countedItems[barcode] = quantity;
+                    // Ürünü en üste taşı
+                    _moveItemToTop(barcode);
+                  });
+                  Navigator.pop(context);
+                  // Odaklanmayı koru
+                  _barcodeFocusNode.requestFocus();
+                },
+                child: const Text('Kaydet'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -457,19 +547,201 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildActionButton('C', () {
-                _quantityController.text = '1';
-                setDialogState(() {});
-              }),
+              _buildActionButton('C', () => _clearQuantity(setDialogState)),
               _buildNumberButton('0', setDialogState),
-              _buildActionButton('⌫', () {
-                if (_quantityController.text.length > 1) {
-                  _quantityController.text = _quantityController.text.substring(
-                    0,
-                    _quantityController.text.length - 1,
+              _buildActionButton('⌫', () => _deleteLastDigit(setDialogState)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _clearQuantity(StateSetter setDialogState) {
+    _quantityController.text = '1';
+    _quantityController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _quantityController.text.length),
+    );
+    setDialogState(() {});
+  }
+
+  void _deleteLastDigit(StateSetter setDialogState) {
+    if (_quantityController.text.length > 1) {
+      _quantityController.text = _quantityController.text.substring(
+        0,
+        _quantityController.text.length - 1,
+      );
+    } else {
+      _quantityController.text = '1';
+    }
+    _quantityController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _quantityController.text.length),
+    );
+    setDialogState(() {});
+  }
+
+  Widget _buildQuantityDisplay() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TextField(
+        controller: _quantityController,
+        readOnly: true,
+        showCursor: true,
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedKeyboard(
+    TextEditingController barcodeController,
+    TextEditingController quantityController,
+    bool isBarcodeFocused,
+    StateSetter setDialogState,
+  ) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildUnifiedNumberButton(
+                '1',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildUnifiedNumberButton(
+                '2',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildUnifiedNumberButton(
+                '3',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildUnifiedNumberButton(
+                '4',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildUnifiedNumberButton(
+                '5',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildUnifiedNumberButton(
+                '6',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildUnifiedNumberButton(
+                '7',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildUnifiedNumberButton(
+                '8',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildUnifiedNumberButton(
+                '9',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton('C', () {
+                if (isBarcodeFocused) {
+                  barcodeController.text = '';
+                  barcodeController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: barcodeController.text.length),
                   );
                 } else {
-                  _quantityController.text = '1';
+                  quantityController.text = '';
+                  quantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: quantityController.text.length),
+                  );
+                }
+                setDialogState(() {});
+              }),
+              _buildUnifiedNumberButton(
+                '0',
+                barcodeController,
+                quantityController,
+                isBarcodeFocused,
+                setDialogState,
+              ),
+              _buildActionButton('⌫', () {
+                if (isBarcodeFocused) {
+                  if (barcodeController.text.isNotEmpty) {
+                    barcodeController.text = barcodeController.text.substring(
+                      0,
+                      barcodeController.text.length - 1,
+                    );
+                  }
+                  barcodeController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: barcodeController.text.length),
+                  );
+                } else {
+                  if (quantityController.text.isNotEmpty) {
+                    quantityController.text = quantityController.text.substring(
+                      0,
+                      quantityController.text.length - 1,
+                    );
+                  }
+                  quantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: quantityController.text.length),
+                  );
                 }
                 setDialogState(() {});
               }),
@@ -480,17 +752,198 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
+  Widget _buildUnifiedNumberButton(
+    String number,
+    TextEditingController barcodeController,
+    TextEditingController quantityController,
+    bool isBarcodeFocused,
+    StateSetter setDialogState,
+  ) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          if (isBarcodeFocused) {
+            // Barkod girişi
+            barcodeController.text += number;
+            barcodeController.selection = TextSelection.fromPosition(
+              TextPosition(offset: barcodeController.text.length),
+            );
+          } else {
+            // Miktar girişi - direkt ekleme
+            quantityController.text += number;
+            quantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: quantityController.text.length),
+            );
+          }
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductQuantityKeyboard(
+    TextEditingController quantityController,
+    StateSetter setDialogState,
+  ) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildProductNumberButton(
+                '1',
+                quantityController,
+                setDialogState,
+              ),
+              _buildProductNumberButton(
+                '2',
+                quantityController,
+                setDialogState,
+              ),
+              _buildProductNumberButton(
+                '3',
+                quantityController,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildProductNumberButton(
+                '4',
+                quantityController,
+                setDialogState,
+              ),
+              _buildProductNumberButton(
+                '5',
+                quantityController,
+                setDialogState,
+              ),
+              _buildProductNumberButton(
+                '6',
+                quantityController,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildProductNumberButton(
+                '7',
+                quantityController,
+                setDialogState,
+              ),
+              _buildProductNumberButton(
+                '8',
+                quantityController,
+                setDialogState,
+              ),
+              _buildProductNumberButton(
+                '9',
+                quantityController,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton('C', () {
+                quantityController.text = '';
+                quantityController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: quantityController.text.length),
+                );
+                setDialogState(() {});
+              }),
+              _buildProductNumberButton(
+                '0',
+                quantityController,
+                setDialogState,
+              ),
+              _buildActionButton('⌫', () {
+                if (quantityController.text.isNotEmpty) {
+                  quantityController.text = quantityController.text.substring(
+                    0,
+                    quantityController.text.length - 1,
+                  );
+                }
+                quantityController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: quantityController.text.length),
+                );
+                setDialogState(() {});
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductNumberButton(
+    String number,
+    TextEditingController quantityController,
+    StateSetter setDialogState,
+  ) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          // Miktar girişi - direkt ekleme
+          quantityController.text += number;
+          quantityController.selection = TextSelection.fromPosition(
+            TextPosition(offset: quantityController.text.length),
+          );
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNumberButton(String number, StateSetter setDialogState) {
     return SizedBox(
       width: 60,
       height: 50,
       child: ElevatedButton(
         onPressed: () {
-          if (_quantityController.text == '1') {
+          if (_quantityController.text == '1' && number != '0') {
+            // 1'den farklı sayıya geçiş
             _quantityController.text = number;
           } else {
+            // Normal ekleme (1'den sonra 0 = 10)
             _quantityController.text += number;
           }
+          // İmleci sona taşı
+          _quantityController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _quantityController.text.length),
+          );
           setDialogState(() {});
         },
         style: ElevatedButton.styleFrom(
@@ -539,44 +992,179 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _showManualBarcodeDialog() {
-    final TextEditingController dialogBarcodeController =
+    final TextEditingController barcodeInputController =
         TextEditingController();
+    final TextEditingController quantityInputController = TextEditingController(
+      text: '1',
+    );
+    final FocusNode barcodeFocusNode = FocusNode();
+    final FocusNode quantityFocusNode = FocusNode();
+    bool isBarcodeFocused = true;
+
+    // Başlangıçta barkod alanına odaklan
+    barcodeFocusNode.addListener(() {
+      if (barcodeFocusNode.hasFocus) {
+        isBarcodeFocused = true;
+      }
+    });
+
+    quantityFocusNode.addListener(() {
+      if (quantityFocusNode.hasFocus) {
+        isBarcodeFocused = false;
+      }
+    });
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Manuel Barkod Ekle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: dialogBarcodeController,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Barkod',
-                hintText: 'Barkod numarasını girin',
-                border: OutlineInputBorder(),
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Manuel Barkod Ekle'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barkod girişi
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: barcodeInputController,
+                        focusNode: barcodeFocusNode,
+                        readOnly: true,
+                        showCursor: true,
+                        enableInteractiveSelection: true,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          labelText: 'Barkod',
+                          hintText: 'Barkod numarasını girin',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        onTap: () {
+                          setDialogState(() {
+                            isBarcodeFocused = true;
+                            barcodeFocusNode.requestFocus();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.content_paste),
+                      onPressed: () async {
+                        final clipboardData = await Clipboard.getData(
+                          'text/plain',
+                        );
+                        if (clipboardData?.text != null) {
+                          barcodeInputController.text = clipboardData!.text!;
+                          barcodeInputController.selection =
+                              TextSelection.fromPosition(
+                                TextPosition(
+                                  offset: barcodeInputController.text.length,
+                                ),
+                              );
+                          setDialogState(() {});
+                        }
+                      },
+                      tooltip: 'Yapıştır',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Miktar girişi
+                TextField(
+                  controller: quantityInputController,
+                  focusNode: quantityFocusNode,
+                  readOnly: true,
+                  showCursor: true,
+                  enableInteractiveSelection: true,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    labelText: 'Miktar',
+                    hintText: 'Miktar girin',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  onTap: () {
+                    setDialogState(() {
+                      isBarcodeFocused = false;
+                      quantityFocusNode.requestFocus();
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Özel sayısal klavye
+                _buildUnifiedKeyboard(
+                  barcodeInputController,
+                  quantityInputController,
+                  isBarcodeFocused,
+                  setDialogState,
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final barcode = dialogBarcodeController.text.trim();
-              if (barcode.isNotEmpty) {
-                _processBarcode(barcode);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Ekle'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('İptal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final barcode = barcodeInputController.text.trim();
+                  final quantityText = quantityInputController.text.trim();
+                  final quantity = quantityText.isEmpty
+                      ? 1
+                      : int.tryParse(quantityText) ?? 1;
+
+                  if (barcode.isNotEmpty) {
+                    // Barkod kontrolü
+                    final item = _inventoryItems.firstWhere(
+                      (item) => item.barcode == barcode,
+                      orElse: () => InventoryItem(
+                        id: '',
+                        barcode: barcode,
+                        name: 'Bilinmeyen Ürün',
+                        unit: 'Adet',
+                        quantity: 0,
+                        averagePrice: 0,
+                        totalAmount: 0,
+                        date: _selectedDate,
+                        department: _selectedDepartment,
+                      ),
+                    );
+
+                    if (item.id.isNotEmpty) {
+                      setState(() {
+                        _countedItems[barcode] = quantity;
+                        // Ürünü en üste taşı
+                        _moveItemToTop(barcode);
+                      });
+                      Navigator.pop(context);
+                      // Odaklanmayı koru
+                      _barcodeFocusNode.requestFocus();
+                    } else {
+                      _showUnknownBarcodeDialog(barcode);
+                    }
+                  }
+                },
+                child: const Text('Kaydet'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -742,7 +1330,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                 const SizedBox(width: 8),
                                 IconButton(
                                   icon: const Icon(Icons.add),
-                                  onPressed: () => _showQuantityDialog(
+                                  onPressed: () => _showProductQuantityDialog(
                                     item.barcode,
                                     item.name,
                                   ),
@@ -761,7 +1349,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   Widget _buildScannerWidget() {
-    if (!_isScanning || _scannerController == null) {
+    if (!_isScanning) {
       return const SizedBox.shrink();
     }
 
@@ -774,10 +1362,21 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: MobileScanner(
-            controller: _scannerController!,
-            onDetect: _onBarcodeDetected,
-          ),
+          child: _scannerController != null
+              ? MobileScanner(
+                  controller: _scannerController!,
+                  onDetect: _onBarcodeDetected,
+                )
+              : const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Kamera başlatılıyor...'),
+                    ],
+                  ),
+                ),
         ),
       ),
     );
@@ -896,61 +1495,64 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildLazerReaderWidget() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: TextField(
-          controller: _manualBarcodeController,
-          focusNode: _barcodeFocusNode,
-          keyboardType: TextInputType.none,
-          textInputAction: TextInputAction.none,
-          enableInteractiveSelection: false,
-          showCursor: false,
-          readOnly: false,
-          decoration: const InputDecoration(
-            hintText: 'Lazer okuyucu ile barkod okutun...',
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            prefixIcon: Icon(Icons.qr_code_scanner),
-          ),
-          onChanged: (value) {
-            // Lazer okuyucu verisi kontrolü
-            print('TextField değişti: $value');
-
-            // 8+ karakter ve Enter ile bitiyorsa işle
-            if (value.length >= 8 && value.endsWith('\n')) {
-              final barcode = value.replaceAll('\n', '').trim();
-              if (barcode.isNotEmpty) {
-                print('Lazer okuyucu barkod tespit edildi: $barcode');
-                _processBarcode(barcode);
-                _manualBarcodeController.clear();
-                // Odaklanmayı koru
-                _barcodeFocusNode.requestFocus();
-              }
-            }
-          },
-          onSubmitted: (value) {
-            // Enter tuşu işleme
-            if (value.isNotEmpty) {
-              print('Manuel giriş barkod: $value');
-              _processBarcode(value);
-              _manualBarcodeController.clear();
-              // Odaklanmayı koru
-              _barcodeFocusNode.requestFocus();
-            }
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildMainWidget() {
     return Scaffold(
       appBar: AppBar(
         actions: [
+          // Lazer okuyucu TextField
+          Expanded(
+            child: Card(
+              margin: const EdgeInsets.only(right: 8,left: 5),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: _manualBarcodeController,
+                focusNode: _barcodeFocusNode,
+                keyboardType: TextInputType.none,
+                textInputAction: TextInputAction.none,
+                enableInteractiveSelection: false,
+                showCursor: false,
+                readOnly: false,
+                decoration: const InputDecoration(
+                  hintText: 'Lazer okuyucu ile barkod okutun...',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  prefixIcon: Icon(Icons.qr_code_scanner),
+                ),
+                onChanged: (value) {
+                  // Lazer okuyucu verisi kontrolü
+                  print('TextField değişti: $value');
+
+                  // 8+ karakter ve Enter ile bitiyorsa işle
+                  if (value.length >= 8 && value.endsWith('\n')) {
+                    final barcode = value.replaceAll('\n', '').trim();
+                    if (barcode.isNotEmpty) {
+                      print('Lazer okuyucu barkod tespit edildi: $barcode');
+                      _processBarcode(barcode);
+                      _manualBarcodeController.clear();
+                      // Odaklanmayı koru
+                      _barcodeFocusNode.requestFocus();
+                    }
+                  }
+                },
+                onSubmitted: (value) {
+                  // Enter tuşu işleme
+                  if (value.isNotEmpty) {
+                    print('Manuel giriş barkod: $value');
+                    _processBarcode(value);
+                    _manualBarcodeController.clear();
+                    // Odaklanmayı koru
+                    _barcodeFocusNode.requestFocus();
+                  }
+                },
+              ),
+            ),
+          ),
           // Kamera butonu
           IconButton(
             icon: Icon(_isScanning ? Icons.stop : Icons.camera_alt),
@@ -969,8 +1571,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         children: [
           _buildSelectionCardsWidget(),
           _buildListButtonWidget(),
-          _buildLazerReaderWidget(),
-
           _buildScannerWidget(),
           _buildInventoryListWidget(),
         ],
@@ -983,4 +1583,3 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 }
-
