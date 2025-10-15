@@ -766,6 +766,51 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
+  Widget _buildDuzeltButton(String barcode, String itemName) {
+    return SizedBox(
+      width: 120,
+      height: 42,
+      child: ElevatedButton.icon(
+        onPressed: () => _showProductQuantityDialog(barcode, itemName),
+        icon: Icon(Icons.add, size: 20),
+        label: Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Text('Düzelt'),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: EdgeInsets.symmetric(vertical: 8),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSilButton(String barcode, String itemName, bool isCounted) {
+    return SizedBox(
+      width: 120,
+      height: 42,
+      child: ElevatedButton.icon(
+        onPressed: isCounted
+            ? () => _showDeleteConfirmationDialog(barcode, itemName)
+            : null,
+        icon: Icon(Icons.delete, size: 20),
+        label: Text('Sil'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isCounted
+              ? Colors.red.shade700
+              : Colors.grey.shade600,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: EdgeInsets.symmetric(vertical: 8),
+        ),
+      ),
+    );
+  }
+
   void _showManualBarcodeDialog() {
     final TextEditingController barcodeInputController =
         TextEditingController();
@@ -1152,219 +1197,115 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                             _countedItems[item.barcode] ?? 0;
                         final isCounted = countedQuantity > 0;
 
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            children: [
-                              // Leading circle with number
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: isCounted
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainerHighest,
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: isCounted
-                                        ? Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                        return Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 16,
+                                right: 0,
+                                top: 12,
+                                bottom: 12,
                               ),
-                              const SizedBox(width: 12),
-                              // Main content
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Title
-                                    Text(
-                                      item.name.isEmpty
-                                          ? 'Barkod: ${item.barcode}'
-                                          : item.name,
-                                      style: TextStyle(
-                                        color: isCounted ? Colors.green : null,
-                                        fontWeight: isCounted
-                                            ? FontWeight.bold
-                                            : null,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    if (item.name.isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Barkod: ${item.barcode}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 4),
-                                    // Sayılan adet göstergesi
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isCounted
-                                            ? Colors.green.shade100
-                                            : Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: isCounted
-                                              ? Colors.green.shade300
-                                              : Colors.grey.shade300,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Sayılan: $countedQuantity',
-                                        style: TextStyle(
-                                          color: isCounted
-                                              ? Colors.green.shade800
-                                              : Colors.grey.shade600,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Buttons
-                              SizedBox(
-                                width: 100,
-                                height: 50,
-                                child: Column(
-                                  children: [
-                                    // + Düzelt button
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: () => _showProductQuantityDialog(
-                                          item.barcode,
-                                          item.name,
-                                        ),
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                            vertical: 2,
+                              child: Row(
+                                children: [
+                                  // Main content
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Title
+                                        Text(
+                                          item.name.isEmpty
+                                              ? 'Barkod: ${item.barcode}'
+                                              : item.name,
+                                          style: TextStyle(
+                                            color: isCounted
+                                                ? Colors.green
+                                                : null,
+                                            fontWeight: isCounted
+                                                ? FontWeight.bold
+                                                : null,
+                                            fontSize: 16,
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.shade50,
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.blue.shade300,
-                                              width: 1,
+                                        ),
+                                        if (item.name.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Barkod: ${item.barcode}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                '+',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.blue.shade700,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                'Düzelt',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.blue.shade700,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    // - Sil button
-                                    Expanded(
-                                      child: InkWell(
-                                        onTap: isCounted
-                                            ? () =>
-                                                  _showDeleteConfirmationDialog(
-                                                    item.barcode,
-                                                    item.name,
-                                                  )
-                                            : null,
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Container(
-                                          width: double.infinity,
+                                        ],
+                                        const SizedBox(height: 4),
+                                        // Sayılan adet göstergesi
+                                        Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                            vertical: 2,
+                                            horizontal: 8,
+                                            vertical: 3,
                                           ),
                                           decoration: BoxDecoration(
                                             color: isCounted
-                                                ? Colors.red.shade50
+                                                ? Colors.green.shade100
                                                 : Colors.grey.shade100,
                                             borderRadius: BorderRadius.circular(
-                                              6,
+                                              8,
                                             ),
                                             border: Border.all(
                                               color: isCounted
-                                                  ? Colors.red.shade300
+                                                  ? Colors.green.shade300
                                                   : Colors.grey.shade300,
                                               width: 1,
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                '-',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isCounted
-                                                      ? Colors.red.shade700
-                                                      : Colors.grey.shade600,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                'Sil',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: isCounted
-                                                      ? Colors.red.shade700
-                                                      : Colors.grey.shade600,
-                                                ),
-                                              ),
-                                            ],
+                                          child: Text(
+                                            'Sayılan: $countedQuantity',
+                                            style: TextStyle(
+                                              color: isCounted
+                                                  ? Colors.green.shade800
+                                                  : Colors.grey.shade600,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 20),
+
+                                  // Buttons - Column with fixed width, right aligned
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      // Sil button
+                                      _buildSilButton(
+                                        item.barcode,
+                                        item.name,
+                                        isCounted,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      // Düzelt button
+                                      _buildDuzeltButton(
+                                        item.barcode,
+                                        item.name,
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            // Divider between items
+                            if (index < _inventoryItems.length - 1)
+                              const Divider(
+                                height: 1,
+                                thickness: 1,
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+                          ],
                         );
                       },
                     ),
@@ -1398,6 +1339,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       ),
     );
   }
+
 
   Widget _buildSelectionCardsWidget() {
     return Padding(
@@ -1512,7 +1454,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-
   Widget _buildMainWidget() {
     return Scaffold(
       appBar: AppBar(
@@ -1534,7 +1475,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                 showCursor: false,
                 readOnly: false,
                 decoration: const InputDecoration(
-                  hintText: 'Lazer okuyucu ile barkod okutun...',
+                  hintText: 'Lazer ile   barkod okutun...',
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
