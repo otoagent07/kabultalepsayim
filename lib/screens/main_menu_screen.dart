@@ -30,52 +30,48 @@ class MainMenuScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Menu Buttons
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildMenuButton(
-                    context,
-                    'Mal Kabul',
-                    Icons.inbox,
-                    Colors.blue,
-                    () {
-                      _showComingSoon(context, 'Mal Kabul');
-                    },
-                  ),
-                  _buildMenuButton(
-                    context,
-                    'Amber Talep',
-                    Icons.request_quote,
-                    Colors.orange,
-                    () {
-                      _showComingSoon(context, 'Amber Talep');
-                    },
-                  ),
-                  _buildMenuButton(
-                    context,
-                    'Barkodlu Sayım',
-                    Icons.qr_code_scanner,
-                    Colors.green,
-                    () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const BarcodeInventoryScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Menu Buttons
+              _buildMenuButton(
+                context,
+                'Mal Kabul',
+                Icons.inbox,
+                Colors.blue,
+                () {
+                  _showComingSoon(context, 'Mal Kabul');
+                },
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              _buildMenuButton(
+                context,
+                'Amber Talep',
+                Icons.request_quote,
+                Colors.orange,
+                () {
+                  _showComingSoon(context, 'Amber Talep');
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildMenuButton(
+                context,
+                'Barkodlu Sayım',
+                Icons.qr_code_scanner,
+                Colors.green,
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const BarcodeInventoryScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -88,37 +84,40 @@ class MainMenuScreen extends StatelessWidget {
     Color color,
     VoidCallback onTap,
   ) {
-    return Card(
-      elevation: 4,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.1),
-                color.withValues(alpha: 0.05),
+    return SizedBox(
+      width: double.infinity,
+      height: 80,
+      child: Card(
+        elevation: 4,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color.withValues(alpha: 0.1),
+                  color.withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 32, color: color),
+                const SizedBox(width: 16),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 48, color: color),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
           ),
         ),
       ),

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -292,8 +294,16 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         _processBarcode(result);
       }
     } catch (e) {
-      // Hata durumunda sessizce devam et
-      print('Kamera okuma hatası: $e');
+      // Hata durumunda kullanıcıya bilgi ver
+      log('Kamera okuma hatası: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kamera hatası: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -1339,6 +1349,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
           ),
+
           // Kamera ile barkod okuma butonu
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -1381,6 +1392,21 @@ class _QRScannerPageState extends State<QRScannerPage> {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  bool _isCameraInitialized = false;
+  bool _isDisposed = false;
+
+  // In order to get hot reload to work we need to pause the camera if the platform
+  // is android, or resume the camera if the platform is iOS.
+  @override
+  void reassemble() {
+    super.reassemble();
+    if (!_isDisposed && controller != null) {
+      if (Platform.isAndroid) {
+        controller!.pauseCamera();
+      }
+      controller!.resumeCamera();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1397,9 +1423,13 @@ class _QRScannerPageState extends State<QRScannerPage> {
             flex: 1,
             child: Container(
               color: Colors.black,
-              child: Center(
-                child: result != null
-                    ? Text(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    if (result != null)
+                      Text(
                         'Barkod: ${result!.code}',
                         style: const TextStyle(
                           color: Colors.white,
@@ -1407,10 +1437,117 @@ class _QRScannerPageState extends State<QRScannerPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       )
-                    : const Text(
+                    else
+                      const Text(
                         'Barkodu kameraya gösterin',
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.toggleFlash();
+                                      if (mounted) setState(() {});
+                                    } catch (e) {
+                                      log('Flash toggle error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: _isCameraInitialized
+                                ? FutureBuilder(
+                                    future: controller?.getFlashStatus(),
+                                    builder: (context, snapshot) {
+                                      return Text(
+                                        'Flash: ${snapshot.data ?? 'Bilinmiyor'}',
+                                      );
+                                    },
+                                  )
+                                : const Text('Flash: Yükleniyor...'),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.flipCamera();
+                                      if (mounted) setState(() {});
+                                    } catch (e) {
+                                      log('Camera flip error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: _isCameraInitialized
+                                ? FutureBuilder(
+                                    future: controller?.getCameraInfo(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.data != null) {
+                                        return Text(
+                                          'Kamera: ${snapshot.data!.name}',
+                                        );
+                                      } else {
+                                        return const Text(
+                                          'Kamera: Yükleniyor...',
+                                        );
+                                      }
+                                    },
+                                  )
+                                : const Text('Kamera: Yükleniyor...'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.pauseCamera();
+                                    } catch (e) {
+                                      log('Camera pause error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: const Text(
+                              'Duraklat',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.resumeCamera();
+                                    } catch (e) {
+                                      log('Camera resume error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: const Text(
+                              'Devam Et',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1420,12 +1557,14 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   Widget _buildQrView(BuildContext context) {
+    // For this example we check how width or tall the device is and change the scanArea and overlay accordingly.
     var scanArea =
         (MediaQuery.of(context).size.width < 400 ||
             MediaQuery.of(context).size.height < 400)
         ? 150.0
         : 300.0;
-
+    // To ensure the Scanner view is properly sizes after rotation
+    // we need to listen for Flutter SizeChanged notification and update controller
     return QRView(
       key: qrKey,
       onQRViewCreated: _onQRViewCreated,
@@ -1441,10 +1580,16 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   void _onQRViewCreated(QRViewController controller) {
+    if (_isDisposed) return;
+
     setState(() {
       this.controller = controller;
+      _isCameraInitialized = true;
     });
+
     controller.scannedDataStream.listen((scanData) {
+      if (_isDisposed) return;
+
       setState(() {
         result = scanData;
       });
@@ -1457,6 +1602,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
+    log('${DateTime.now().toIso8601String()}_onPermissionSet $p');
     if (!p) {
       ScaffoldMessenger.of(
         context,
@@ -1466,7 +1612,12 @@ class _QRScannerPageState extends State<QRScannerPage> {
 
   @override
   void dispose() {
-    controller?.dispose();
+    _isDisposed = true;
+    if (controller != null) {
+      controller!.pauseCamera();
+      controller!.dispose();
+      controller = null;
+    }
     super.dispose();
   }
 }
