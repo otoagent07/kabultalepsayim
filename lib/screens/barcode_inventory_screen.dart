@@ -1586,8 +1586,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   // Lazer okuyucu verisi kontrolü
                   print('TextField değişti: $value');
 
-                  // 8+ karakter ve Enter ile bitiyorsa işle
-                  if (value.length >= 8 && value.endsWith('\n')) {
+
+                  if (value.endsWith('\n')) {
                     final barcode = value.replaceAll('\n', '').trim();
                     if (barcode.isNotEmpty) {
                       print('Lazer okuyucu barkod tespit edildi: $barcode');
