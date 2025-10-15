@@ -65,9 +65,23 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     if (status.isGranted) {
-      _scannerController = MobileScannerController();
+      _initializeScanner();
     } else {
       _showPermissionDialog();
+    }
+  }
+
+  void _initializeScanner() {
+    try {
+      _scannerController?.dispose();
+      _scannerController = MobileScannerController(
+        detectionSpeed: DetectionSpeed.noDuplicates,
+        facing: CameraFacing.back,
+        torchEnabled: false,
+      );
+    } catch (e) {
+      print('Kamera başlatma hatası: $e');
+      _showCameraErrorDialog();
     }
   }
 
@@ -307,12 +321,23 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
 
     if (item.id.isNotEmpty) {
-      setState(() {
-        _countedItems[barcode] = (_countedItems[barcode] ?? 0) + 1;
-      });
       _stopScanning();
+      // Miktar dialog'unu aç
+      _showQuantityDialog(barcode, item.name);
     } else {
       _showUnknownBarcodeDialog(barcode);
+    }
+  }
+
+  void _moveItemToTop(String barcode) {
+    // Barkod ile eşleşen ürünü bul ve en üste taşı
+    final itemIndex = _inventoryItems.indexWhere(
+      (item) => item.barcode == barcode,
+    );
+    if (itemIndex != -1) {
+      final item = _inventoryItems.removeAt(itemIndex);
+      _inventoryItems.insert(0, item);
+      setState(() {});
     }
   }
 
@@ -333,63 +358,168 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _showQuantityDialog(String barcode, String itemName) {
-    // Son okutulan miktarı al (varsa)
-    final lastCount = _countedItems[barcode] ?? 1;
-    _quantityController.text = lastCount.toString();
+    // Default miktar 1
+    _quantityController.text = '1';
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Miktar Girişi - $itemName'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Barkod: $barcode'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _quantityController,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Miktar',
-                border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Miktar Girişi - $itemName'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Barkod: $barcode'),
+              const SizedBox(height: 16),
+              // Miktar gösterimi
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _quantityController.text,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              onTap: () {
-                // Tıklayınca tüm metni seç
-                _quantityController.selection = TextSelection(
-                  baseOffset: 0,
-                  extentOffset: _quantityController.text.length,
-                );
+              const SizedBox(height: 16),
+              // Özel sayısal klavye
+              _buildCustomNumericKeyboard(setDialogState),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final quantity = int.tryParse(_quantityController.text) ?? 1;
+                setState(() {
+                  _countedItems[barcode] = quantity;
+                  // Ürünü en üste taşı
+                  _moveItemToTop(barcode);
+                });
+                Navigator.pop(context);
+                // Odaklanmayı koru
+                _barcodeFocusNode.requestFocus();
               },
+              child: const Text('Kaydet'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
+      ),
+    );
+  }
+
+  Widget _buildCustomNumericKeyboard(StateSetter setDialogState) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNumberButton('1', setDialogState),
+              _buildNumberButton('2', setDialogState),
+              _buildNumberButton('3', setDialogState),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              final quantity = int.tryParse(_quantityController.text) ?? 1;
-              setState(() {
-                _countedItems[barcode] = quantity;
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Kaydet'),
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNumberButton('4', setDialogState),
+              _buildNumberButton('5', setDialogState),
+              _buildNumberButton('6', setDialogState),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNumberButton('7', setDialogState),
+              _buildNumberButton('8', setDialogState),
+              _buildNumberButton('9', setDialogState),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton('C', () {
+                _quantityController.text = '1';
+                setDialogState(() {});
+              }),
+              _buildNumberButton('0', setDialogState),
+              _buildActionButton('⌫', () {
+                if (_quantityController.text.length > 1) {
+                  _quantityController.text = _quantityController.text.substring(
+                    0,
+                    _quantityController.text.length - 1,
+                  );
+                } else {
+                  _quantityController.text = '1';
+                }
+                setDialogState(() {});
+              }),
+            ],
           ),
         ],
       ),
-    ).then((_) {
-      // Dialog kapandıktan sonra metni seç
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _quantityController.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: _quantityController.text.length,
-        );
-      });
-    });
+    );
+  }
+
+  Widget _buildNumberButton(String number, StateSetter setDialogState) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          if (_quantityController.text == '1') {
+            _quantityController.text = number;
+          } else {
+            _quantityController.text += number;
+          }
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String text, VoidCallback onPressed) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
   }
 
   Color _getCountColor(int counted, int total) {
@@ -406,6 +536,49 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       // Kısmen sayıldı - tema rengi
       return Theme.of(context).colorScheme.primary;
     }
+  }
+
+  void _showManualBarcodeDialog() {
+    final TextEditingController dialogBarcodeController =
+        TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Manuel Barkod Ekle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: dialogBarcodeController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Barkod',
+                hintText: 'Barkod numarasını girin',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final barcode = dialogBarcodeController.text.trim();
+              if (barcode.isNotEmpty) {
+                _processBarcode(barcode);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Ekle'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSummaryDialog() {
@@ -473,398 +646,341 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     return _buildMainWidget();
   }
 
-  Widget _buildMainWidget() {
-    final totalItems = _inventoryItems.length;
-    // Tamamlanan ürünleri say (hedef miktara ulaşan veya aşan)
-    final completedCount = _inventoryItems.where((item) {
-      final countedQuantity = _countedItems[item.barcode] ?? 0;
-      return countedQuantity >= item.quantity.toInt();
-    }).length;
+  Widget _buildInventoryListWidget() {
+    if (_isScanning) return const SizedBox.shrink();
 
+    return Expanded(
+      child: Card(
+        margin: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Expanded(
+              child: _inventoryItems.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Listele butonuna basarak ürünleri yükleyin',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 150),
+                      itemCount: _inventoryItems.length,
+                      itemBuilder: (context, index) {
+                        final item = _inventoryItems[index];
+                        final countedQuantity =
+                            _countedItems[item.barcode] ?? 0;
+                        final isCounted = countedQuantity > 0;
+                        final isOverCount =
+                            countedQuantity > item.quantity.toInt();
+                        final isFullCount =
+                            countedQuantity == item.quantity.toInt();
+                        final isCompleted =
+                            countedQuantity >= item.quantity.toInt();
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          color: isCounted
+                              ? (isOverCount
+                                    ? Colors.red
+                                    : isFullCount
+                                    ? Colors.green
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer)
+                              : null,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isCounted
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: isCounted
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              item.name,
+                              style: TextStyle(
+                                color: isCompleted ? Colors.white : null,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Barkod: ${item.barcode}',
+                              style: TextStyle(
+                                color: isCompleted ? Colors.white70 : null,
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$countedQuantity/${item.quantity.toInt()}',
+                                  style: TextStyle(
+                                    color: isCompleted
+                                        ? Colors.white
+                                        : _getCountColor(
+                                            countedQuantity,
+                                            item.quantity.toInt(),
+                                          ),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.add),
+                                  onPressed: () => _showQuantityDialog(
+                                    item.barcode,
+                                    item.name,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScannerWidget() {
+    if (!_isScanning || _scannerController == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.red, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: MobileScanner(
+            controller: _scannerController!,
+            onDetect: _onBarcodeDetected,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListButtonWidget() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton.icon(
+          onPressed: _isLoading ? null : _loadInventory,
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh, size: 20),
+          label: Text(
+            _isLoading ? 'Yükleniyor...' : 'Listele',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionCardsWidget() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          // Date Selection
+          Expanded(
+            child: Card(
+              child: InkWell(
+                onTap: _selectDate,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 20),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat(
+                          'dd MMMM yyyy',
+                          'tr_TR',
+                        ).format(_selectedDate),
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Department Selection
+          Expanded(
+            child: Card(
+              child: InkWell(
+                onTap: _selectDepartment,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.business, size: 20),
+                      const SizedBox(height: 4),
+                      Text(
+                        _selectedDepartment,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Type Selection
+          Expanded(
+            child: Card(
+              child: InkWell(
+                onTap: _showTypeSelection,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Icon(
+                        _selectedType == 'stok'
+                            ? Icons.inventory
+                            : Icons.receipt,
+                        size: 20,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _selectedType == 'stok' ? 'Stok' : 'Reçete',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLazerReaderWidget() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: TextField(
+          controller: _manualBarcodeController,
+          focusNode: _barcodeFocusNode,
+          keyboardType: TextInputType.none,
+          textInputAction: TextInputAction.none,
+          enableInteractiveSelection: false,
+          showCursor: false,
+          readOnly: false,
+          decoration: const InputDecoration(
+            hintText: 'Lazer okuyucu ile barkod okutun...',
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            prefixIcon: Icon(Icons.qr_code_scanner),
+          ),
+          onChanged: (value) {
+            // Lazer okuyucu verisi kontrolü
+            print('TextField değişti: $value');
+
+            // 8+ karakter ve Enter ile bitiyorsa işle
+            if (value.length >= 8 && value.endsWith('\n')) {
+              final barcode = value.replaceAll('\n', '').trim();
+              if (barcode.isNotEmpty) {
+                print('Lazer okuyucu barkod tespit edildi: $barcode');
+                _processBarcode(barcode);
+                _manualBarcodeController.clear();
+                // Odaklanmayı koru
+                _barcodeFocusNode.requestFocus();
+              }
+            }
+          },
+          onSubmitted: (value) {
+            // Enter tuşu işleme
+            if (value.isNotEmpty) {
+              print('Manuel giriş barkod: $value');
+              _processBarcode(value);
+              _manualBarcodeController.clear();
+              // Odaklanmayı koru
+              _barcodeFocusNode.requestFocus();
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainWidget() {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          Expanded(
-            child: Card(
-              margin: const EdgeInsets.only(right: 8),
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _manualBarcodeController,
-                focusNode: _barcodeFocusNode,
-                keyboardType: TextInputType.none, // Klavye türünü none yap
-                textInputAction:
-                    TextInputAction.none, // TextInputAction'ı none yap
-                enableInteractiveSelection: false, // Klavye açılmasını engelle
-                showCursor: false, // Cursor'u gizle
-                readOnly: false, // ReadOnly değil ama klavye açılmasın
-                decoration: InputDecoration(
-                  hintText: 'Barkod yazın...',
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.qr_code_scanner),
-                    onPressed: _isScanning ? _stopScanning : _startScanning,
-                    tooltip: _isScanning
-                        ? 'Kamerayı Durdur'
-                        : 'Kamera ile Tara',
-                  ),
-                ),
-                onChanged: (value) {
-                  // Lazer okuyucu verisi kontrolü
-                  print('TextField değişti: $value');
-
-                  // 8+ karakter ve Enter ile bitiyorsa işle
-                  if (value.length >= 8 && value.endsWith('\n')) {
-                    final barcode = value.replaceAll('\n', '').trim();
-                    if (barcode.isNotEmpty) {
-                      print('Lazer okuyucu barkod tespit edildi: $barcode');
-                      _processBarcode(barcode);
-                      _manualBarcodeController.clear();
-                      // Odaklanmayı koru
-                      _barcodeFocusNode.requestFocus();
-                    }
-                  }
-                },
-                onSubmitted: (value) {
-                  // Enter tuşu işleme
-                  if (value.isNotEmpty) {
-                    print('Manuel giriş barkod: $value');
-                    _processBarcode(value);
-                    _manualBarcodeController.clear();
-                    // Odaklanmayı koru
-                    _barcodeFocusNode.requestFocus();
-                  }
-                },
-              ),
-            ),
+          // Kamera butonu
+          IconButton(
+            icon: Icon(_isScanning ? Icons.stop : Icons.camera_alt),
+            onPressed: _isScanning ? _stopScanning : _startScanning,
+            tooltip: _isScanning ? 'Kamerayı Durdur' : 'Kamera ile Tara',
+          ),
+          // Manuel barkod ekleme butonu
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _showManualBarcodeDialog,
+            tooltip: 'Manuel Barkod Ekle',
           ),
         ],
       ),
       body: Column(
         children: [
-          // Progress Card - Only show when items are loaded
-          if (totalItems > 0)
-            Card(
-              margin: const EdgeInsets.all(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Text(
-                      'Sayım İlerlemesi',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: totalItems > 0 ? completedCount / totalItems : 0,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$completedCount / $totalItems',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _buildSelectionCardsWidget(),
+          _buildListButtonWidget(),
+          _buildLazerReaderWidget(),
 
-          // Selection Cards Row - Movfast Ranger 2 için optimize edilmiş
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                // Date Selection
-                Expanded(
-                  child: Card(
-                    child: InkWell(
-                      onTap: _selectDate,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.calendar_today, size: 20),
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat(
-                                'dd MMMM yyyy',
-                                'tr_TR',
-                              ).format(_selectedDate),
-                              style: Theme.of(context).textTheme.bodySmall,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Department Selection
-                Expanded(
-                  child: Card(
-                    child: InkWell(
-                      onTap: _selectDepartment,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.business, size: 20),
-                            const SizedBox(height: 4),
-                            Text(
-                              _selectedDepartment,
-                              style: Theme.of(context).textTheme.bodySmall,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Type Selection
-                Expanded(
-                  child: Card(
-                    child: InkWell(
-                      onTap: _showTypeSelection,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            Icon(
-                              _selectedType == 'stok'
-                                  ? Icons.inventory
-                                  : Icons.receipt,
-                              size: 20,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _selectedType == 'stok' ? 'Stok' : 'Reçete',
-                              style: Theme.of(context).textTheme.bodySmall,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Action Buttons - Endüstriyel cihaz için büyük butonlar
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _loadInventory,
-                      icon: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.refresh, size: 20),
-                      label: Text(
-                        _isLoading ? 'Yükleniyor...' : 'Listele',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: _isScanning ? _stopScanning : _startScanning,
-                      icon: Icon(
-                        _isScanning ? Icons.stop : Icons.camera_alt,
-                        size: 20,
-                      ),
-                      label: Text(
-                        _isScanning ? 'Durdur' : 'Kamera',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Scanner View
-          if (_isScanning && _scannerController != null)
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.red, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: MobileScanner(
-                    controller: _scannerController!,
-                    onDetect: _onBarcodeDetected,
-                  ),
-                ),
-              ),
-            ),
-
-          // Inventory List
-          if (!_isScanning)
-            Expanded(
-              child: Card(
-                margin: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Envanter Listesi',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                    Expanded(
-                      child: _inventoryItems.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Listele butonuna basarak ürünleri yükleyin',
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 150),
-                              itemCount: _inventoryItems.length,
-                              itemBuilder: (context, index) {
-                                final item = _inventoryItems[index];
-                                final countedQuantity =
-                                    _countedItems[item.barcode] ?? 0;
-                                final isCounted = countedQuantity > 0;
-                                final isOverCount =
-                                    countedQuantity > item.quantity.toInt();
-                                final isFullCount =
-                                    countedQuantity == item.quantity.toInt();
-                                final isCompleted =
-                                    countedQuantity >= item.quantity.toInt();
-
-                                return Card(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 4,
-                                  ),
-                                  color: isCounted
-                                      ? (isOverCount
-                                            ? Colors.red
-                                            : isFullCount
-                                            ? Colors.green
-                                            : Theme.of(
-                                                context,
-                                              ).colorScheme.primaryContainer)
-                                      : null,
-                                  child: ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: isCounted
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Theme.of(context)
-                                                .colorScheme
-                                                .surfaceContainerHighest,
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: TextStyle(
-                                          color: isCounted
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.onPrimary
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                    title: Text(
-                                      item.name,
-                                      style: TextStyle(
-                                        color: isCompleted
-                                            ? Colors.white
-                                            : null,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      'Barkod: ${item.barcode}',
-                                      style: TextStyle(
-                                        color: isCompleted
-                                            ? Colors.white70
-                                            : null,
-                                      ),
-                                    ),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          '$countedQuantity/${item.quantity.toInt()}',
-                                          style: TextStyle(
-                                            color: isCompleted
-                                                ? Colors.white
-                                                : _getCountColor(
-                                                    countedQuantity,
-                                                    item.quantity.toInt(),
-                                                  ),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        IconButton(
-                                          icon: const Icon(Icons.add),
-                                          onPressed: () => _showQuantityDialog(
-                                            item.barcode,
-                                            item.name,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _buildScannerWidget(),
+          _buildInventoryListWidget(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _countedItems.isNotEmpty ? _showSummaryDialog : null,
         icon: const Icon(Icons.check),
-        label: const Text('Tamamla'),
+        label: const Text('KAYDET'),
       ),
     );
   }
 }
+
