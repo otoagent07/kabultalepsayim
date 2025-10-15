@@ -1267,7 +1267,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                                   ? Colors.green.shade800
                                                   : Colors.grey.shade600,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 12,
+                                              fontSize: 18,
                                             ),
                                           ),
                                         ),
@@ -1277,26 +1277,31 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                   const SizedBox(width: 20),
 
                                   // Buttons - Column with fixed width, right aligned
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      // Sil button
-                                      _buildSilButton(
-                                        item.barcode,
-                                        item.name,
-                                        isCounted,
-                                      ),
-                                      const SizedBox(height: 6),
-                                      // Düzelt button
-                                      _buildDuzeltButton(
-                                        item.barcode,
-                                        item.name,
-                                      ),
-                                    ],
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 5),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        // Düzelt button
+                                        _buildDuzeltButton(
+                                          item.barcode,
+                                          item.name,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        // Sil button
+                                        _buildSilButton(
+                                          item.barcode,
+                                          item.name,
+                                          isCounted,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
+
                             // Divider between items
                             if (index < _inventoryItems.length - 1)
                               const Divider(
@@ -1339,7 +1344,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       ),
     );
   }
-
 
   Widget _buildSelectionCardsWidget() {
     return Padding(
