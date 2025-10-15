@@ -387,8 +387,20 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _showQuantityDialog(String barcode, String itemName) {
-    // Default miktar 1
-    _quantityController.text = '1';
+    // Mevcut miktarı al, yoksa 1
+    final currentQuantity = _countedItems[barcode] ?? 1;
+    final TextEditingController quantityInputController = TextEditingController(
+      text: currentQuantity.toString(),
+    );
+    final FocusNode quantityFocusNode = FocusNode();
+
+    // Miktar alanındaki metni seç
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      quantityInputController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: quantityInputController.text.length,
+      );
+    });
 
     showDialog(
       context: context,
@@ -400,11 +412,34 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             children: [
               Text('Barkod: $barcode'),
               const SizedBox(height: 16),
-              // Miktar gösterimi
-              _buildQuantityDisplay(),
+              // Miktar girişi
+              TextField(
+                controller: quantityInputController,
+                focusNode: quantityFocusNode,
+                readOnly: true,
+                showCursor: true,
+                enableInteractiveSelection: true,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(
+                  labelText: 'Miktar',
+                  hintText: 'Miktar girin',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
-              // Özel sayısal klavye
-              _buildCustomNumericKeyboard(setDialogState),
+              // Özel sayısal klavye - Sadece miktar girişi
+              _buildProductQuantityKeyboard(
+                quantityInputController,
+                setDialogState,
+              ),
             ],
           ),
           actions: [
@@ -414,7 +449,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final quantity = int.tryParse(_quantityController.text) ?? 1;
+                final quantityText = quantityInputController.text.trim();
+                final quantity = quantityText.isEmpty
+                    ? 1
+                    : int.tryParse(quantityText) ?? 1;
                 setState(() {
                   _countedItems[barcode] = quantity;
                   // Ürünü en üste taşı
@@ -561,7 +599,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _clearQuantity(StateSetter setDialogState) {
-    _quantityController.text = '1';
+    _quantityController.text = '';
     _quantityController.selection = TextSelection.fromPosition(
       TextPosition(offset: _quantityController.text.length),
     );
@@ -569,13 +607,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _deleteLastDigit(StateSetter setDialogState) {
-    if (_quantityController.text.length > 1) {
+    if (_quantityController.text.isNotEmpty) {
       _quantityController.text = _quantityController.text.substring(
         0,
         _quantityController.text.length - 1,
       );
-    } else {
-      _quantityController.text = '1';
     }
     _quantityController.selection = TextSelection.fromPosition(
       TextPosition(offset: _quantityController.text.length),
@@ -1004,6 +1040,14 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     final FocusNode quantityFocusNode = FocusNode();
     bool isBarcodeFocused = true;
 
+    // Miktar alanındaki metni seç
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      quantityInputController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: quantityInputController.text.length,
+      );
+    });
+
     // Başlangıçta barkod alanına odaklan
     barcodeFocusNode.addListener(() {
       if (barcodeFocusNode.hasFocus) {
@@ -1259,7 +1303,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         final isCompleted =
                             countedQuantity >= item.quantity.toInt();
 
-
                         return Column(
                           children: [
                             ListTile(
@@ -1412,6 +1455,14 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
+                      Text(
+                        'Tarih Seçiniz',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
                       const Icon(Icons.calendar_today, size: 20),
                       const SizedBox(height: 4),
                       Text(
@@ -1439,6 +1490,14 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
+                      Text(
+                        'Departman Seçiniz',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
                       const Icon(Icons.business, size: 20),
                       const SizedBox(height: 4),
                       Text(
@@ -1463,6 +1522,14 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
+                      Text(
+                        'Tip Seçiniz',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
                       Icon(
                         _selectedType == 'stok'
                             ? Icons.inventory
