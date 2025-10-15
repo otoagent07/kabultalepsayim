@@ -46,6 +46,6 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Bu uygulama barkod okumak için kameraya erişim gerektirir.</string>
+	<string>Barkod okutmak ve sayım yapmak için kamera erişimi gereklidir.</string>
 </dict>
 </plist>

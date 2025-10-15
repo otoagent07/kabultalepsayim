@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import '../models/inventory_item.dart';
 
 class BarcodeInventoryScreen extends StatefulWidget {
@@ -20,8 +19,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   String _selectedType = 'stok'; // 'stok' or 'reçete'
   List<InventoryItem> _inventoryItems = [];
   bool _isLoading = false;
-  bool _isScanning = false;
-  MobileScannerController? _scannerController;
   final Map<String, int> _countedItems = {};
   final TextEditingController _manualBarcodeController =
       TextEditingController();
@@ -37,7 +34,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   void initState() {
     super.initState();
     _quantityController.text = '1';
-    _requestCameraPermission();
 
     // Klavye açılmasını engelle
     _barcodeFocusNode.addListener(() {
@@ -55,136 +51,67 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
   @override
   void dispose() {
-    try {
-      _scannerController?.dispose();
-    } catch (e) {
-      print('Kamera dispose hatası: $e');
-    }
     _manualBarcodeController.dispose();
     _quantityController.dispose();
     _barcodeFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _requestCameraPermission() async {
-    final status = await Permission.camera.request();
-    if (status.isGranted) {
-      _initializeScanner();
-    } else {
-      _showPermissionDialog();
-    }
-  }
-
-  void _initializeScanner() {
-    try {
-      _scannerController?.dispose();
-      _scannerController = MobileScannerController(
-        detectionSpeed: DetectionSpeed.noDuplicates,
-        facing: CameraFacing.back,
-        torchEnabled: false,
-      );
-    } catch (e) {
-      print('Kamera başlatma hatası: $e');
-      _showCameraErrorDialog();
-    }
-  }
-
-  void _showPermissionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kamera İzni Gerekli'),
-        content: const Text('Barkod okumak için kamera iznine ihtiyaç var.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              openAppSettings();
-            },
-            child: const Text('Ayarlar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCameraErrorDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kamera Hatası'),
-        content: const Text(
-          'Kamera başlatılamadı. Lütfen uygulamayı yeniden başlatın.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tamam'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _loadDemoData() {
-    // Demo data
+    // Demo data - sadece barkod örnekleri
     _inventoryItems = [
       InventoryItem(
         id: '1',
-        barcode: '8691381000486',
-        name: 'SODA',
+        barcode: '1213123',
+        name: '',
         unit: 'Adet',
-        quantity: 60,
-        averagePrice: 2.50,
-        totalAmount: 150.00,
+        quantity: 0,
+        averagePrice: 0,
+        totalAmount: 0,
         date: _selectedDate,
         department: _selectedDepartment,
       ),
       InventoryItem(
         id: '2',
-        barcode: '1234567890124',
-        name: 'Ekmek',
+        barcode: '1213123',
+        name: '',
         unit: 'Adet',
-        quantity: 20,
-        averagePrice: 1.50,
-        totalAmount: 30.00,
+        quantity: 0,
+        averagePrice: 0,
+        totalAmount: 0,
         date: _selectedDate,
         department: _selectedDepartment,
       ),
       InventoryItem(
         id: '3',
-        barcode: '1234567890125',
-        name: 'Süt 1L',
+        barcode: '1213123',
+        name: '',
         unit: 'Adet',
-        quantity: 15,
-        averagePrice: 8.00,
-        totalAmount: 120.00,
+        quantity: 0,
+        averagePrice: 0,
+        totalAmount: 0,
         date: _selectedDate,
         department: _selectedDepartment,
       ),
       InventoryItem(
         id: '4',
-        barcode: '1234567890126',
-        name: 'Yumurta',
-        unit: 'Düzine',
-        quantity: 10,
-        averagePrice: 12.00,
-        totalAmount: 120.00,
+        barcode: '1213123',
+        name: '',
+        unit: 'Adet',
+        quantity: 0,
+        averagePrice: 0,
+        totalAmount: 0,
         date: _selectedDate,
         department: _selectedDepartment,
       ),
       InventoryItem(
         id: '5',
-        barcode: '1234567890127',
-        name: 'Domates',
-        unit: 'Kg',
-        quantity: 25,
-        averagePrice: 5.00,
-        totalAmount: 125.00,
+        barcode: '1213123',
+        name: '',
+        unit: 'Adet',
+        quantity: 0,
+        averagePrice: 0,
+        totalAmount: 0,
         date: _selectedDate,
         department: _selectedDepartment,
       ),
@@ -305,57 +232,41 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     });
   }
 
-  void _startScanning() {
-    if (_scannerController == null) {
-      _initializeScanner();
-    }
-    setState(() {
-      _isScanning = true;
-    });
-  }
-
-  void _stopScanning() {
-    setState(() {
-      _isScanning = false;
-    });
-    try {
-      _scannerController?.stop();
-    } catch (e) {
-      print('Kamera durdurma hatası: $e');
-    }
-  }
-
-  void _onBarcodeDetected(BarcodeCapture capture) {
-    final List<Barcode> barcodes = capture.barcodes;
-    if (barcodes.isNotEmpty) {
-      final String barcode = barcodes.first.rawValue ?? '';
-      _processBarcode(barcode);
-    }
-  }
-
   void _processBarcode(String barcode) {
-    final item = _inventoryItems.firstWhere(
+    // Barkod var mı kontrol et
+    final existingItemIndex = _inventoryItems.indexWhere(
       (item) => item.barcode == barcode,
-      orElse: () => InventoryItem(
-        id: '',
+    );
+
+    if (existingItemIndex != -1) {
+      // Mevcut ürün - miktarını artır
+      setState(() {
+        _countedItems[barcode] = (_countedItems[barcode] ?? 0) + 1;
+        // Ürünü en üste taşı
+        _moveItemToTop(barcode);
+      });
+    } else {
+      // Yeni ürün - listeye ekle
+      final newItem = InventoryItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         barcode: barcode,
-        name: 'Bilinmeyen Ürün',
+        name: '',
         unit: 'Adet',
         quantity: 0,
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
         department: _selectedDepartment,
-      ),
-    );
+      );
 
-    if (item.id.isNotEmpty) {
-      _stopScanning();
-      // Miktar dialog'unu aç
-      _showQuantityDialog(barcode, item.name);
-    } else {
-      _showUnknownBarcodeDialog(barcode);
+      setState(() {
+        _inventoryItems.insert(0, newItem);
+        _countedItems[barcode] = 1;
+      });
     }
+
+    // Odaklanmayı koru
+    _barcodeFocusNode.requestFocus();
   }
 
   void _moveItemToTop(String barcode) {
@@ -370,129 +281,63 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     }
   }
 
-  void _showUnknownBarcodeDialog(String barcode) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Bilinmeyen Barkod'),
-        content: Text('Barkod: $barcode\nBu ürün listede bulunamadı.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tamam'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showQuantityDialog(String barcode, String itemName) {
-    // Mevcut miktarı al, yoksa 1
-    final currentQuantity = _countedItems[barcode] ?? 1;
-    final TextEditingController quantityInputController = TextEditingController(
-      text: currentQuantity.toString(),
-    );
-    final FocusNode quantityFocusNode = FocusNode();
-
-    // Miktar alanındaki metni seç
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      quantityInputController.selection = TextSelection(
-        baseOffset: 0,
-        extentOffset: quantityInputController.text.length,
+  Future<void> _scanBarcode() async {
+    try {
+      final String? result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const QRScannerPage()),
       );
-    });
 
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Miktar Girişi - $itemName'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Barkod: $barcode'),
-              const SizedBox(height: 16),
-              // Miktar girişi
-              TextField(
-                controller: quantityInputController,
-                focusNode: quantityFocusNode,
-                readOnly: true,
-                showCursor: true,
-                enableInteractiveSelection: true,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(
-                  labelText: 'Miktar',
-                  hintText: 'Miktar girin',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Özel sayısal klavye - Sadece miktar girişi
-              _buildProductQuantityKeyboard(
-                quantityInputController,
-                setDialogState,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('İptal'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final quantityText = quantityInputController.text.trim();
-                final quantity = quantityText.isEmpty
-                    ? 1
-                    : int.tryParse(quantityText) ?? 1;
-                setState(() {
-                  _countedItems[barcode] = quantity;
-                  // Ürünü en üste taşı
-                  _moveItemToTop(barcode);
-                });
-                Navigator.pop(context);
-                // Odaklanmayı koru
-                _barcodeFocusNode.requestFocus();
-              },
-              child: const Text('Kaydet'),
-            ),
-          ],
-        ),
-      ),
-    );
+      if (result != null && result.isNotEmpty) {
+        _processBarcode(result);
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+      print('Kamera okuma hatası: $e');
+    }
   }
 
   void _showProductQuantityDialog(String barcode, String itemName) {
-    // Mevcut miktarı al, yoksa 1
-    final currentQuantity = _countedItems[barcode] ?? 1;
-    final TextEditingController quantityInputController = TextEditingController(
-      text: currentQuantity.toString(),
-    );
-    final FocusNode quantityFocusNode = FocusNode();
+    // Mevcut miktarı al
+    final currentQuantity = _countedItems[barcode] ?? 0;
+    final TextEditingController addQuantityController = TextEditingController();
+    final FocusNode addQuantityFocusNode = FocusNode();
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
+          final addQuantity = int.tryParse(addQuantityController.text) ?? 0;
+          final newTotal = currentQuantity + addQuantity;
+
           return AlertDialog(
-            title: Text('Miktar Girişi - $itemName'),
+            title: Text('Miktar Ekle - Barkod: $barcode'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Barkod: $barcode'),
+                // Mevcut miktar
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Text(
+                    'Mevcut Miktar: $currentQuantity',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
                 const SizedBox(height: 16),
-                // Miktar girişi
+                // Eklenecek miktar
                 TextField(
-                  controller: quantityInputController,
-                  focusNode: quantityFocusNode,
+                  controller: addQuantityController,
+                  focusNode: addQuantityFocusNode,
                   readOnly: true,
                   showCursor: true,
                   enableInteractiveSelection: true,
@@ -502,7 +347,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   ),
                   textAlign: TextAlign.center,
                   decoration: const InputDecoration(
-                    labelText: 'Miktar',
+                    labelText: 'Eklenecek Miktar',
                     hintText: 'Miktar girin',
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(
@@ -512,9 +357,29 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                // Yeni toplam
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Text(
+                    'Yeni Toplam: $newTotal',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 // Özel sayısal klavye - Sadece miktar girişi
                 _buildProductQuantityKeyboard(
-                  quantityInputController,
+                  addQuantityController,
                   setDialogState,
                 ),
               ],
@@ -526,117 +391,24 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  final quantityText = quantityInputController.text.trim();
-                  final quantity = quantityText.isEmpty
-                      ? 1
-                      : int.tryParse(quantityText) ?? 1;
-
-                  setState(() {
-                    _countedItems[barcode] = quantity;
-                    // Ürünü en üste taşı
-                    _moveItemToTop(barcode);
-                  });
-                  Navigator.pop(context);
-                  // Odaklanmayı koru
-                  _barcodeFocusNode.requestFocus();
+                  final addQuantity =
+                      int.tryParse(addQuantityController.text) ?? 0;
+                  if (addQuantity > 0) {
+                    setState(() {
+                      _countedItems[barcode] = currentQuantity + addQuantity;
+                      // Ürünü en üste taşı
+                      _moveItemToTop(barcode);
+                    });
+                    Navigator.pop(context);
+                    // Odaklanmayı koru
+                    _barcodeFocusNode.requestFocus();
+                  }
                 },
                 child: const Text('Kaydet'),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildCustomNumericKeyboard(StateSetter setDialogState) {
-    return Container(
-      width: 240,
-      child: Column(
-        children: [
-          // İlk satır: 1, 2, 3
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNumberButton('1', setDialogState),
-              _buildNumberButton('2', setDialogState),
-              _buildNumberButton('3', setDialogState),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // İkinci satır: 4, 5, 6
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNumberButton('4', setDialogState),
-              _buildNumberButton('5', setDialogState),
-              _buildNumberButton('6', setDialogState),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Üçüncü satır: 7, 8, 9
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNumberButton('7', setDialogState),
-              _buildNumberButton('8', setDialogState),
-              _buildNumberButton('9', setDialogState),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Dördüncü satır: Temizle, 0, Sil
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildActionButton('C', () => _clearQuantity(setDialogState)),
-              _buildNumberButton('0', setDialogState),
-              _buildActionButton('⌫', () => _deleteLastDigit(setDialogState)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _clearQuantity(StateSetter setDialogState) {
-    _quantityController.text = '';
-    _quantityController.selection = TextSelection.fromPosition(
-      TextPosition(offset: _quantityController.text.length),
-    );
-    setDialogState(() {});
-  }
-
-  void _deleteLastDigit(StateSetter setDialogState) {
-    if (_quantityController.text.isNotEmpty) {
-      _quantityController.text = _quantityController.text.substring(
-        0,
-        _quantityController.text.length - 1,
-      );
-    }
-    _quantityController.selection = TextSelection.fromPosition(
-      TextPosition(offset: _quantityController.text.length),
-    );
-    setDialogState(() {});
-  }
-
-  Widget _buildQuantityDisplay() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TextField(
-        controller: _quantityController,
-        readOnly: true,
-        showCursor: true,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-        ),
       ),
     );
   }
@@ -966,36 +738,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildNumberButton(String number, StateSetter setDialogState) {
-    return SizedBox(
-      width: 60,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          if (_quantityController.text == '1' && number != '0') {
-            // 1'den farklı sayıya geçiş
-            _quantityController.text = number;
-          } else {
-            // Normal ekleme (1'den sonra 0 = 10)
-            _quantityController.text += number;
-          }
-          // İmleci sona taşı
-          _quantityController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _quantityController.text.length),
-          );
-          setDialogState(() {});
-        },
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: Text(
-          number,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionButton(String text, VoidCallback onPressed) {
     return SizedBox(
       width: 60,
@@ -1012,22 +754,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         ),
       ),
     );
-  }
-
-  Color _getCountColor(int counted, int total) {
-    if (counted == 0) {
-      // Sayılmamış - soluk gri
-      return Theme.of(context).colorScheme.onSurfaceVariant;
-    } else if (counted == total) {
-      // Tam sayıldı - yeşil
-      return Colors.green;
-    } else if (counted > total) {
-      // Aştı - kırmızı
-      return Colors.red;
-    } else {
-      // Kısmen sayıldı - tema rengi
-      return Theme.of(context).colorScheme.primary;
-    }
   }
 
   void _showManualBarcodeDialog() {
@@ -1065,6 +791,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
+          final currentQuantity =
+              _countedItems[barcodeInputController.text.trim()] ?? 0;
+          final addQuantity = int.tryParse(quantityInputController.text) ?? 0;
+          final newTotal = currentQuantity + addQuantity;
+
           return AlertDialog(
             title: const Text('Manuel Barkod Ekle'),
             content: Column(
@@ -1131,7 +862,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   ),
                   textAlign: TextAlign.center,
                   decoration: const InputDecoration(
-                    labelText: 'Miktar',
+                    labelText: 'Eklenecek Miktar',
                     hintText: 'Miktar girin',
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(
@@ -1147,6 +878,46 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Mevcut miktar ve yeni toplam
+                if (barcodeInputController.text.trim().isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Text(
+                      'Mevcut Miktar: $currentQuantity',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Text(
+                      'Yeni Toplam: $newTotal',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 // Özel sayısal klavye
                 _buildUnifiedKeyboard(
                   barcodeInputController,
@@ -1170,34 +941,42 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       : int.tryParse(quantityText) ?? 1;
 
                   if (barcode.isNotEmpty) {
-                    // Barkod kontrolü
-                    final item = _inventoryItems.firstWhere(
+                    // Barkod var mı kontrol et
+                    final existingItemIndex = _inventoryItems.indexWhere(
                       (item) => item.barcode == barcode,
-                      orElse: () => InventoryItem(
-                        id: '',
+                    );
+
+                    if (existingItemIndex != -1) {
+                      // Mevcut ürün - miktarını güncelle
+                      setState(() {
+                        _countedItems[barcode] =
+                            (_countedItems[barcode] ?? 0) + quantity;
+                        // Ürünü en üste taşı
+                        _moveItemToTop(barcode);
+                      });
+                    } else {
+                      // Yeni ürün - listeye ekle
+                      final newItem = InventoryItem(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
                         barcode: barcode,
-                        name: 'Bilinmeyen Ürün',
+                        name: '',
                         unit: 'Adet',
                         quantity: 0,
                         averagePrice: 0,
                         totalAmount: 0,
                         date: _selectedDate,
                         department: _selectedDepartment,
-                      ),
-                    );
+                      );
 
-                    if (item.id.isNotEmpty) {
                       setState(() {
+                        _inventoryItems.insert(0, newItem);
                         _countedItems[barcode] = quantity;
-                        // Ürünü en üste taşı
-                        _moveItemToTop(barcode);
                       });
-                      Navigator.pop(context);
-                      // Odaklanmayı koru
-                      _barcodeFocusNode.requestFocus();
-                    } else {
-                      _showUnknownBarcodeDialog(barcode);
                     }
+
+                    Navigator.pop(context);
+                    // Odaklanmayı koru
+                    _barcodeFocusNode.requestFocus();
                   }
                 },
                 child: const Text('Kaydet'),
@@ -1210,11 +989,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _showSummaryDialog() {
-    // Sayılmayan ürünleri bul
-    final uncountedItems = _inventoryItems.where((item) {
-      final countedQuantity = _countedItems[item.barcode] ?? 0;
-      return countedQuantity == 0;
-    }).toList();
+    // Toplam sayılan miktarı hesapla
+    final totalCounted = _countedItems.values.fold(
+      0,
+      (sum, count) => sum + count,
+    );
 
     showDialog(
       context: context,
@@ -1225,31 +1004,20 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Toplam ${_inventoryItems.length} ürün var'),
-              Text('${_countedItems.length} ürün sayıldı'),
-              Text('${uncountedItems.length} ürün sayılmadı'),
+              Text('Toplam ${_inventoryItems.length} farklı barkod'),
+              Text('Toplam ${totalCounted} adet sayıldı'),
               const SizedBox(height: 16),
-              if (uncountedItems.isNotEmpty) ...[
-                const Text(
-                  'Sayılmayan Ürünler:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...uncountedItems.map((item) {
-                  return ListTile(
-                    title: Text(item.name),
-                    subtitle: Text('Barkod: ${item.barcode}'),
-                    trailing: Text('0/${item.quantity.toInt()}'),
-                  );
-                }),
-              ] else
-                const Text(
-                  'Tüm ürünler sayıldı! 🎉',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
+              const Text(
+                'Sayılan Barkodlar:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ..._countedItems.entries.map((entry) {
+                return ListTile(
+                  title: Text('Barkod: ${entry.key}'),
+                  trailing: Text('${entry.value} adet'),
+                );
+              }),
             ],
           ),
         ),
@@ -1275,8 +1043,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   Widget _buildInventoryListWidget() {
-    if (_isScanning) return const SizedBox.shrink();
-
     return Expanded(
       child: Card(
         margin: const EdgeInsets.all(16),
@@ -1300,8 +1066,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         final countedQuantity =
                             _countedItems[item.barcode] ?? 0;
                         final isCounted = countedQuantity > 0;
-                        final isCompleted =
-                            countedQuantity >= item.quantity.toInt();
 
                         return Column(
                           children: [
@@ -1326,29 +1090,28 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                 ),
                               ),
                               title: Text(
-                                item.name,
+                                item.name.isEmpty
+                                    ? 'Barkod: ${item.barcode}'
+                                    : item.name,
                                 style: TextStyle(
-                                  color: isCompleted ? Colors.white : null,
+                                  color: isCounted ? Colors.green : null,
+                                  fontWeight: isCounted
+                                      ? FontWeight.bold
+                                      : null,
                                 ),
                               ),
-                              subtitle: Text(
-                                'Barkod: ${item.barcode}',
-                                style: TextStyle(
-                                  color: isCompleted ? Colors.white70 : null,
-                                ),
-                              ),
+                              subtitle: item.name.isNotEmpty
+                                  ? Text('Barkod: ${item.barcode}')
+                                  : null,
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    '$countedQuantity/${item.quantity.toInt()}',
+                                    '$countedQuantity',
                                     style: TextStyle(
-                                      color: isCompleted
-                                          ? Colors.white
-                                          : _getCountColor(
-                                              countedQuantity,
-                                              item.quantity.toInt(),
-                                            ),
+                                      color: isCounted
+                                          ? Colors.green
+                                          : Colors.grey,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
@@ -1377,40 +1140,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                     ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScannerWidget() {
-    if (!_isScanning) {
-      return const SizedBox.shrink();
-    }
-
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.red, width: 2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: _scannerController != null
-              ? MobileScanner(
-                  controller: _scannerController!,
-                  onDetect: _onBarcodeDetected,
-                )
-              : const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Kamera başlatılıyor...'),
-                    ],
-                  ),
-                ),
         ),
       ),
     );
@@ -1586,7 +1315,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   // Lazer okuyucu verisi kontrolü
                   print('TextField değişti: $value');
 
-
                   if (value.endsWith('\n')) {
                     final barcode = value.replaceAll('\n', '').trim();
                     if (barcode.isNotEmpty) {
@@ -1611,11 +1339,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
           ),
-          // Kamera butonu
+          // Kamera ile barkod okuma butonu
           IconButton(
-            icon: Icon(_isScanning ? Icons.stop : Icons.camera_alt),
-            onPressed: _isScanning ? _stopScanning : _startScanning,
-            tooltip: _isScanning ? 'Kamerayı Durdur' : 'Kamera ile Tara',
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: _scanBarcode,
+            tooltip: 'Kamera ile Tara',
           ),
           // Manuel barkod ekleme butonu
           IconButton(
@@ -1625,11 +1353,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           ),
         ],
       ),
+
       body: Column(
         children: [
           _buildSelectionCardsWidget(),
           _buildListButtonWidget(),
-          _buildScannerWidget(),
           _buildInventoryListWidget(),
         ],
       ),
@@ -1639,5 +1367,106 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         label: const Text('KAYDET'),
       ),
     );
+  }
+}
+
+class QRScannerPage extends StatefulWidget {
+  const QRScannerPage({super.key});
+
+  @override
+  State<QRScannerPage> createState() => _QRScannerPageState();
+}
+
+class _QRScannerPageState extends State<QRScannerPage> {
+  Barcode? result;
+  QRViewController? controller;
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Barkod Tara'),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+      ),
+      body: Column(
+        children: <Widget>[
+          Expanded(flex: 4, child: _buildQrView(context)),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: Colors.black,
+              child: Center(
+                child: result != null
+                    ? Text(
+                        'Barkod: ${result!.code}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : const Text(
+                        'Barkodu kameraya gösterin',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrView(BuildContext context) {
+    var scanArea =
+        (MediaQuery.of(context).size.width < 400 ||
+            MediaQuery.of(context).size.height < 400)
+        ? 150.0
+        : 300.0;
+
+    return QRView(
+      key: qrKey,
+      onQRViewCreated: _onQRViewCreated,
+      overlay: QrScannerOverlayShape(
+        borderColor: Colors.red,
+        borderRadius: 10,
+        borderLength: 30,
+        borderWidth: 10,
+        cutOutSize: scanArea,
+      ),
+      onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
+    );
+  }
+
+  void _onQRViewCreated(QRViewController controller) {
+    setState(() {
+      this.controller = controller;
+    });
+    controller.scannedDataStream.listen((scanData) {
+      setState(() {
+        result = scanData;
+      });
+
+      // Barkod okunduğunda ana sayfaya dön ve işle
+      if (result != null && result!.code != null) {
+        Navigator.pop(context, result!.code);
+      }
+    });
+  }
+
+  void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
+    if (!p) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Kamera izni gerekli')));
+    }
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
   }
 }
