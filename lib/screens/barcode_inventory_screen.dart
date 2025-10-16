@@ -1887,10 +1887,16 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           tooltip: 'Geri',
         ),
         actions: [
+          // Geri butonu
+          IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+            tooltip: 'Geri',
+          ),
           // Lazer okuyucu TextField
           Expanded(
             child: Card(
-              margin: const EdgeInsets.only(right: 5, left: 15),
+              margin: const EdgeInsets.only(right: 5, left: 5),
               elevation: 2,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
