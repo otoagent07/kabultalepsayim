@@ -121,28 +121,47 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _selectDate() {
-    showCupertinoModalPopup<void>(
+    showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+      ),
       builder: (BuildContext context) => Container(
-        height: 216,
-        padding: const EdgeInsets.only(top: 6.0),
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        color: CupertinoColors.systemBackground.resolveFrom(context),
-        child: SafeArea(
-          top: false,
-          child: CupertinoDatePicker(
-            initialDateTime: _selectedDate,
-            mode: CupertinoDatePickerMode.date,
-            use24hFormat: true,
-            showDayOfWeek: true,
-            onDateTimeChanged: (DateTime newDate) {
-              setState(() {
-                _selectedDate = newDate;
-              });
-            },
-          ),
+        height: 300,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header with title and done button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Tarih Seçin',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Tamam'),
+                ),
+              ],
+            ),
+            const Divider(),
+            // Date picker
+            Expanded(
+              child: CupertinoDatePicker(
+                initialDateTime: _selectedDate,
+                mode: CupertinoDatePickerMode.date,
+                use24hFormat: true,
+                showDayOfWeek: true,
+                onDateTimeChanged: (DateTime newDate) {
+                  setState(() {
+                    _selectedDate = newDate;
+                  });
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -162,17 +181,39 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             ),
             const SizedBox(height: 16),
             ..._departments.map(
-              (dept) => ListTile(
-                title: Text(dept),
-                leading: Radio<String>(
-                  value: dept,
-                  groupValue: _selectedDepartment,
-                  onChanged: (value) {
+              (dept) => Card(
+                child: InkWell(
+                  onTap: () {
                     setState(() {
-                      _selectedDepartment = value!;
+                      _selectedDepartment = dept;
                     });
                     Navigator.pop(context);
                   },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Radio<String>(
+                          value: dept,
+                          groupValue: _selectedDepartment,
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedDepartment = value!;
+                            });
+                            Navigator.pop(context);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            dept,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -192,27 +233,76 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           children: [
             Text('Tür Seçin', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
-            RadioListTile<String>(
-              title: const Text('Stok'),
-              value: 'stok',
-              groupValue: _selectedType,
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value!;
-                });
-                Navigator.pop(context);
-              },
+            Card(
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedType = 'stok';
+                  });
+                  Navigator.pop(context);
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Radio<String>(
+                        value: 'stok',
+                        groupValue: _selectedType,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedType = value!;
+                          });
+                          Navigator.pop(context);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Stok',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            RadioListTile<String>(
-              title: const Text('Reçete'),
-              value: 'reçete',
-              groupValue: _selectedType,
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value!;
-                });
-                Navigator.pop(context);
-              },
+            const SizedBox(height: 8),
+            Card(
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedType = 'reçete';
+                  });
+                  Navigator.pop(context);
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Radio<String>(
+                        value: 'reçete',
+                        groupValue: _selectedType,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedType = value!;
+                          });
+                          Navigator.pop(context);
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Reçete',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -311,17 +401,49 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     // Mevcut miktarı al
     final currentQuantity = _countedItems[barcode] ?? 0;
     final TextEditingController addQuantityController = TextEditingController();
+    final TextEditingController totalQuantityController =
+        TextEditingController();
     final FocusNode addQuantityFocusNode = FocusNode();
+    final FocusNode totalQuantityFocusNode = FocusNode();
+    bool isAddQuantityFocused = true;
+
+    // Focus listener'ları ekle
+    addQuantityFocusNode.addListener(() {
+      if (addQuantityFocusNode.hasFocus) {
+        isAddQuantityFocused = true;
+      }
+    });
+
+    totalQuantityFocusNode.addListener(() {
+      if (totalQuantityFocusNode.hasFocus) {
+        isAddQuantityFocused = false;
+      }
+    });
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           final addQuantity = int.tryParse(addQuantityController.text) ?? 0;
-          final newTotal = currentQuantity + addQuantity;
+          final totalQuantity = int.tryParse(totalQuantityController.text) ?? 0;
+
+          // Hesaplamalar
+          final calculatedTotal = currentQuantity + addQuantity;
+          final calculatedAdd = totalQuantity - currentQuantity;
+
+          // Görüntülenecek değerler
+          final displayTotal = isAddQuantityFocused
+              ? calculatedTotal
+              : totalQuantity;
+          final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
+
+          // Sonuç miktarı (kaydetme için)
+          final finalQuantity = isAddQuantityFocused
+              ? calculatedTotal
+              : totalQuantity;
 
           return AlertDialog(
-            title: Text('Miktar Ekle - Barkod: $barcode'),
+            title: Text('Miktar Düzelt - Barkod: $barcode'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -344,30 +466,98 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Eklenecek miktar
-                TextField(
-                  controller: addQuantityController,
-                  focusNode: addQuantityFocusNode,
-                  readOnly: true,
-                  showCursor: true,
-                  enableInteractiveSelection: true,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                    labelText: 'Eklenecek Miktar',
-                    hintText: 'Miktar girin',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+
+                // İki input alanı yan yana
+                Row(
+                  children: [
+                    // Eklenecek/Çıkarılacak miktar
+                    Expanded(
+                      child: TextField(
+                        controller: addQuantityController,
+                        focusNode: addQuantityFocusNode,
+                        readOnly: true,
+                        showCursor: true,
+                        enableInteractiveSelection: true,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isAddQuantityFocused
+                              ? Colors.blue
+                              : Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          labelText: 'Eklenecek/Çıkarılacak',
+                          hintText: 'Miktar girin',
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: isAddQuantityFocused
+                                  ? Colors.blue
+                                  : Colors.grey,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onTap: () {
+                          setDialogState(() {
+                            isAddQuantityFocused = true;
+                            addQuantityFocusNode.requestFocus();
+                          });
+                        },
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    // Toplam miktar
+                    Expanded(
+                      child: TextField(
+                        controller: totalQuantityController,
+                        focusNode: totalQuantityFocusNode,
+                        readOnly: true,
+                        showCursor: true,
+                        enableInteractiveSelection: true,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: !isAddQuantityFocused
+                              ? Colors.green
+                              : Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          labelText: 'Toplam Miktar',
+                          hintText: 'Toplam girin',
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: !isAddQuantityFocused
+                                  ? Colors.green
+                                  : Colors.grey,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onTap: () {
+                          setDialogState(() {
+                            isAddQuantityFocused = false;
+                            totalQuantityFocusNode.requestFocus();
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
-                // Yeni toplam
+
+                // Sonuç gösterimi
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -376,20 +566,41 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.green.shade200),
                   ),
-                  child: Text(
-                    'Yeni Toplam: $newTotal',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    children: [
+                      Text(
+                        'Sonuç: $displayTotal',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (displayAdd != 0) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          displayAdd > 0
+                              ? 'Eklenecek: +$displayAdd'
+                              : 'Çıkarılacak: $displayAdd',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: displayAdd > 0 ? Colors.green : Colors.red,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Özel sayısal klavye - Sadece miktar girişi
-                _buildProductQuantityKeyboard(
+
+                // Özel sayısal klavye
+                _buildDualModeKeyboard(
                   addQuantityController,
+                  totalQuantityController,
+                  isAddQuantityFocused,
                   setDialogState,
                 ),
               ],
@@ -401,11 +612,9 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  final addQuantity =
-                      int.tryParse(addQuantityController.text) ?? 0;
-                  if (addQuantity > 0) {
+                  if (finalQuantity >= 0) {
                     setState(() {
-                      _countedItems[barcode] = currentQuantity + addQuantity;
+                      _countedItems[barcode] = finalQuantity;
                       // Ürünü en üste taşı
                       _moveItemToTop(barcode);
                     });
@@ -611,8 +820,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildProductQuantityKeyboard(
-    TextEditingController quantityController,
+  Widget _buildDualModeKeyboard(
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
+    bool isAddQuantityFocused,
     StateSetter setDialogState,
   ) {
     return Container(
@@ -623,19 +834,25 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '1',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '2',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '3',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
             ],
@@ -645,19 +862,25 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '4',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '5',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '6',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
             ],
@@ -667,19 +890,25 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '7',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '8',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '9',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
             ],
@@ -690,27 +919,46 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildActionButton('C', () {
-                quantityController.text = '';
-                quantityController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: quantityController.text.length),
-                );
+                if (isAddQuantityFocused) {
+                  addQuantityController.text = '';
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  totalQuantityController.text = '';
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
+                  );
+                }
                 setDialogState(() {});
               }),
-              _buildProductNumberButton(
+              _buildDualModeNumberButton(
                 '0',
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
                 setDialogState,
               ),
               _buildActionButton('⌫', () {
-                if (quantityController.text.isNotEmpty) {
-                  quantityController.text = quantityController.text.substring(
-                    0,
-                    quantityController.text.length - 1,
+                if (isAddQuantityFocused) {
+                  if (addQuantityController.text.isNotEmpty) {
+                    addQuantityController.text = addQuantityController.text
+                        .substring(0, addQuantityController.text.length - 1);
+                  }
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  if (totalQuantityController.text.isNotEmpty) {
+                    totalQuantityController.text = totalQuantityController.text
+                        .substring(0, totalQuantityController.text.length - 1);
+                  }
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
                   );
                 }
-                quantityController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: quantityController.text.length),
-                );
                 setDialogState(() {});
               }),
             ],
@@ -720,9 +968,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildProductNumberButton(
+  Widget _buildDualModeNumberButton(
     String number,
-    TextEditingController quantityController,
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
+    bool isAddQuantityFocused,
     StateSetter setDialogState,
   ) {
     return SizedBox(
@@ -730,11 +980,19 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       height: 50,
       child: ElevatedButton(
         onPressed: () {
-          // Miktar girişi - direkt ekleme
-          quantityController.text += number;
-          quantityController.selection = TextSelection.fromPosition(
-            TextPosition(offset: quantityController.text.length),
-          );
+          if (isAddQuantityFocused) {
+            // Eklenecek/çıkarılacak miktar girişi
+            addQuantityController.text += number;
+            addQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: addQuantityController.text.length),
+            );
+          } else {
+            // Toplam miktar girişi
+            totalQuantityController.text += number;
+            totalQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: totalQuantityController.text.length),
+            );
+          }
           setDialogState(() {});
         },
         style: ElevatedButton.styleFrom(
@@ -1364,6 +1622,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         'Tarih Seçiniz',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1399,6 +1659,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         'Departman Seçiniz',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1431,6 +1693,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         'Tip Seçiniz',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1461,6 +1725,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   Widget _buildMainWidget() {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Geri',
+        ),
         actions: [
           // Lazer okuyucu TextField
           Expanded(

@@ -8,68 +8,92 @@ class MainMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ana Menü'),
-        actions: [
-          Consumer<ThemeProvider>(
-            builder: (context, themeProvider, child) {
-              return IconButton(
-                icon: Icon(
-                  themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                ),
-                onPressed: () => themeProvider.toggleTheme(),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.of(context).pushReplacementNamed('/login');
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Padding(
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitConfirmation(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Ana Menü'),
+          actions: [
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                return IconButton(
+                  icon: Icon(
+                    themeProvider.isDarkMode
+                        ? Icons.light_mode
+                        : Icons.dark_mode,
+                  ),
+                  onPressed: () => themeProvider.toggleTheme(),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () {
+                Navigator.of(context).pushReplacementNamed('/login');
+              },
+            ),
+          ],
+        ),
+        body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Menu Buttons
-              _buildMenuButton(
-                context,
-                'Mal Kabul',
-                Icons.inbox,
-                Colors.blue,
-                () {
-                  _showComingSoon(context, 'Mal Kabul');
-                },
-              ),
-              const SizedBox(height: 20),
-              _buildMenuButton(
-                context,
-                'Amber Talep',
-                Icons.request_quote,
-                Colors.orange,
-                () {
-                  _showComingSoon(context, 'Amber Talep');
-                },
-              ),
-              const SizedBox(height: 20),
-              _buildMenuButton(
-                context,
-                'Barkodlu Sayım',
-                Icons.qr_code_scanner,
-                Colors.green,
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const BarcodeInventoryScreen(),
+              // Spacer to push buttons to center
+              const Spacer(),
+              // Menu Buttons - 60% of screen height
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Menu Buttons
+                    Expanded(
+                      child: _buildMenuButton(
+                        context,
+                        'Mal Kabul',
+                        Icons.inbox,
+                        Colors.blue,
+                        () {
+                          _showComingSoon(context, 'Mal Kabul');
+                        },
+                      ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: _buildMenuButton(
+                        context,
+                        'Amber Talep',
+                        Icons.request_quote,
+                        Colors.orange,
+                        () {
+                          _showComingSoon(context, 'Amber Talep');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: _buildMenuButton(
+                        context,
+                        'Barkodlu Sayım',
+                        Icons.qr_code_scanner,
+                        Colors.green,
+                        () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const BarcodeInventoryScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              // Spacer to push buttons to center
+              const Spacer(),
             ],
           ),
         ),
@@ -84,44 +108,63 @@ class MainMenuScreen extends StatelessWidget {
     Color color,
     VoidCallback onTap,
   ) {
-    return SizedBox(
-      width: double.infinity,
-      height: 80,
-      child: Card(
-        elevation: 4,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  color.withValues(alpha: 0.1),
-                  color.withValues(alpha: 0.05),
-                ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 32, color: color),
-                const SizedBox(width: 16),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+    return Card(
+      elevation: 4,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.1),
+                color.withValues(alpha: 0.05),
               ],
             ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: color),
+              const SizedBox(width: 16),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 24,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Future<bool> _showExitConfirmation(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Çıkış'),
+            content: const Text('Çıkmak istediğinize emin misiniz?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Hayır'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Evet'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   void _showComingSoon(BuildContext context, String feature) {
