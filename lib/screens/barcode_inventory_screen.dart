@@ -577,7 +577,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      if (displayAdd != 0) ...[
+                      if (displayAdd != 0 &&
+                          (isAddQuantityFocused
+                              ? addQuantity > 0
+                              : totalQuantity > 0)) ...[
                         const SizedBox(height: 4),
                         Text(
                           displayAdd > 0
@@ -632,10 +635,12 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildUnifiedKeyboard(
+  Widget _buildTripleModeKeyboard(
     TextEditingController barcodeController,
-    TextEditingController quantityController,
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
     bool isBarcodeFocused,
+    bool isAddQuantityFocused,
     StateSetter setDialogState,
   ) {
     return Container(
@@ -646,25 +651,31 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '1',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '2',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '3',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
             ],
@@ -674,25 +685,31 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '4',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '5',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '6',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
             ],
@@ -702,25 +719,31 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '7',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '8',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '9',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
             ],
@@ -736,19 +759,27 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   barcodeController.selection = TextSelection.fromPosition(
                     TextPosition(offset: barcodeController.text.length),
                   );
+                } else if (isAddQuantityFocused) {
+                  addQuantityController.text = '';
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
                 } else {
-                  quantityController.text = '';
-                  quantityController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: quantityController.text.length),
+                  totalQuantityController.text = '';
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
                   );
                 }
                 setDialogState(() {});
               }),
-              _buildUnifiedNumberButton(
+              _buildTripleModeNumberButton(
                 '0',
                 barcodeController,
-                quantityController,
+                addQuantityController,
+                totalQuantityController,
                 isBarcodeFocused,
+                isAddQuantityFocused,
                 setDialogState,
               ),
               _buildActionButton('⌫', () {
@@ -762,15 +793,22 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   barcodeController.selection = TextSelection.fromPosition(
                     TextPosition(offset: barcodeController.text.length),
                   );
-                } else {
-                  if (quantityController.text.isNotEmpty) {
-                    quantityController.text = quantityController.text.substring(
-                      0,
-                      quantityController.text.length - 1,
-                    );
+                } else if (isAddQuantityFocused) {
+                  if (addQuantityController.text.isNotEmpty) {
+                    addQuantityController.text = addQuantityController.text
+                        .substring(0, addQuantityController.text.length - 1);
                   }
-                  quantityController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: quantityController.text.length),
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  if (totalQuantityController.text.isNotEmpty) {
+                    totalQuantityController.text = totalQuantityController.text
+                        .substring(0, totalQuantityController.text.length - 1);
+                  }
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
                   );
                 }
                 setDialogState(() {});
@@ -782,11 +820,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildUnifiedNumberButton(
+  Widget _buildTripleModeNumberButton(
     String number,
     TextEditingController barcodeController,
-    TextEditingController quantityController,
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
     bool isBarcodeFocused,
+    bool isAddQuantityFocused,
     StateSetter setDialogState,
   ) {
     return SizedBox(
@@ -800,11 +840,17 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             barcodeController.selection = TextSelection.fromPosition(
               TextPosition(offset: barcodeController.text.length),
             );
+          } else if (isAddQuantityFocused) {
+            // Eklenecek/çıkarılacak miktar girişi
+            addQuantityController.text += number;
+            addQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: addQuantityController.text.length),
+            );
           } else {
-            // Miktar girişi - direkt ekleme
-            quantityController.text += number;
-            quantityController.selection = TextSelection.fromPosition(
-              TextPosition(offset: quantityController.text.length),
+            // Toplam miktar girişi
+            totalQuantityController.text += number;
+            totalQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: totalQuantityController.text.length),
             );
           }
           setDialogState(() {});
@@ -1072,20 +1118,14 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   void _showManualBarcodeDialog() {
     final TextEditingController barcodeInputController =
         TextEditingController();
-    final TextEditingController quantityInputController = TextEditingController(
-      text: '1',
-    );
+    final TextEditingController addQuantityController = TextEditingController();
+    final TextEditingController totalQuantityController =
+        TextEditingController();
     final FocusNode barcodeFocusNode = FocusNode();
-    final FocusNode quantityFocusNode = FocusNode();
+    final FocusNode addQuantityFocusNode = FocusNode();
+    final FocusNode totalQuantityFocusNode = FocusNode();
     bool isBarcodeFocused = true;
-
-    // Miktar alanındaki metni seç
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      quantityInputController.selection = TextSelection(
-        baseOffset: 0,
-        extentOffset: quantityInputController.text.length,
-      );
-    });
+    bool isAddQuantityFocused = true;
 
     // Başlangıçta barkod alanına odaklan
     barcodeFocusNode.addListener(() {
@@ -1094,9 +1134,17 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       }
     });
 
-    quantityFocusNode.addListener(() {
-      if (quantityFocusNode.hasFocus) {
+    addQuantityFocusNode.addListener(() {
+      if (addQuantityFocusNode.hasFocus) {
         isBarcodeFocused = false;
+        isAddQuantityFocused = true;
+      }
+    });
+
+    totalQuantityFocusNode.addListener(() {
+      if (totalQuantityFocusNode.hasFocus) {
+        isBarcodeFocused = false;
+        isAddQuantityFocused = false;
       }
     });
 
@@ -1106,8 +1154,23 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         builder: (context, setDialogState) {
           final currentQuantity =
               _countedItems[barcodeInputController.text.trim()] ?? 0;
-          final addQuantity = int.tryParse(quantityInputController.text) ?? 0;
-          final newTotal = currentQuantity + addQuantity;
+          final addQuantity = int.tryParse(addQuantityController.text) ?? 0;
+          final totalQuantity = int.tryParse(totalQuantityController.text) ?? 0;
+
+          // Hesaplamalar
+          final calculatedTotal = currentQuantity + addQuantity;
+          final calculatedAdd = totalQuantity - currentQuantity;
+
+          // Görüntülenecek değerler
+          final displayTotal = isAddQuantityFocused
+              ? calculatedTotal
+              : totalQuantity;
+          final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
+
+          // Sonuç miktarı (kaydetme için)
+          final finalQuantity = isAddQuantityFocused
+              ? calculatedTotal
+              : totalQuantity;
 
           return AlertDialog(
             title: const Text('Manuel Barkod Ekle'),
@@ -1121,9 +1184,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   readOnly: true,
                   showCursor: true,
                   enableInteractiveSelection: true,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: isBarcodeFocused ? Colors.blue : Colors.grey,
                   ),
                   textAlign: TextAlign.center,
                   decoration: InputDecoration(
@@ -1133,6 +1197,12 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isBarcodeFocused ? Colors.blue : Colors.grey,
+                        width: 2,
+                      ),
                     ),
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.content_paste),
@@ -1162,36 +1232,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                // Miktar girişi
-                TextField(
-                  controller: quantityInputController,
-                  focusNode: quantityFocusNode,
-                  readOnly: true,
-                  showCursor: true,
-                  enableInteractiveSelection: true,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                    labelText: 'Eklenecek Miktar',
-                    hintText: 'Miktar girin',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  onTap: () {
-                    setDialogState(() {
-                      isBarcodeFocused = false;
-                      quantityFocusNode.requestFocus();
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Mevcut miktar ve yeni toplam
+
+                // Mevcut miktar gösterimi
                 if (barcodeInputController.text.trim().isNotEmpty) ...[
                   Container(
                     width: double.infinity,
@@ -1210,7 +1252,103 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
+                ],
+
+                // İki miktar input alanı yan yana
+                Row(
+                  children: [
+                    // Eklenecek/Çıkarılacak miktar
+                    Expanded(
+                      child: TextField(
+                        controller: addQuantityController,
+                        focusNode: addQuantityFocusNode,
+                        readOnly: true,
+                        showCursor: true,
+                        enableInteractiveSelection: true,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isAddQuantityFocused
+                              ? Colors.blue
+                              : Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          labelText: 'Eklenecek/Çıkarılacak',
+                          hintText: 'Miktar girin',
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: isAddQuantityFocused
+                                  ? Colors.blue
+                                  : Colors.grey,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onTap: () {
+                          setDialogState(() {
+                            isBarcodeFocused = false;
+                            isAddQuantityFocused = true;
+                            addQuantityFocusNode.requestFocus();
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Toplam miktar
+                    Expanded(
+                      child: TextField(
+                        controller: totalQuantityController,
+                        focusNode: totalQuantityFocusNode,
+                        readOnly: true,
+                        showCursor: true,
+                        enableInteractiveSelection: true,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: !isAddQuantityFocused
+                              ? Colors.green
+                              : Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          labelText: 'Toplam Miktar',
+                          hintText: 'Toplam girin',
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: !isAddQuantityFocused
+                                  ? Colors.green
+                                  : Colors.grey,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onTap: () {
+                          setDialogState(() {
+                            isBarcodeFocused = false;
+                            isAddQuantityFocused = false;
+                            totalQuantityFocusNode.requestFocus();
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Sonuç gösterimi
+                if (barcodeInputController.text.trim().isNotEmpty) ...[
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -1219,23 +1357,47 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.green.shade200),
                     ),
-                    child: Text(
-                      'Yeni Toplam: $newTotal',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Sonuç: $displayTotal',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (displayAdd != 0 &&
+                            (isAddQuantityFocused
+                                ? addQuantity > 0
+                                : totalQuantity > 0)) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            displayAdd > 0
+                                ? 'Eklenecek: +$displayAdd'
+                                : 'Çıkarılacak: $displayAdd',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: displayAdd > 0 ? Colors.green : Colors.red,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
                 ],
+
                 // Özel sayısal klavye
-                _buildUnifiedKeyboard(
+                _buildTripleModeKeyboard(
                   barcodeInputController,
-                  quantityInputController,
+                  addQuantityController,
+                  totalQuantityController,
                   isBarcodeFocused,
+                  isAddQuantityFocused,
                   setDialogState,
                 ),
               ],
@@ -1248,12 +1410,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ElevatedButton(
                 onPressed: () {
                   final barcode = barcodeInputController.text.trim();
-                  final quantityText = quantityInputController.text.trim();
-                  final quantity = quantityText.isEmpty
-                      ? 1
-                      : int.tryParse(quantityText) ?? 1;
-
-                  if (barcode.isNotEmpty) {
+                  if (barcode.isNotEmpty && finalQuantity >= 0) {
                     // Barkod var mı kontrol et
                     final existingItemIndex = _inventoryItems.indexWhere(
                       (item) => item.barcode == barcode,
@@ -1262,8 +1419,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                     if (existingItemIndex != -1) {
                       // Mevcut ürün - miktarını güncelle
                       setState(() {
-                        _countedItems[barcode] =
-                            (_countedItems[barcode] ?? 0) + quantity;
+                        _countedItems[barcode] = finalQuantity;
                         // Ürünü en üste taşı
                         _moveItemToTop(barcode);
                       });
@@ -1283,7 +1439,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
                       setState(() {
                         _inventoryItems.insert(0, newItem);
-                        _countedItems[barcode] = quantity;
+                        _countedItems[barcode] = finalQuantity;
                       });
                     }
 
