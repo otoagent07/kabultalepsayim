@@ -563,63 +563,16 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
           final isValidQuantity =
               finalQuantity > 0 && finalQuantity <= product.kalanmiktar;
-          final totalAmount = finalQuantity * product.fiyat;
 
           return AlertDialog(
-            title: Text('Miktar Gir - ${product.stokad}'),
+            title: const Text('Miktar Gir'),
             content: SizedBox(
               width: double.maxFinite,
-              height: 400,
+              height: MediaQuery.of(context).size.height * 0.9,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Ürün bilgileri
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            product.stokad,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Stok Kodu: ${product.stokkod}',
-                            style: const TextStyle(fontSize: 12),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Mevcut Miktar: ${product.kalanmiktar}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Fiyat: ${NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(product.fiyat)}',
-                            style: const TextStyle(fontSize: 14),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
                     // Mevcut talep accordion
                     Container(
                       width: double.infinity,
@@ -642,20 +595,30 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                               padding: const EdgeInsets.all(12),
                               child: Row(
                                 children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Mevcut Talep: $currentQuantity',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Toplam Miktar: ${product.kalanmiktar}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
                                   Icon(
                                     isCurrentRequestExpanded
                                         ? Icons.expand_less
                                         : Icons.expand_more,
                                     color: Colors.blue.shade700,
                                     size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Mevcut Talep: $currentQuantity',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
                                   ),
                                 ],
                               ),
@@ -862,7 +825,8 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                               : Colors.red.shade200,
                         ),
                       ),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           Text(
                             'Sonuç: $displayTotal',
@@ -871,37 +835,23 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                               fontWeight: FontWeight.bold,
                               color: Colors.green,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                           if (displayAdd != 0 &&
                               (isAddQuantityFocused
                                   ? addQuantity > 0
-                                  : totalQuantity > 0)) ...[
-                            const SizedBox(height: 4),
+                                  : totalQuantity > 0))
                             Text(
                               displayAdd > 0
                                   ? 'Eklenecek: +$displayAdd'
                                   : 'Çıkarılacak: $displayAdd',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w500,
                                 color: displayAdd > 0
                                     ? Colors.green
                                     : Colors.red,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                          ],
-                          const SizedBox(height: 4),
-                          Text(
-                            'Toplam Tutar: ${NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(totalAmount)}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
                         ],
                       ),
                     ),
@@ -1268,18 +1218,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   }
 
   void _showSummaryDialog() {
-    // Toplam talep edilen miktarı hesapla
-    final totalRequested = _requestedItems.values.fold(
-      0,
-      (sum, count) => sum + count,
-    );
-
-    // Toplam tutarı hesapla
-    final totalAmount = _requestItems.fold(
-      0.0,
-      (sum, item) => sum + item.toplamTutar,
-    );
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1316,200 +1254,97 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Özet kartları
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Ürün Sayısı',
-                        '${_requestItems.length}',
-                        Icons.inventory_2,
-                        Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildSummaryCard(
-                        'Toplam Adet',
-                        '$totalRequested',
-                        Icons.shopping_cart,
-                        Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Toplam tutar kartı
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade50, Colors.green.shade100],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.green.shade200, width: 2),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.account_balance_wallet,
-                        color: Colors.green,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Toplam Tutar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        NumberFormat.currency(
-                          locale: 'tr_TR',
-                          symbol: '₺',
-                        ).format(totalAmount),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Ürün listesi başlığı
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.list_alt, color: Colors.grey, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Talep Edilen Ürünler',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
                 // Ürün listesi
-                SizedBox(
-                  height: 200,
-                  child: ListView.builder(
-                    itemCount: _requestedItems.entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = _requestedItems.entries.elementAt(index);
-                      final item = _requestItems.firstWhere(
-                        (i) => i.stokkod == entry.key,
-                        orElse: () => RequestItem(
-                          id: '',
-                          stokad: '',
-                          stokkod: '',
-                          kalanmiktar: 0,
-                          fiyat: 0,
-                          talepedilenMiktar: 0,
-                          toplamTutar: 0,
-                          date: DateTime.now(),
-                          department: '',
+                Column(
+                  children: _requestedItems.entries.map((entry) {
+                    final item = _requestItems.firstWhere(
+                      (i) => i.stokkod == entry.key,
+                      orElse: () => RequestItem(
+                        id: '',
+                        stokad: '',
+                        stokkod: '',
+                        kalanmiktar: 0,
+                        fiyat: 0,
+                        talepedilenMiktar: 0,
+                        toplamTutar: 0,
+                        date: DateTime.now(),
+                        department: '',
+                      ),
+                    );
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade200,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                      );
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade200,
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.inventory,
+                            color: Colors.orange.shade700,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          item.stokad,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Stok: ${item.stokkod}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${entry.value} adet',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            Text(
+                              NumberFormat.currency(
+                                locale: 'tr_TR',
+                                symbol: '₺',
+                              ).format(item.toplamTutar),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: Colors.green,
+                              ),
                             ),
                           ],
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          leading: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.inventory,
-                              color: Colors.orange.shade700,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            item.stokad,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Stok: ${item.stokkod}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '${entry.value} adet',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                              Text(
-                                NumberFormat.currency(
-                                  locale: 'tr_TR',
-                                  symbol: '₺',
-                                ).format(item.toplamTutar),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),
@@ -1539,47 +1374,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               'Tamam',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

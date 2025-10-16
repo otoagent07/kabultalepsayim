@@ -444,169 +444,177 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
           return AlertDialog(
             title: Text('Miktar Düzelt - Barkod: $barcode'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Mevcut miktar
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Text(
-                    'Mevcut Miktar: $currentQuantity',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // İki input alanı yan yana
-                Row(
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.9,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Eklenecek/Çıkarılacak miktar
-                    Expanded(
-                      child: TextField(
-                        controller: addQuantityController,
-                        focusNode: addQuantityFocusNode,
-                        readOnly: true,
-                        showCursor: true,
-                        enableInteractiveSelection: true,
-                        style: TextStyle(
-                          fontSize: 18,
+                    // Mevcut miktar
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Text(
+                        'Mevcut Miktar: $currentQuantity',
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isAddQuantityFocused
-                              ? Colors.blue
-                              : Colors.grey,
                         ),
                         textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          labelText: 'Eklenecek/Çıkarılacak',
-                          hintText: 'Miktar girin',
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // İki input alanı yan yana
+                    Row(
+                      children: [
+                        // Eklenecek/Çıkarılacak miktar
+                        Expanded(
+                          child: TextField(
+                            controller: addQuantityController,
+                            focusNode: addQuantityFocusNode,
+                            readOnly: true,
+                            showCursor: true,
+                            enableInteractiveSelection: true,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                               color: isAddQuantityFocused
                                   ? Colors.blue
                                   : Colors.grey,
-                              width: 2,
                             ),
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              labelText: 'Eklenecek/Çıkarılacak',
+                              hintText: 'Miktar girin',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: isAddQuantityFocused
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                isAddQuantityFocused = true;
+                                addQuantityFocusNode.requestFocus();
+                              });
+                            },
                           ),
                         ),
-                        onTap: () {
-                          setDialogState(() {
-                            isAddQuantityFocused = true;
-                            addQuantityFocusNode.requestFocus();
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Toplam miktar
-                    Expanded(
-                      child: TextField(
-                        controller: totalQuantityController,
-                        focusNode: totalQuantityFocusNode,
-                        readOnly: true,
-                        showCursor: true,
-                        enableInteractiveSelection: true,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: !isAddQuantityFocused
-                              ? Colors.green
-                              : Colors.grey,
-                        ),
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          labelText: 'Toplam Miktar',
-                          hintText: 'Toplam girin',
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
+                        const SizedBox(width: 8),
+                        // Toplam miktar
+                        Expanded(
+                          child: TextField(
+                            controller: totalQuantityController,
+                            focusNode: totalQuantityFocusNode,
+                            readOnly: true,
+                            showCursor: true,
+                            enableInteractiveSelection: true,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                               color: !isAddQuantityFocused
                                   ? Colors.green
                                   : Colors.grey,
-                              width: 2,
                             ),
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              labelText: 'Toplam Miktar',
+                              hintText: 'Toplam girin',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: !isAddQuantityFocused
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                isAddQuantityFocused = false;
+                                totalQuantityFocusNode.requestFocus();
+                              });
+                            },
                           ),
                         ),
-                        onTap: () {
-                          setDialogState(() {
-                            isAddQuantityFocused = false;
-                            totalQuantityFocusNode.requestFocus();
-                          });
-                        },
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sonuç gösterimi
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade200),
                       ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Sonuç: $displayTotal',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (displayAdd != 0 &&
+                              (isAddQuantityFocused
+                                  ? addQuantity > 0
+                                  : totalQuantity > 0)) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              displayAdd > 0
+                                  ? 'Eklenecek: +$displayAdd'
+                                  : 'Çıkarılacak: $displayAdd',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: displayAdd > 0
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Özel sayısal klavye
+                    _buildDualModeKeyboard(
+                      addQuantityController,
+                      totalQuantityController,
+                      isAddQuantityFocused,
+                      setDialogState,
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                // Sonuç gösterimi
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Sonuç: $displayTotal',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (displayAdd != 0 &&
-                          (isAddQuantityFocused
-                              ? addQuantity > 0
-                              : totalQuantity > 0)) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          displayAdd > 0
-                              ? 'Eklenecek: +$displayAdd'
-                              : 'Çıkarılacak: $displayAdd',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: displayAdd > 0 ? Colors.green : Colors.red,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Özel sayısal klavye
-                _buildDualModeKeyboard(
-                  addQuantityController,
-                  totalQuantityController,
-                  isAddQuantityFocused,
-                  setDialogState,
-                ),
-              ],
+              ),
             ),
             actions: [
               TextButton(
@@ -1174,233 +1182,242 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
           return AlertDialog(
             title: const Text('Manuel Barkod Ekle'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Barkod girişi
-                TextField(
-                  controller: barcodeInputController,
-                  focusNode: barcodeFocusNode,
-                  readOnly: true,
-                  showCursor: true,
-                  enableInteractiveSelection: true,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isBarcodeFocused ? Colors.blue : Colors.grey,
-                  ),
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    labelText: 'Barkod',
-                    hintText: 'Barkod numarasını girin',
-                    border: const OutlineInputBorder(),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.9,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Barkod girişi
+                    TextField(
+                      controller: barcodeInputController,
+                      focusNode: barcodeFocusNode,
+                      readOnly: true,
+                      showCursor: true,
+                      enableInteractiveSelection: true,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                         color: isBarcodeFocused ? Colors.blue : Colors.grey,
-                        width: 2,
                       ),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.content_paste),
-                      onPressed: () async {
-                        final clipboardData = await Clipboard.getData(
-                          'text/plain',
-                        );
-                        if (clipboardData?.text != null) {
-                          barcodeInputController.text = clipboardData!.text!;
-                          barcodeInputController.selection =
-                              TextSelection.fromPosition(
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        labelText: 'Barkod',
+                        hintText: 'Barkod numarasını girin',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isBarcodeFocused ? Colors.blue : Colors.grey,
+                            width: 2,
+                          ),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.content_paste),
+                          onPressed: () async {
+                            final clipboardData = await Clipboard.getData(
+                              'text/plain',
+                            );
+                            if (clipboardData?.text != null) {
+                              barcodeInputController.text =
+                                  clipboardData!.text!;
+                              barcodeInputController
+                                  .selection = TextSelection.fromPosition(
                                 TextPosition(
                                   offset: barcodeInputController.text.length,
                                 ),
                               );
-                          setDialogState(() {});
-                        }
+                              setDialogState(() {});
+                            }
+                          },
+                          tooltip: 'Yapıştır',
+                        ),
+                      ),
+                      onTap: () {
+                        setDialogState(() {
+                          isBarcodeFocused = true;
+                          barcodeFocusNode.requestFocus();
+                        });
                       },
-                      tooltip: 'Yapıştır',
                     ),
-                  ),
-                  onTap: () {
-                    setDialogState(() {
-                      isBarcodeFocused = true;
-                      barcodeFocusNode.requestFocus();
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                // Mevcut miktar gösterimi
-                if (barcodeInputController.text.trim().isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Text(
-                      'Mevcut Miktar: $currentQuantity',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // İki miktar input alanı yan yana
-                Row(
-                  children: [
-                    // Eklenecek/Çıkarılacak miktar
-                    Expanded(
-                      child: TextField(
-                        controller: addQuantityController,
-                        focusNode: addQuantityFocusNode,
-                        readOnly: true,
-                        showCursor: true,
-                        enableInteractiveSelection: true,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isAddQuantityFocused
-                              ? Colors.blue
-                              : Colors.grey,
+                    // Mevcut miktar gösterimi
+                    if (barcodeInputController.text.trim().isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
                         ),
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          labelText: 'Eklenecek/Çıkarılacak',
-                          hintText: 'Miktar girin',
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: isAddQuantityFocused
-                                  ? Colors.blue
-                                  : Colors.grey,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          setDialogState(() {
-                            isBarcodeFocused = false;
-                            isAddQuantityFocused = true;
-                            addQuantityFocusNode.requestFocus();
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Toplam miktar
-                    Expanded(
-                      child: TextField(
-                        controller: totalQuantityController,
-                        focusNode: totalQuantityFocusNode,
-                        readOnly: true,
-                        showCursor: true,
-                        enableInteractiveSelection: true,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: !isAddQuantityFocused
-                              ? Colors.green
-                              : Colors.grey,
-                        ),
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          labelText: 'Toplam Miktar',
-                          hintText: 'Toplam girin',
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: !isAddQuantityFocused
-                                  ? Colors.green
-                                  : Colors.grey,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        onTap: () {
-                          setDialogState(() {
-                            isBarcodeFocused = false;
-                            isAddQuantityFocused = false;
-                            totalQuantityFocusNode.requestFocus();
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Sonuç gösterimi
-                if (barcodeInputController.text.trim().isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Sonuç: $displayTotal',
+                        child: Text(
+                          'Mevcut Miktar: $currentQuantity',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        if (displayAdd != 0 &&
-                            (isAddQuantityFocused
-                                ? addQuantity > 0
-                                : totalQuantity > 0)) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            displayAdd > 0
-                                ? 'Eklenecek: +$displayAdd'
-                                : 'Çıkarılacak: $displayAdd',
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // İki miktar input alanı yan yana
+                    Row(
+                      children: [
+                        // Eklenecek/Çıkarılacak miktar
+                        Expanded(
+                          child: TextField(
+                            controller: addQuantityController,
+                            focusNode: addQuantityFocusNode,
+                            readOnly: true,
+                            showCursor: true,
+                            enableInteractiveSelection: true,
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: displayAdd > 0 ? Colors.green : Colors.red,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isAddQuantityFocused
+                                  ? Colors.blue
+                                  : Colors.grey,
                             ),
                             textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              labelText: 'Eklenecek/Çıkarılacak',
+                              hintText: 'Miktar girin',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: isAddQuantityFocused
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                isBarcodeFocused = false;
+                                isAddQuantityFocused = true;
+                                addQuantityFocusNode.requestFocus();
+                              });
+                            },
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 8),
+                        // Toplam miktar
+                        Expanded(
+                          child: TextField(
+                            controller: totalQuantityController,
+                            focusNode: totalQuantityFocusNode,
+                            readOnly: true,
+                            showCursor: true,
+                            enableInteractiveSelection: true,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: !isAddQuantityFocused
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              labelText: 'Toplam Miktar',
+                              hintText: 'Toplam girin',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: !isAddQuantityFocused
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                isBarcodeFocused = false;
+                                isAddQuantityFocused = false;
+                                totalQuantityFocusNode.requestFocus();
+                              });
+                            },
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 16),
 
-                // Özel sayısal klavye
-                _buildTripleModeKeyboard(
-                  barcodeInputController,
-                  addQuantityController,
-                  totalQuantityController,
-                  isBarcodeFocused,
-                  isAddQuantityFocused,
-                  setDialogState,
+                    // Sonuç gösterimi
+                    if (barcodeInputController.text.trim().isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Sonuç: $displayTotal',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (displayAdd != 0 &&
+                                (isAddQuantityFocused
+                                    ? addQuantity > 0
+                                    : totalQuantity > 0)) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                displayAdd > 0
+                                    ? 'Eklenecek: +$displayAdd'
+                                    : 'Çıkarılacak: $displayAdd',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: displayAdd > 0
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Özel sayısal klavye
+                    _buildTripleModeKeyboard(
+                      barcodeInputController,
+                      addQuantityController,
+                      totalQuantityController,
+                      isBarcodeFocused,
+                      isAddQuantityFocused,
+                      setDialogState,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
             actions: [
               TextButton(
@@ -1533,12 +1550,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _showSummaryDialog() {
-    // Toplam sayılan miktarı hesapla
-    final totalCounted = _countedItems.values.fold(
-      0,
-      (sum, count) => sum + count,
-    );
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1570,75 +1581,24 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Özet kartları
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'Barkod Sayısı',
-                      '${_inventoryItems.length}',
-                      Icons.qr_code,
-                      Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'Toplam Adet',
-                      '$totalCounted',
-                      Icons.shopping_cart,
-                      Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Sayılan barkodlar başlığı
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.list_alt, color: Colors.grey, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Sayılan Barkodlar',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Barkod listesi
-              SizedBox(
-                height: 200,
-                child: _countedItems.isEmpty
+          height: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barkod listesi
+                _countedItems.isEmpty
                     ? const Center(
-                        child: Text(
-                          'Henüz sayım yapılmadı',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Text(
+                            'Henüz sayım yapılmadı',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: _countedItems.entries.length,
-                        itemBuilder: (context, index) {
-                          final entry = _countedItems.entries.elementAt(index);
+                    : Column(
+                        children: _countedItems.entries.map((entry) {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
@@ -1698,10 +1658,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                               ),
                             ),
                           );
-                        },
+                        }).toList(),
                       ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         actions: [
@@ -1728,47 +1688,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               'Tamam',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
