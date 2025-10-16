@@ -869,18 +869,39 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('İptal'),
-              ),
-              ElevatedButton(
-                onPressed: isValidQuantity
-                    ? () {
-                        _addProductToRequest(product, finalQuantity);
-                        Navigator.pop(context);
-                      }
-                    : null,
-                child: const Text('Kaydet'),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('İptal'),
+                    ),
+                  ),
+                  const SizedBox(width: 30),
+                  Expanded(
+                    flex: 7,
+                    child: ElevatedButton(
+                      onPressed: isValidQuantity
+                          ? () {
+                              _addProductToRequest(product, finalQuantity);
+                              Navigator.pop(context);
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Kaydet'),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -1192,25 +1213,44 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _requestedItems.remove(stokkod);
-                _requestItems.removeWhere((item) => item.stokkod == stokkod);
-              });
-              Navigator.pop(context);
-              // Odaklanmayı koru
-              _barcodeFocusNode.requestFocus();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sil'),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('İptal'),
+                ),
+              ),
+              const SizedBox(width: 30),
+              Expanded(
+                flex: 7,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _requestedItems.remove(stokkod);
+                      _requestItems.removeWhere(
+                        (item) => item.stokkod == stokkod,
+                      );
+                    });
+                    Navigator.pop(context);
+                    // Odaklanmayı koru
+                    _barcodeFocusNode.requestFocus();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Sil'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1351,29 +1391,36 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('Kapat', style: TextStyle(fontSize: 16)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('İptal'),
+                ),
               ),
-            ),
-            child: const Text(
-              'Tamam',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+              const SizedBox(width: 30),
+              Expanded(
+                flex: 7,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Tamam'),
+                ),
+              ),
+            ],
           ),
         ],
       ),

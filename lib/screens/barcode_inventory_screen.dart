@@ -617,24 +617,45 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('İptal'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (finalQuantity >= 0) {
-                    setState(() {
-                      _countedItems[barcode] = finalQuantity;
-                      // Ürünü en üste taşı
-                      _moveItemToTop(barcode);
-                    });
-                    Navigator.pop(context);
-                    // Odaklanmayı koru
-                    _barcodeFocusNode.requestFocus();
-                  }
-                },
-                child: const Text('Kaydet'),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('İptal'),
+                    ),
+                  ),
+                  const SizedBox(width: 30),
+                  Expanded(
+                    flex: 7,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (finalQuantity >= 0) {
+                          setState(() {
+                            _countedItems[barcode] = finalQuantity;
+                            // Ürünü en üste taşı
+                            _moveItemToTop(barcode);
+                          });
+                          Navigator.pop(context);
+                          // Odaklanmayı koru
+                          _barcodeFocusNode.requestFocus();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Kaydet'),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -1420,52 +1441,74 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('İptal'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final barcode = barcodeInputController.text.trim();
-                  if (barcode.isNotEmpty && finalQuantity >= 0) {
-                    // Barkod var mı kontrol et
-                    final existingItemIndex = _inventoryItems.indexWhere(
-                      (item) => item.barcode == barcode,
-                    );
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('İptal'),
+                    ),
+                  ),
+                  const SizedBox(width: 30),
+                  Expanded(
+                    flex: 7,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final barcode = barcodeInputController.text.trim();
+                        if (barcode.isNotEmpty && finalQuantity >= 0) {
+                          // Barkod var mı kontrol et
+                          final existingItemIndex = _inventoryItems.indexWhere(
+                            (item) => item.barcode == barcode,
+                          );
 
-                    if (existingItemIndex != -1) {
-                      // Mevcut ürün - miktarını güncelle
-                      setState(() {
-                        _countedItems[barcode] = finalQuantity;
-                        // Ürünü en üste taşı
-                        _moveItemToTop(barcode);
-                      });
-                    } else {
-                      // Yeni ürün - listeye ekle
-                      final newItem = InventoryItem(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        barcode: barcode,
-                        name: '',
-                        unit: 'Adet',
-                        quantity: 0,
-                        averagePrice: 0,
-                        totalAmount: 0,
-                        date: _selectedDate,
-                        department: _selectedDepartment,
-                      );
+                          if (existingItemIndex != -1) {
+                            // Mevcut ürün - miktarını güncelle
+                            setState(() {
+                              _countedItems[barcode] = finalQuantity;
+                              // Ürünü en üste taşı
+                              _moveItemToTop(barcode);
+                            });
+                          } else {
+                            // Yeni ürün - listeye ekle
+                            final newItem = InventoryItem(
+                              id: DateTime.now().millisecondsSinceEpoch
+                                  .toString(),
+                              barcode: barcode,
+                              name: '',
+                              unit: 'Adet',
+                              quantity: 0,
+                              averagePrice: 0,
+                              totalAmount: 0,
+                              date: _selectedDate,
+                              department: _selectedDepartment,
+                            );
 
-                      setState(() {
-                        _inventoryItems.insert(0, newItem);
-                        _countedItems[barcode] = finalQuantity;
-                      });
-                    }
+                            setState(() {
+                              _inventoryItems.insert(0, newItem);
+                              _countedItems[barcode] = finalQuantity;
+                            });
+                          }
 
-                    Navigator.pop(context);
-                    // Odaklanmayı koru
-                    _barcodeFocusNode.requestFocus();
-                  }
-                },
-                child: const Text('Kaydet'),
+                          Navigator.pop(context);
+                          // Odaklanmayı koru
+                          _barcodeFocusNode.requestFocus();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Kaydet'),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -1519,30 +1562,47 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _countedItems.remove(barcode);
-                // Eğer sayılan miktar yoksa, ürünü listeden de kaldır
-                if (_countedItems[barcode] == null) {
-                  _inventoryItems.removeWhere(
-                    (item) => item.barcode == barcode,
-                  );
-                }
-              });
-              Navigator.pop(context);
-              // Odaklanmayı koru
-              _barcodeFocusNode.requestFocus();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sil'),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('İptal'),
+                ),
+              ),
+              const SizedBox(width: 30),
+              Expanded(
+                flex: 7,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _countedItems.remove(barcode);
+                      // Eğer sayılan miktar yoksa, ürünü listeden de kaldır
+                      if (_countedItems[barcode] == null) {
+                        _inventoryItems.removeWhere(
+                          (item) => item.barcode == barcode,
+                        );
+                      }
+                    });
+                    Navigator.pop(context);
+                    // Odaklanmayı koru
+                    _barcodeFocusNode.requestFocus();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Sil'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1665,29 +1725,36 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: const Text('Kapat', style: TextStyle(fontSize: 16)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('İptal'),
+                ),
               ),
-            ),
-            child: const Text(
-              'Tamam',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+              const SizedBox(width: 30),
+              Expanded(
+                flex: 7,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Tamam'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
