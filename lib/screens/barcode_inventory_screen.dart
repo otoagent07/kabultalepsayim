@@ -434,13 +434,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           // Görüntülenecek değerler
           final displayTotal = isAddQuantityFocused
               ? calculatedTotal
-              : totalQuantity;
+              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
           final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
 
           // Sonuç miktarı (kaydetme için)
           final finalQuantity = isAddQuantityFocused
               ? calculatedTotal
-              : totalQuantity;
+              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
 
           return AlertDialog(
             title: Text('Miktar Düzelt - Barkod: $barcode'),
@@ -1164,13 +1164,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           // Görüntülenecek değerler
           final displayTotal = isAddQuantityFocused
               ? calculatedTotal
-              : totalQuantity;
+              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
           final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
 
           // Sonuç miktarı (kaydetme için)
           final finalQuantity = isAddQuantityFocused
               ? calculatedTotal
-              : totalQuantity;
+              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
 
           return AlertDialog(
             title: const Text('Manuel Barkod Ekle'),
