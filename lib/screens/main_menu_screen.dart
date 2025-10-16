@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'barcode_inventory_screen.dart';
+import 'amber_request_screen.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -68,7 +69,11 @@ class MainMenuScreen extends StatelessWidget {
                         Icons.request_quote,
                         Colors.orange,
                         () {
-                          _showComingSoon(context, 'Amber Talep');
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const AmberRequestScreen(),
+                            ),
+                          );
                         },
                       ),
                     ),
