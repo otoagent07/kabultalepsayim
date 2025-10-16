@@ -22,6 +22,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   List<Product> _products = [];
   final List<RequestItem> _requestItems = [];
   final Map<String, int> _requestedItems = {};
+  bool _isRequestListExpanded = false;
   final TextEditingController _manualBarcodeController =
       TextEditingController();
   final FocusNode _barcodeFocusNode = FocusNode(
@@ -576,7 +577,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     // Ürün bilgileri
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
@@ -592,23 +593,23 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Stok Kodu: ${product.stokkod}',
-                            style: const TextStyle(fontSize: 14),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Mevcut Miktar: ${product.kalanmiktar}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Stok Kodu: ${product.stokkod}',
+                        style: const TextStyle(fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Mevcut Miktar: ${product.kalanmiktar}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 2),
                           Text(
                             'Fiyat: ${NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(product.fiyat)}',
                             style: const TextStyle(fontSize: 14),
@@ -617,12 +618,12 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
                     // Mevcut talep miktarı
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
@@ -637,7 +638,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
                     // İki miktar input alanı yan yana
                     Row(
@@ -727,12 +728,12 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
                     // Sonuç gösterimi
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: isValidQuantity
                             ? Colors.green.shade50
@@ -787,7 +788,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
                     // Özel sayısal klavye
                     _buildDualModeKeyboard(
@@ -858,7 +859,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           // İkinci satır: 4, 5, 6
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -886,7 +887,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           // Üçüncü satır: 7, 8, 9
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -914,7 +915,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           // Dördüncü satır: Temizle, 0, Sil
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -977,8 +978,8 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     StateSetter setDialogState,
   ) {
     return SizedBox(
-      width: 60,
-      height: 50,
+      width: 50,
+      height: 40,
       child: ElevatedButton(
         onPressed: () {
           if (isAddQuantityFocused) {
@@ -1105,8 +1106,8 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
   Widget _buildActionButton(String text, VoidCallback onPressed) {
     return SizedBox(
-      width: 60,
-      height: 50,
+      width: 50,
+      height: 40,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -1575,16 +1576,121 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         margin: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Expanded(
-              child: _requestItems.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Arama butonuna basarak ürünleri yükleyin ve talep edin',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+            // Accordion header
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _isRequestListExpanded = !_isRequestListExpanded;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _requestItems.isEmpty 
+                      ? Colors.grey.shade100 
+                      : (_isRequestListExpanded ? Colors.blue.shade50 : Colors.orange.shade50),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _requestItems.isEmpty 
+                          ? Icons.shopping_cart_outlined
+                          : (_isRequestListExpanded ? Icons.expand_less : Icons.expand_more),
+                      color: _requestItems.isEmpty 
+                          ? Colors.grey 
+                          : (_isRequestListExpanded ? Colors.blue : Colors.orange),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mevcut Talep',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: _requestItems.isEmpty 
+                                  ? Colors.grey 
+                                  : (_isRequestListExpanded ? Colors.blue : Colors.orange),
+                            ),
+                          ),
+                          if (_requestItems.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '${_requestItems.length} ürün - ${_requestedItems.values.fold(0, (sum, qty) => sum + qty)} adet',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _isRequestListExpanded ? Colors.blue.shade700 : Colors.orange.shade700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (_requestItems.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _isRequestListExpanded ? Colors.blue : Colors.orange,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_requestedItems.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    )
+                  ],
+                ),
+              ),
+            ),
+            
+            // Collapsible content
+            if (_isRequestListExpanded) ...[
+              Expanded(
+                child: _requestItems.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.shopping_cart_outlined,
+                                size: 48,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Henüz talep edilen ürün yok',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Arama butonuna basarak ürünleri yükleyin ve talep edin',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                   : ListView.builder(
                       padding: const EdgeInsets.only(bottom: 150),
                       itemCount: _requestItems.length,
@@ -1729,7 +1835,8 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                         );
                       },
                     ),
-            ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1830,6 +1937,9 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       ),
     );
   }
+
+
+
 
   Widget _buildMainWidget() {
     return Scaffold(
