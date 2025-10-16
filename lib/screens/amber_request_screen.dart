@@ -524,6 +524,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     final FocusNode addQuantityFocusNode = FocusNode();
     final FocusNode totalQuantityFocusNode = FocusNode();
     bool isAddQuantityFocused = true;
+    bool isCurrentRequestExpanded = false;
 
     // Focus listener'ları ekle
     addQuantityFocusNode.addListener(() {
@@ -619,22 +620,139 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Mevcut talep miktarı
+                    // Mevcut talep accordion
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.blue.shade200),
                       ),
-                      child: Text(
-                        'Mevcut Talep: $currentQuantity',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
+                      child: Column(
+                        children: [
+                          // Accordion header
+                          InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                isCurrentRequestExpanded =
+                                    !isCurrentRequestExpanded;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isCurrentRequestExpanded
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
+                                    color: Colors.blue.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Mevcut Talep: $currentQuantity',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Accordion content
+                          if (isCurrentRequestExpanded) ...[
+                            const Divider(height: 1, thickness: 1),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              child: Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Stok Kodu:',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
+                                          Text(
+                                            product.stokkod,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Mevcut Miktar:',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${product.kalanmiktar} adet',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Fiyat:',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
+                                          Text(
+                                            NumberFormat.currency(
+                                              locale: 'tr_TR',
+                                              symbol: '₺',
+                                            ).format(product.fiyat),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(height: 8),
