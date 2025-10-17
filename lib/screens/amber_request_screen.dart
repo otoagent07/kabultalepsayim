@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
@@ -199,18 +200,62 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   }
 
   void _selectDate() {
-    showDatePicker(
+    showModalBottomSheet<void>(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    ).then((selectedDate) {
-      if (selectedDate != null) {
-        setState(() {
-          _selectedDate = selectedDate;
-        });
-      }
-    });
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+      ),
+      builder: (BuildContext context) => Container(
+        height: 300,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header with title and done button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Tarih Seçin',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Tamam'),
+                ),
+              ],
+            ),
+            const Divider(),
+            // Date picker
+            Expanded(
+              child: CupertinoDatePicker(
+                initialDateTime: _selectedDate,
+                mode: CupertinoDatePickerMode.date,
+                use24hFormat: true,
+                showDayOfWeek: true,
+                minimumDate: DateTime(
+                  DateTime.now().year,
+                  DateTime.now().month,
+                  1,
+                ), // Bu ayın ilk günü
+                maximumDate: DateTime(
+                  DateTime.now().year + 1,
+                  12,
+                  31,
+                ), // Gelecek yılın sonu
+                onDateTimeChanged: (DateTime newDate) {
+                  setState(() {
+                    _selectedDate = newDate;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _selectDepartment() {

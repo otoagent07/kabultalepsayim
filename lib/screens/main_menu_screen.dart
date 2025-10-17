@@ -122,8 +122,8 @@ class MainMenuScreen extends StatelessWidget {
                   );
                 },
               ),
+
               // Spacer to push buttons to center
-              const Spacer(),
               // Menu Buttons - 60% of screen height
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.6,
