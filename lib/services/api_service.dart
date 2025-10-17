@@ -201,7 +201,8 @@ class ApiService {
   static Future<BarkodKontrolResponse> checkBarkod(
     String token,
     int dbId,
-    String tarih,
+    String tarih1,
+    String tarih2,
     String barkod,
   ) async {
     try {
@@ -215,8 +216,8 @@ class ApiService {
         body: jsonEncode({
           'db_Id': dbId,
           'RaporTip': 6,
-          'BaslangicTarih': tarih,
-          'BitisTarih': tarih,
+          'BaslangicTarih': tarih1,
+          'BitisTarih': tarih2,
           'Barkod': barkod,
         }),
       );

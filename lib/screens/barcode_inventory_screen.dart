@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
-import '../models/inventory_item.dart';
 import '../models/department.dart';
 import '../models/sayim_item.dart';
 import '../providers/selected_database_provider.dart';
@@ -25,7 +24,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   DateTime _selectedDate = DateTime.now();
   Department? _selectedDepartment;
   // Sabit tip - S (Stok)
-  List<InventoryItem> _inventoryItems = [];
   List<Department> _departments = [];
   List<SayimItem> _sayimItems = [];
   bool _isLoadingDepartments = false;
@@ -386,11 +384,18 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         return;
       }
 
+      // Tarih hesaplaması - tarih1: ayın ilk günü, tarih2: seçilen tarih
+      final tarih2 = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final tarih1 = DateFormat(
+        'yyyy-MM-dd',
+      ).format(DateTime(_selectedDate.year, _selectedDate.month, 1));
+
       // Barkod kontrolü yap
       final barkodResponse = await ApiService.checkBarkod(
         token,
         selectedDatabase.id,
-        DateFormat('yyyy-MM-dd').format(_selectedDate),
+        tarih1,
+        tarih2,
         barcode,
       );
 
@@ -588,11 +593,18 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         return;
       }
 
+      // Tarih hesaplaması - tarih1: ayın ilk günü, tarih2: seçilen tarih
+      final tarih2 = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final tarih1 = DateFormat(
+        'yyyy-MM-dd',
+      ).format(DateTime(_selectedDate.year, _selectedDate.month, 1));
+
       // Barkod kontrolü yap
       final barkodResponse = await ApiService.checkBarkod(
         token,
         selectedDatabase.id,
-        DateFormat('yyyy-MM-dd').format(_selectedDate),
+        tarih1,
+        tarih2,
         barcode,
       );
 
@@ -691,18 +703,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       }
     } catch (e) {
       _showErrorSnackBar('Barkod kontrolü hatası: $e');
-    }
-  }
-
-  void _moveItemToTop(String barcode) {
-    // Barkod ile eşleşen ürünü bul ve en üste taşı
-    final itemIndex = _inventoryItems.indexWhere(
-      (item) => item.barcode == barcode,
-    );
-    if (itemIndex != -1) {
-      final item = _inventoryItems.removeAt(itemIndex);
-      _inventoryItems.insert(0, item);
-      setState(() {});
     }
   }
 
