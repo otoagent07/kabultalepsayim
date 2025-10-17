@@ -1454,7 +1454,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         _talepItems[existingIndex] = AmberTalepItem(
           stokkod: stok.genelKod,
           stokAd: stok.ad,
-          birim: birim,
+          birim: stok.altbirim, // Altbirim kullan
           barkod: stok.barkod1,
           miktar: miktar,
           birimFiyat: birimFiyat,
@@ -1473,7 +1473,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           AmberTalepItem(
             stokkod: stok.genelKod,
             stokAd: stok.ad,
-            birim: birim,
+            birim: stok.altbirim, // Altbirim kullan
             barkod: stok.barkod1,
             miktar: miktar,
             birimFiyat: birimFiyat,
@@ -1869,7 +1869,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         _talepItems[index] = AmberTalepItem(
           stokkod: item.stokkod,
           stokAd: item.stokAd,
-          birim: item.birim,
+          birim: item.birim, // Mevcut birim korunur (zaten altbirim)
           barkod: item.barkod,
           miktar: newQuantity,
           birimFiyat: item.birimFiyat,
