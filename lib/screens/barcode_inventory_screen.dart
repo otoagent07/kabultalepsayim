@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import '../models/inventory_item.dart';
 import '../models/department.dart';
+import '../models/sayim_item.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -26,8 +27,9 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   // Sabit tip - S (Stok)
   List<InventoryItem> _inventoryItems = [];
   List<Department> _departments = [];
-  bool _isLoading = false;
+  List<SayimItem> _sayimItems = [];
   bool _isLoadingDepartments = false;
+  bool _isLoadingSayim = false;
   final Map<String, int> _countedItems = {};
   final TextEditingController _manualBarcodeController =
       TextEditingController();
@@ -117,67 +119,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     setState(() {
       _isLoadingDepartments = false;
     });
-  }
-
-  void _loadDemoData() {
-    // Demo data - sadece barkod örnekleri
-    _inventoryItems = [
-      InventoryItem(
-        id: '1',
-        barcode: '1213123',
-        name: '',
-        unit: 'Adet',
-        quantity: 0,
-        averagePrice: 0,
-        totalAmount: 0,
-        date: _selectedDate,
-        department: _selectedDepartment?.ad ?? '',
-      ),
-      InventoryItem(
-        id: '2',
-        barcode: '1213123',
-        name: '',
-        unit: 'Adet',
-        quantity: 0,
-        averagePrice: 0,
-        totalAmount: 0,
-        date: _selectedDate,
-        department: _selectedDepartment?.ad ?? '',
-      ),
-      InventoryItem(
-        id: '3',
-        barcode: '1213123',
-        name: '',
-        unit: 'Adet',
-        quantity: 0,
-        averagePrice: 0,
-        totalAmount: 0,
-        date: _selectedDate,
-        department: _selectedDepartment?.ad ?? '',
-      ),
-      InventoryItem(
-        id: '4',
-        barcode: '1213123',
-        name: '',
-        unit: 'Adet',
-        quantity: 0,
-        averagePrice: 0,
-        totalAmount: 0,
-        date: _selectedDate,
-        department: _selectedDepartment?.ad ?? '',
-      ),
-      InventoryItem(
-        id: '5',
-        barcode: '1213123',
-        name: '',
-        unit: 'Adet',
-        quantity: 0,
-        averagePrice: 0,
-        totalAmount: 0,
-        date: _selectedDate,
-        department: _selectedDepartment?.ad ?? '',
-      ),
-    ];
   }
 
   void _selectDate() {
@@ -356,17 +297,69 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  void _loadInventory() {
+  Future<void> _loadInventory() async {
+    if (_selectedDepartment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen önce departman seçiniz'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _isLoadingSayim = true;
     });
 
-    // Simulate loading
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _isLoading = false;
-        _loadDemoData();
-      });
+    try {
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      final token = await StorageService.getToken();
+
+      if (databaseProvider.selectedDatabase != null && token != null) {
+        // Tarihi yyyy-MM-dd formatına çevir
+        final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+        final response = await ApiService.getSayimListe(
+          token,
+          databaseProvider.selectedDatabase!.id,
+          tarih,
+          _selectedDepartment!.kod,
+        );
+
+        if (response.isSucceded) {
+          setState(() {
+            _sayimItems = response.value;
+          });
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Sayım listesi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sayım yükleme hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _isLoadingSayim = false;
     });
   }
 
@@ -1145,51 +1138,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildDuzeltButton(String barcode, String itemName) {
-    return SizedBox(
-      width: 120,
-      height: 42,
-      child: ElevatedButton.icon(
-        onPressed: () => _showProductQuantityDialog(barcode, itemName),
-        icon: Icon(Icons.add, size: 20),
-        label: Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: Text('Düzelt'),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue.shade700,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: EdgeInsets.symmetric(vertical: 8),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSilButton(String barcode, String itemName, bool isCounted) {
-    return SizedBox(
-      width: 120,
-      height: 42,
-      child: ElevatedButton.icon(
-        onPressed: isCounted
-            ? () => _showDeleteConfirmationDialog(barcode, itemName)
-            : null,
-        icon: Icon(Icons.delete, size: 20),
-        label: Text('Sil'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isCounted
-              ? Colors.red.shade700
-              : Colors.grey.shade600,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: EdgeInsets.symmetric(vertical: 8),
-        ),
-      ),
-    );
-  }
-
   void _showManualBarcodeDialog() {
     final TextEditingController barcodeInputController =
         TextEditingController();
@@ -1819,138 +1767,129 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         child: Column(
           children: [
             Expanded(
-              child: _inventoryItems.isEmpty
+              child: _sayimItems.isEmpty
                   ? Center(
-                      child: Text(
-                        'Listele butonuna basarak ürünleri yükleyin',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _isLoadingSayim
+                                ? 'Sayım listesi yükleniyor...'
+                                : 'Listele butonuna basarak sayım listesini yükleyin',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.only(bottom: 150),
-                      itemCount: _inventoryItems.length,
+                      itemCount: _sayimItems.length,
                       itemBuilder: (context, index) {
-                        final item = _inventoryItems[index];
-                        final countedQuantity =
-                            _countedItems[item.barcode] ?? 0;
-                        final isCounted = countedQuantity > 0;
+                        final item = _sayimItems[index];
 
-                        return Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 16,
-                                right: 0,
-                                top: 12,
-                                bottom: 12,
-                              ),
-                              child: Row(
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Üst satır - Stok kodu ve barkod
+                              Row(
                                 children: [
-                                  // Main content
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        // Title
-                                        Text(
-                                          item.name.isEmpty
-                                              ? 'Barkod: ${item.barcode}'
-                                              : item.name,
-                                          style: TextStyle(
-                                            color: isCounted
-                                                ? Colors.green
-                                                : null,
-                                            fontWeight: isCounted
-                                                ? FontWeight.bold
-                                                : null,
-                                            fontSize: 16,
-                                          ),
+                                  if (item.sayimStokkod.isNotEmpty) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Stok: ${item.sayimStokkod}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                        if (item.name.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Barkod: ${item.barcode}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                        ],
-                                        const SizedBox(height: 4),
-                                        // Sayılan adet göstergesi
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isCounted
-                                                ? Colors.green.shade100
-                                                : Colors.grey.shade100,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color: isCounted
-                                                  ? Colors.green.shade300
-                                                  : Colors.grey.shade300,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'Sayılan: $countedQuantity',
-                                            style: TextStyle(
-                                              color: isCounted
-                                                  ? Colors.green.shade800
-                                                  : Colors.grey.shade600,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 20),
-
-                                  // Buttons - Column with fixed width, right aligned
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 5),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        // Düzelt button
-                                        _buildDuzeltButton(
-                                          item.barcode,
-                                          item.name,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        // Sil button
-                                        _buildSilButton(
-                                          item.barcode,
-                                          item.name,
-                                          isCounted,
-                                        ),
-                                      ],
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Barkod: ${item.sayimBarkod}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
+                              const SizedBox(height: 8),
 
-                            // Divider between items
-                            if (index < _inventoryItems.length - 1)
-                              const Divider(
-                                height: 1,
-                                thickness: 1,
-                                indent: 16,
-                                endIndent: 16,
+                              // Orta satır - Ürün adı
+                              if (item.masterAd != null &&
+                                  item.masterAd!.isNotEmpty)
+                                Text(
+                                  item.masterAd!,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+
+                              const SizedBox(height: 8),
+
+                              // Alt satır - Miktar ve birim
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Miktar: ${item.sayimMiktar.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  if (item.sayimAltbirim.isNotEmpty)
+                                    Text(
+                                      item.sayimAltbirim,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                ],
                               ),
-                          ],
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -1968,8 +1907,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         width: double.infinity,
         height: 48,
         child: ElevatedButton.icon(
-          onPressed: _isLoading ? null : _loadInventory,
-          icon: _isLoading
+          onPressed: _isLoadingSayim ? null : _loadInventory,
+          icon: _isLoadingSayim
               ? const SizedBox(
                   width: 20,
                   height: 20,
@@ -1977,7 +1916,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                 )
               : const Icon(Icons.refresh, size: 20),
           label: Text(
-            _isLoading ? 'Yükleniyor...' : 'Listele',
+            _isLoadingSayim ? 'Yükleniyor...' : 'Listele',
             style: const TextStyle(fontSize: 16),
           ),
         ),
