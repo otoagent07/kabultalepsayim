@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/login_response.dart';
+import '../models/department_response.dart';
 
 class ApiService {
   static const String baseUrl = 'https://service.rmosweb.com';
+  static const String backApiBaseUrl = 'https://backapi.rmosweb.com';
   static const String tokenEndpoint = '/security/createToken';
   static const String loginByTokenEndpoint = '/api/Users/LoginByToken';
+  static const String departmentsEndpoint = '/api/StokKodlar/GetKullaniciDepartman';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -49,6 +52,28 @@ class ApiService {
         return LoginResponse.fromJson(jsonData);
       } else {
         throw Exception('Login hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  // Departmanları getir
+  static Future<DepartmentResponse> getDepartments(String token, int dbId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$backApiBaseUrl$departmentsEndpoint?Db_Id=$dbId'),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(response.body);
+        return DepartmentResponse.fromJson(jsonData);
+      } else {
+        throw Exception('Departman listesi alma hatası: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');

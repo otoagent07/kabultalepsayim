@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import '../models/inventory_item.dart';
+import '../models/department.dart';
+import '../providers/selected_database_provider.dart';
+import '../services/api_service.dart';
+import '../services/storage_service.dart';
 
 class BarcodeInventoryScreen extends StatefulWidget {
   const BarcodeInventoryScreen({super.key});
@@ -17,10 +22,12 @@ class BarcodeInventoryScreen extends StatefulWidget {
 
 class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   DateTime _selectedDate = DateTime.now();
-  String _selectedDepartment = 'Ana Depo';
-  String _selectedType = 'stok'; // 'stok' or 'reçete'
+  Department? _selectedDepartment;
+  // Sabit tip - S (Stok)
   List<InventoryItem> _inventoryItems = [];
+  List<Department> _departments = [];
   bool _isLoading = false;
+  bool _isLoadingDepartments = false;
   final Map<String, int> _countedItems = {};
   final TextEditingController _manualBarcodeController =
       TextEditingController();
@@ -29,8 +36,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     debugLabel: 'BarcodeInput',
     skipTraversal: true,
   );
-
-  final List<String> _departments = ['Ana Depo', 'Yemek Sepeti'];
 
   @override
   void initState() {
@@ -48,6 +53,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     // Lazer okuyucu için odaklanma
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _barcodeFocusNode.requestFocus();
+      _loadDepartments();
     });
   }
 
@@ -57,6 +63,60 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     _quantityController.dispose();
     _barcodeFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDepartments() async {
+    setState(() {
+      _isLoadingDepartments = true;
+    });
+
+    try {
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      final token = await StorageService.getToken();
+
+      if (databaseProvider.selectedDatabase != null && token != null) {
+        final response = await ApiService.getDepartments(
+          token,
+          databaseProvider.selectedDatabase!.id,
+        );
+
+        if (response.isSucceded) {
+          setState(() {
+            _departments = response.value;
+            if (response.value.isNotEmpty) {
+              _selectedDepartment = response.value.first;
+            }
+          });
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Departman listesi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Departman yükleme hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
+    setState(() {
+      _isLoadingDepartments = false;
+    });
   }
 
   void _loadDemoData() {
@@ -71,7 +131,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
-        department: _selectedDepartment,
+        department: _selectedDepartment?.ad ?? '',
       ),
       InventoryItem(
         id: '2',
@@ -82,7 +142,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
-        department: _selectedDepartment,
+        department: _selectedDepartment?.ad ?? '',
       ),
       InventoryItem(
         id: '3',
@@ -93,7 +153,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
-        department: _selectedDepartment,
+        department: _selectedDepartment?.ad ?? '',
       ),
       InventoryItem(
         id: '4',
@@ -104,7 +164,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
-        department: _selectedDepartment,
+        department: _selectedDepartment?.ad ?? '',
       ),
       InventoryItem(
         id: '5',
@@ -115,7 +175,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
-        department: _selectedDepartment,
+        department: _selectedDepartment?.ad ?? '',
       ),
     ];
   }
@@ -168,139 +228,125 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   void _selectDepartment() {
+    if (_departments.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Departman listesi yükleniyor...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Departman Seçin',
-              style: Theme.of(context).textTheme.titleLarge,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Departman Seçin',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.shade100,
+                    shape: const CircleBorder(),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            ..._departments.map(
-              (dept) => Card(
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedDepartment = dept;
-                    });
-                    Navigator.pop(context);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Radio<String>(
-                          value: dept,
-                          groupValue: _selectedDepartment,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedDepartment = value!;
-                            });
-                            Navigator.pop(context);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            dept,
-                            style: Theme.of(context).textTheme.bodyLarge,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: _departments
+                      .map(
+                        (dept) => Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _selectedDepartment = dept;
+                              });
+                              Navigator.pop(context);
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: _selectedDepartment?.id == dept.id
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.grey.shade300,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                color: _selectedDepartment?.id == dept.id
+                                    ? Theme.of(context).colorScheme.primary
+                                          .withValues(alpha: 0.1)
+                                    : null,
+                              ),
+                              child: Row(
+                                children: [
+                                  Radio<Department>(
+                                    value: dept,
+                                    groupValue: _selectedDepartment,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedDepartment = value!;
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          dept.ad,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                        Text(
+                                          'Kod: ${dept.kod}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 12,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTypeSelection() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Tür Seçin', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Card(
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedType = 'stok';
-                  });
-                  Navigator.pop(context);
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Radio<String>(
-                        value: 'stok',
-                        groupValue: _selectedType,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedType = value!;
-                          });
-                          Navigator.pop(context);
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Stok',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedType = 'reçete';
-                  });
-                  Navigator.pop(context);
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Radio<String>(
-                        value: 'reçete',
-                        groupValue: _selectedType,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedType = value!;
-                          });
-                          Navigator.pop(context);
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Reçete',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                      )
+                      .toList(),
                 ),
               ),
             ),
@@ -348,7 +394,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         averagePrice: 0,
         totalAmount: 0,
         date: _selectedDate,
-        department: _selectedDepartment,
+        department: _selectedDepartment?.ad ?? '',
       );
 
       setState(() {
@@ -1486,7 +1532,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                               averagePrice: 0,
                               totalAmount: 0,
                               date: _selectedDate,
-                              department: _selectedDepartment,
+                              department: _selectedDepartment?.ad ?? '',
                             );
 
                             setState(() {
@@ -1951,27 +1997,32 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                 onTap: _selectDate,
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       Text(
                         'Tarih Seçiniz',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 4),
-                      const Icon(Icons.calendar_today, size: 20),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
+                      const Icon(Icons.calendar_today, size: 24),
+                      const SizedBox(height: 8),
                       Text(
                         DateFormat(
                           'dd MMMM yyyy',
                           'tr_TR',
                         ).format(_selectedDate),
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -1980,7 +2031,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           // Department Selection
           Expanded(
             child: Card(
@@ -1988,65 +2039,48 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                 onTap: _selectDepartment,
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       Text(
                         'Departman Seçiniz',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      _isLoadingDepartments
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.business, size: 24),
+                      const SizedBox(height: 8),
+                      Text(
+                        _selectedDepartment?.ad ?? 'Yükleniyor...',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                         textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      const Icon(Icons.business, size: 20),
-                      const SizedBox(height: 4),
-                      Text(
-                        _selectedDepartment,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Type Selection
-          Expanded(
-            child: Card(
-              child: InkWell(
-                onTap: _showTypeSelection,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Tip Seçiniz',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      if (_selectedDepartment?.kod != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Kod: ${_selectedDepartment!.kod}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey.shade600),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Icon(
-                        _selectedType == 'stok'
-                            ? Icons.inventory
-                            : Icons.receipt,
-                        size: 20,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _selectedType == 'stok' ? 'Stok' : 'Reçete',
-                        style: Theme.of(context).textTheme.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
                     ],
                   ),
                 ),
