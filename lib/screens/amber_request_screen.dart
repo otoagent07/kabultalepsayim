@@ -492,6 +492,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
     String searchQuery = '';
     List<StokMaster> filteredStoklar = _allStoklar;
+    bool isLoadingProduct = false;
 
     showModalBottomSheet(
       context: context,
@@ -499,7 +500,134 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          bool isLoadingProduct = false;
+          // Ürün seçimi fonksiyonu
+          Future<void> processStokSelection(StokMaster stok) async {
+            if (_selectedDepartment == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Lütfen önce departman seçiniz'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+
+            // Loading başlat
+            setDialogState(() {
+              isLoadingProduct = true;
+            });
+
+            try {
+              final now = DateTime.now();
+              final tarih1 = DateTime(now.year, now.month, 1).toIso8601String();
+              final tarih2 = now.toIso8601String();
+
+              log('Stok fiyat bilgisi alınıyor: ${stok.genelKod}');
+              final response = await ApiService.getStokBirimFiyat(
+                _token!,
+                _dbId!,
+                stok.genelKod,
+                tarih1,
+                tarih2,
+                _selectedDepartment!.kod,
+              );
+
+              log(
+                'API Response: ${response.isSucceded}, Value count: ${response.value.length}',
+              );
+
+              if (response.isSucceded && response.value.isNotEmpty) {
+                final fiyatBilgisi = response.value.first;
+                log(
+                  'Fiyat bilgisi: Kalan=${fiyatBilgisi.kalanMiktar}, Fiyat=${fiyatBilgisi.birimFiyat}',
+                );
+
+                // Kalan miktar kontrolü
+                if (fiyatBilgisi.kalanMiktar <= 0) {
+                  if (mounted) {
+                    setDialogState(() {
+                      isLoadingProduct = false;
+                    });
+                    // Dialog olarak göster
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Row(
+                          children: [
+                            Icon(
+                              Icons.warning,
+                              color: Colors.red[700],
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                stok.ad,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: Text(
+                          'Bu ürün için kalan miktar sıfırdan küçük: ${fiyatBilgisi.kalanMiktar}',
+                        ),
+                        actions: [
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Tamam'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                // Dialog'u kapat ve miktar girme dialogunu aç
+                if (mounted) {
+                  Navigator.pop(context); // Ürün seçim dialog'unu kapat
+                  _showQuantityDialog(
+                    stok,
+                    fiyatBilgisi.kalanMiktar,
+                    fiyatBilgisi.birimFiyat,
+                    fiyatBilgisi.birim,
+                  );
+                }
+              } else {
+                if (mounted) {
+                  setDialogState(() {
+                    isLoadingProduct = false;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Stok fiyat bilgisi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              log('Hata: $e');
+              if (mounted) {
+                setDialogState(() {
+                  isLoadingProduct = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Hata: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          }
+
           return Container(
             height: MediaQuery.of(context).size.height * 0.85,
             decoration: const BoxDecoration(
@@ -668,11 +796,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                   onTap: isLoadingProduct
                                       ? null
                                       : () {
-                                          _processStokSelectionFromDialog(
-                                            stok,
-                                            setDialogState,
-                                            isLoadingProduct,
-                                          );
+                                          processStokSelection(stok);
                                         },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Padding(
@@ -842,107 +966,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     _barcodeFocusNode.requestFocus();
   }
 
-  Future<void> _processStokSelectionFromDialog(
-    StokMaster stok,
-    StateSetter setDialogState,
-    bool isLoadingProduct,
-  ) async {
-    if (_selectedDepartment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen önce departman seçiniz'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Loading başlat
-    setDialogState(() {
-      isLoadingProduct = true;
-    });
-
-    try {
-      final now = DateTime.now();
-      final tarih1 = DateTime(now.year, now.month, 1).toIso8601String();
-      final tarih2 = now.toIso8601String();
-
-      log('Stok fiyat bilgisi alınıyor: ${stok.genelKod}');
-      final response = await ApiService.getStokBirimFiyat(
-        _token!,
-        _dbId!,
-        stok.genelKod,
-        tarih1,
-        tarih2,
-        _selectedDepartment!.kod,
-      );
-
-      log(
-        'API Response: ${response.isSucceded}, Value count: ${response.value.length}',
-      );
-
-      if (response.isSucceded && response.value.isNotEmpty) {
-        final fiyatBilgisi = response.value.first;
-        log(
-          'Fiyat bilgisi: Kalan=${fiyatBilgisi.kalanMiktar}, Fiyat=${fiyatBilgisi.birimFiyat}',
-        );
-
-        // Kalan miktar kontrolü
-        if (fiyatBilgisi.kalanMiktar <= 0) {
-          if (mounted) {
-            setDialogState(() {
-              isLoadingProduct = false;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Kalan miktar sıfırdan küçük: ${fiyatBilgisi.kalanMiktar}',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-
-        // Dialog'u kapat ve miktar girme dialogunu aç
-        if (mounted) {
-          Navigator.pop(context); // Ürün seçim dialog'unu kapat
-          _showQuantityDialog(
-            stok,
-            fiyatBilgisi.kalanMiktar,
-            fiyatBilgisi.birimFiyat,
-            fiyatBilgisi.birim,
-          );
-        }
-      } else {
-        if (mounted) {
-          setDialogState(() {
-            isLoadingProduct = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Stok fiyat bilgisi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      log('Hata: $e');
-      if (mounted) {
-        setDialogState(() {
-          isLoadingProduct = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
   Future<void> _processStokSelection(StokMaster stok) async {
     if (_selectedDepartment == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1042,7 +1065,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
   void _showQuantityDialog(
     StokMaster stok,
-    double kalanMiktar,
+    double kalanMiktar, // API'den gelen toplam stok miktarı
     double birimFiyat,
     String birim,
   ) {
@@ -1228,7 +1251,13 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     child: ElevatedButton(
                       onPressed: isValidQuantity
                           ? () {
-                              _addTalepItem(stok, miktar, birimFiyat, birim);
+                              _addTalepItem(
+                                stok,
+                                miktar,
+                                birimFiyat,
+                                birim,
+                                kalanMiktar,
+                              );
                               Navigator.pop(context);
                             }
                           : null,
@@ -1409,6 +1438,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     int miktar,
     double birimFiyat,
     String birim,
+    double toplamMiktar, // API'den gelen kalan miktar (stoktaki toplam)
   ) {
     final tutar = miktar * birimFiyat;
 
@@ -1428,7 +1458,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           miktar: miktar,
           birimFiyat: birimFiyat,
           tutar: tutar,
-          kalanMiktar: miktar.toDouble(),
+          kalanMiktar: toplamMiktar, // API'den gelen toplam stok miktarı
         );
         // Üste taşı
         final item = _talepItems.removeAt(existingIndex);
@@ -1447,7 +1477,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
             miktar: miktar,
             birimFiyat: birimFiyat,
             tutar: tutar,
-            kalanMiktar: miktar.toDouble(),
+            kalanMiktar: toplamMiktar, // API'den gelen toplam stok miktarı
           ),
         );
       });
@@ -1501,6 +1531,27 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     try {
       final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final satirlar = _talepItems.map((item) => item.toJson()).toList();
+
+      // JSON'u log olarak yazdır
+      final requestData = {
+        'db_Id': _dbId,
+        'Tarih': tarih,
+        'Depo': _selectedDepartment!.kod,
+        'AlanServis': _selectedAlanServis!.kod,
+        'Sirketkod': _selectedSube!.kod,
+        'Fisno': 0,
+        'Fistipi': 'J',
+        'MatbuFisno': 0,
+        'Satirlar': satirlar,
+      };
+
+      log('=== AMBER TALEP KAYDET JSON ===');
+      log('Request Data: ${requestData.toString()}');
+      log('Satirlar Count: ${satirlar.length}');
+      for (int i = 0; i < satirlar.length; i++) {
+        log('Satir $i: ${satirlar[i]}');
+      }
+      log('=== END AMBER TALEP JSON ===');
 
       final response = await ApiService.saveAmberTalep(
         _token!,
@@ -1669,8 +1720,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           // Seçim kartları
           _buildSelectionCardsWidget(),
 
-          const SizedBox(height: 16),
-
           // Talep listesi
           Expanded(
             child: _talepItems.isEmpty
@@ -1730,6 +1779,48 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                           ],
                         ),
                       ),
+                      // Uyarı mesajı
+                      if (_talepItems.isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            border: Border(
+                              top: BorderSide(
+                                color: Colors.red[200]!,
+                                width: 1,
+                              ),
+                              bottom: BorderSide(
+                                color: Colors.red[200]!,
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.warning,
+                                color: Colors.red[600],
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'DİKKAT: Kaydetmeyi unutmayınız!!!',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       // Liste
                       Expanded(
                         child: ListView.builder(
@@ -1742,16 +1833,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                 vertical: 4,
                               ),
                               child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.blue[100],
-                                  child: Text(
-                                    '${item.miktar}',
-                                    style: TextStyle(
-                                      color: Colors.blue[800],
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
                                 title: Text(
                                   item.stokAd,
                                   style: const TextStyle(
@@ -1763,11 +1844,52 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                   children: [
                                     Text('Stok Kodu: ${item.stokkod}'),
                                     Text('Birim: ${item.birim}'),
-                                    Text(
-                                      'Tutar: ${item.tutar.toStringAsFixed(2)} ₺',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green,
+                                    const SizedBox(height: 4),
+                                    // Miktar gösterimi: girilenmiktar/toplammiktar
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[50],
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.blue[200]!,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Miktar: ${item.miktar}/${item.kalanMiktar.toInt()} ${item.birim}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue[800],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Fiyat hesaplama: girilenmiktar*birimfiyat = toplamfiyat
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[50],
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.green[200]!,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${item.miktar} × ${item.birimFiyat.toStringAsFixed(2)} = ${item.tutar.toStringAsFixed(2)} ₺',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.green[800],
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1827,31 +1949,40 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Column(
+                      child: Row(
                         children: [
                           const Icon(
                             Icons.calendar_today,
                             color: Colors.blue,
-                            size: 24,
+                            size: 20,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Tarih',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Tarih',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  DateFormat(
+                                    'dd.MM.yyyy',
+                                  ).format(_selectedDate),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            DateFormat('dd.MM.yyyy').format(_selectedDate),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -1869,38 +2000,56 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Column(
+                      child: Row(
                         children: [
                           Icon(
                             Icons.business,
                             color: _selectedDepartment != null
                                 ? Colors.blue
                                 : Colors.grey,
-                            size: 24,
+                            size: 20,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Departman',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Departman',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _selectedDepartment?.ad ?? 'Seçiniz',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: _selectedDepartment != null
+                                        ? Colors.blue[800]
+                                        : Colors.grey[600],
+                                    fontWeight: _selectedDepartment != null
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (_selectedDepartment != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Kod: ${_selectedDepartment!.kod}',
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: Colors.blue[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedDepartment?.ad ?? 'Seçiniz',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: _selectedDepartment != null
-                                  ? Colors.blue[800]
-                                  : Colors.grey[600],
-                              fontWeight: _selectedDepartment != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -1923,38 +2072,56 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Column(
+                      child: Row(
                         children: [
                           Icon(
                             Icons.room_service,
                             color: _selectedAlanServis != null
                                 ? Colors.green
                                 : Colors.grey,
-                            size: 24,
+                            size: 20,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Alan/Servis',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Alan/Servis',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _selectedAlanServis?.ad ?? 'Seçiniz',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: _selectedAlanServis != null
+                                        ? Colors.green[800]
+                                        : Colors.grey[600],
+                                    fontWeight: _selectedAlanServis != null
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (_selectedAlanServis != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Kod: ${_selectedAlanServis!.kod}',
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: Colors.green[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedAlanServis?.ad ?? 'Seçiniz',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: _selectedAlanServis != null
-                                  ? Colors.green[800]
-                                  : Colors.grey[600],
-                              fontWeight: _selectedAlanServis != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -1972,38 +2139,56 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: Column(
+                      child: Row(
                         children: [
                           Icon(
                             Icons.location_city,
                             color: _selectedSube != null
                                 ? Colors.orange
                                 : Colors.grey,
-                            size: 24,
+                            size: 20,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Şube',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Şube',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _selectedSube?.ad ?? 'Seçiniz',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: _selectedSube != null
+                                        ? Colors.orange[800]
+                                        : Colors.grey[600],
+                                    fontWeight: _selectedSube != null
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (_selectedSube != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Kod: ${_selectedSube!.kod}',
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: Colors.orange[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedSube?.ad ?? 'Seçiniz',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: _selectedSube != null
-                                  ? Colors.orange[800]
-                                  : Colors.grey[600],
-                              fontWeight: _selectedSube != null
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
