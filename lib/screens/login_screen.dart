@@ -14,10 +14,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(
-  );
-  final _passwordController = TextEditingController(
-  );
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
@@ -73,8 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) =>
-                DatabaseSelectionScreen(databases: loginResponse.databases),
+            builder: (context) => DatabaseSelectionScreen(
+              databases: loginResponse.databases,
+              company: loginResponse.sirket,
+            ),
           ),
         );
       }

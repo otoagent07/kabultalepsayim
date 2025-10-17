@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_screen.dart';
 import 'amber_request_screen.dart';
 
@@ -32,6 +33,11 @@ class MainMenuScreen extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () {
+                // Seçili database bilgilerini temizle
+                Provider.of<SelectedDatabaseProvider>(
+                  context,
+                  listen: false,
+                ).clearSelection();
                 Navigator.of(context).pushReplacementNamed('/login');
               },
             ),
@@ -41,6 +47,81 @@ class MainMenuScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
+              // Seçili Şirket Card'ı
+              Consumer<SelectedDatabaseProvider>(
+                builder: (context, databaseProvider, child) {
+                  if (databaseProvider.selectedDatabase == null ||
+                      databaseProvider.selectedCompany == null) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16.0),
+                    elevation: 2,
+                    child: Container(
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.1),
+                            Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.05),
+                          ],
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.business,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Seçili Şirket',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                ),
+                                Text(
+                                  databaseProvider
+                                      .selectedCompany!
+                                      .fldSirketAdi,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                  databaseProvider.selectedDatabase!.ad,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               // Spacer to push buttons to center
               const Spacer(),
               // Menu Buttons - 60% of screen height

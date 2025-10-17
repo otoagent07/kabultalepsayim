@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/api_database.dart';
+import '../models/api_company.dart';
+import '../providers/selected_database_provider.dart';
 import 'main_menu_screen.dart';
 
 class DatabaseSelectionScreen extends StatefulWidget {
   final List<ApiDatabase> databases;
+  final ApiCompany company;
 
   const DatabaseSelectionScreen({
     super.key,
     required this.databases,
+    required this.company,
   });
 
   @override
-  State<DatabaseSelectionScreen> createState() => _DatabaseSelectionScreenState();
+  State<DatabaseSelectionScreen> createState() =>
+      _DatabaseSelectionScreenState();
 }
 
 class _DatabaseSelectionScreenState extends State<DatabaseSelectionScreen> {
@@ -42,9 +48,7 @@ class _DatabaseSelectionScreenState extends State<DatabaseSelectionScreen> {
               ),
               title: Text(
                 database.ad,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,6 +60,12 @@ class _DatabaseSelectionScreenState extends State<DatabaseSelectionScreen> {
               ),
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () {
+                // Seçilen database'i provider'a kaydet
+                Provider.of<SelectedDatabaseProvider>(
+                  context,
+                  listen: false,
+                ).setSelectedDatabase(database, widget.company);
+
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
                     builder: (context) => const MainMenuScreen(),
