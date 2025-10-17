@@ -90,6 +90,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               _selectedDepartment = response.value.first;
             }
           });
+          // Departman seçildikten sonra otomatik listele
+          if (response.value.isNotEmpty) {
+            _loadInventory();
+          }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
