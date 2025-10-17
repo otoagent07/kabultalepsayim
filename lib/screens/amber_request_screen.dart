@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -1501,6 +1502,392 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     });
   }
 
+  // Düzeltme dialogu
+  void _showEditQuantityDialog(AmberTalepItem item, int index) {
+    final TextEditingController quantityController = TextEditingController();
+    // Boş başlat
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final miktar = int.tryParse(quantityController.text) ?? 0;
+          final isValidQuantity = miktar > 0 && miktar <= item.kalanMiktar;
+          final isEmpty = quantityController.text.trim().isEmpty;
+
+          return AlertDialog(
+            title: Text('Miktar Düzelt - ${item.stokAd}'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Ürün bilgileri
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue[200]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Stok Kodu: ${item.stokkod}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Mevcut: ${item.miktar} ${item.birim}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'Max: ${item.kalanMiktar.toInt()} ${item.birim}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Miktar girişi
+                    TextField(
+                      controller: quantityController,
+                      readOnly: true,
+                      showCursor: true,
+                      enableInteractiveSelection: true,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        labelText: 'Yeni Miktar',
+                        hintText: 'Miktar giriniz',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sonuç gösterimi
+                    if (quantityController.text.isNotEmpty && miktar > 0) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isValidQuantity
+                              ? Colors.green[50]
+                              : Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isValidQuantity
+                                ? Colors.green[200]!
+                                : Colors.red[200]!,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Sonuç: $miktar ${item.birim}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isValidQuantity
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            if (miktar > 0) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Tutar: ${(miktar * item.birimFiyat).toStringAsFixed(2)} ₺',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Sayısal klavye
+                    _buildEditQuantityKeyboard(
+                      quantityController,
+                      setDialogState,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('İptal'),
+                    ),
+                  ),
+                  const SizedBox(width: 30),
+                  Expanded(
+                    flex: 7,
+                    child: ElevatedButton(
+                      onPressed: isValidQuantity
+                          ? () {
+                              _updateTalepItemQuantity(index, miktar);
+                              Navigator.pop(context);
+                            }
+                          : () {
+                              // Uyarı göster
+                              String message;
+                              if (isEmpty) {
+                                message = 'Lütfen miktar giriniz';
+                              } else if (miktar <= 0) {
+                                message = 'Miktar 0\'dan büyük olmalıdır';
+                              } else {
+                                message =
+                                    'Miktar maksimum ${item.kalanMiktar.toInt()} olabilir';
+                              }
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(message),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isValidQuantity
+                            ? Colors.green
+                            : Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(isValidQuantity ? 'Kaydet' : 'Uyar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // Sayısal klavye - Düzeltme için
+  Widget _buildEditQuantityKeyboard(
+    TextEditingController quantityController,
+    StateSetter setDialogState,
+  ) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildEditQuantityNumberButton(
+                '1',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityNumberButton(
+                '2',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityNumberButton(
+                '3',
+                quantityController,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildEditQuantityNumberButton(
+                '4',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityNumberButton(
+                '5',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityNumberButton(
+                '6',
+                quantityController,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildEditQuantityNumberButton(
+                '7',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityNumberButton(
+                '8',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityNumberButton(
+                '9',
+                quantityController,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildEditQuantityActionButton('C', () {
+                quantityController.text = '';
+                quantityController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: quantityController.text.length),
+                );
+                setDialogState(() {});
+              }),
+              _buildEditQuantityNumberButton(
+                '0',
+                quantityController,
+                setDialogState,
+              ),
+              _buildEditQuantityActionButton('⌫', () {
+                if (quantityController.text.isNotEmpty) {
+                  quantityController.text = quantityController.text.substring(
+                    0,
+                    quantityController.text.length - 1,
+                  );
+                }
+                quantityController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: quantityController.text.length),
+                );
+                setDialogState(() {});
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditQuantityNumberButton(
+    String number,
+    TextEditingController quantityController,
+    StateSetter setDialogState,
+  ) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          quantityController.text += number;
+          quantityController.selection = TextSelection.fromPosition(
+            TextPosition(offset: quantityController.text.length),
+          );
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditQuantityActionButton(String text, VoidCallback onPressed) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  void _updateTalepItemQuantity(int index, int newQuantity) {
+    if (index >= 0 && index < _talepItems.length) {
+      setState(() {
+        final item = _talepItems[index];
+        _talepItems[index] = AmberTalepItem(
+          stokkod: item.stokkod,
+          stokAd: item.stokAd,
+          birim: item.birim,
+          barkod: item.barkod,
+          miktar: newQuantity,
+          birimFiyat: item.birimFiyat,
+          tutar: newQuantity * item.birimFiyat,
+          kalanMiktar: item.kalanMiktar,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_talepItems[index].stokAd} miktarı güncellendi'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
   Future<void> _saveAmberTalep() async {
     if (_talepItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1545,12 +1932,12 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         'Satirlar': satirlar,
       };
 
+      // JSON'u düzgün formatla ve logla
+      const JsonEncoder encoder = JsonEncoder.withIndent('  ');
+      final String prettyJson = encoder.convert(requestData);
+
       log('=== AMBER TALEP KAYDET JSON ===');
-      log('Request Data: ${requestData.toString()}');
-      log('Satirlar Count: ${satirlar.length}');
-      for (int i = 0; i < satirlar.length; i++) {
-        log('Satir $i: ${satirlar[i]}');
-      }
+      log('$prettyJson');
       log('=== END AMBER TALEP JSON ===');
 
       final response = await ApiService.saveAmberTalep(
@@ -1894,13 +2281,73 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                     ),
                                   ],
                                 ),
-                                trailing: IconButton(
-                                  onPressed: () => _removeTalepItem(index),
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  tooltip: 'Sil',
+                                trailing: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Düzelt button
+                                    SizedBox(
+                                      width: 80,
+                                      height: 28,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _showEditQuantityDialog(
+                                              item,
+                                              index,
+                                            ),
+                                        icon: const Icon(Icons.edit, size: 14),
+                                        label: const Text(
+                                          'Düzelt',
+                                          style: TextStyle(fontSize: 10),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue.shade700,
+                                          foregroundColor: Colors.white,
+                                          elevation: 1,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 2,
+                                            horizontal: 4,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Sil button
+                                    SizedBox(
+                                      width: 80,
+                                      height: 28,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _removeTalepItem(index),
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          size: 14,
+                                        ),
+                                        label: const Text(
+                                          'Sil',
+                                          style: TextStyle(fontSize: 10),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red.shade700,
+                                          foregroundColor: Colors.white,
+                                          elevation: 1,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 2,
+                                            horizontal: 4,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
