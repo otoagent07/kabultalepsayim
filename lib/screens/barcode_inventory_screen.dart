@@ -142,7 +142,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Tarih değiştiğinde otomatik listele
+                    _loadInventory();
+                  },
                   child: const Text('Tamam'),
                 ),
               ],
@@ -221,6 +225,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                 _selectedDepartment = dept;
                               });
                               Navigator.pop(context);
+                              // Departman değiştiğinde otomatik listele
+                              _loadInventory();
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
@@ -251,6 +257,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                                         _selectedDepartment = value!;
                                       });
                                       Navigator.pop(context);
+                                      // Departman değiştiğinde otomatik listele
+                                      _loadInventory();
                                     },
                                   ),
                                   const SizedBox(width: 8),
@@ -363,41 +371,327 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     });
   }
 
-  void _processBarcode(String barcode) {
-    // Barkod var mı kontrol et
-    final existingItemIndex = _inventoryItems.indexWhere(
-      (item) => item.barcode == barcode,
-    );
+  Future<void> _processBarcode(String barcode) async {
+    print('Barkod işleniyor: $barcode');
 
-    if (existingItemIndex != -1) {
-      // Mevcut ürün - miktarını artır
-      setState(() {
-        _countedItems[barcode] = (_countedItems[barcode] ?? 0) + 1;
-        // Ürünü en üste taşı
-        _moveItemToTop(barcode);
-      });
-    } else {
-      // Yeni ürün - listeye ekle
-      final newItem = InventoryItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        barcode: barcode,
-        name: '',
-        unit: 'Adet',
-        quantity: 0,
-        averagePrice: 0,
-        totalAmount: 0,
-        date: _selectedDate,
-        department: _selectedDepartment?.ad ?? '',
+    try {
+      final token = await StorageService.getToken();
+      final selectedDatabase = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      ).selectedDatabase;
+
+      if (token == null || selectedDatabase == null) {
+        _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
+        return;
+      }
+
+      // Barkod kontrolü yap
+      final barkodResponse = await ApiService.checkBarkod(
+        token,
+        selectedDatabase.id,
+        DateFormat('yyyy-MM-dd').format(_selectedDate),
+        barcode,
       );
 
-      setState(() {
-        _inventoryItems.insert(0, newItem);
-        _countedItems[barcode] = 1;
-      });
+      if (barkodResponse.isSucceded) {
+        if (barkodResponse.value.isNotEmpty) {
+          final barkodItem = barkodResponse.value.first;
+
+          // Ürün listesinde var mı kontrol et (Master_GenelKod ile)
+          final existingItemIndex = _sayimItems.indexWhere(
+            (item) => item.sayimStokkod == barkodItem.masterGenelKod,
+          );
+
+          if (existingItemIndex != -1) {
+            // Ürün zaten listede, miktarı 1 artır ve API'ye kaydet
+            final updatedQuantity =
+                _sayimItems[existingItemIndex].sayimMiktar + 1;
+
+            final success = await ApiService.saveSayimItem(
+              token,
+              selectedDatabase.id,
+              _sayimItems[existingItemIndex].sayimId,
+              DateFormat('yyyy-MM-dd').format(_selectedDate),
+              _selectedDepartment?.kod ?? '',
+              barkodItem.masterGenelKod,
+              barkodItem.barkod,
+              barkodItem.masterAltbirim,
+              updatedQuantity.toInt(),
+            );
+
+            if (success) {
+              setState(() {
+                _sayimItems[existingItemIndex] = SayimItem(
+                  sayimId: _sayimItems[existingItemIndex].sayimId,
+                  sayimTarih: _sayimItems[existingItemIndex].sayimTarih,
+                  sayimDepartman: _sayimItems[existingItemIndex].sayimDepartman,
+                  sayimStokkod: _sayimItems[existingItemIndex].sayimStokkod,
+                  sayimBarkod: _sayimItems[existingItemIndex].sayimBarkod,
+                  sayimAltbirim: _sayimItems[existingItemIndex].sayimAltbirim,
+                  sayimMiktar: updatedQuantity,
+                  sayimTipi: _sayimItems[existingItemIndex].sayimTipi,
+                  depAd: _sayimItems[existingItemIndex].depAd,
+                  masterAd: _sayimItems[existingItemIndex].masterAd,
+                  sayimOrtalama: _sayimItems[existingItemIndex].sayimOrtalama,
+                  sayimTutar: _sayimItems[existingItemIndex].sayimTutar,
+                );
+              });
+
+              _showSuccessSnackBar('${barkodItem.masterAd} miktarı artırıldı');
+            } else {
+              _showErrorSnackBar('Miktar artırma başarısız');
+            }
+          } else {
+            // Yeni ürün ekle ve API'ye kaydet
+            final success = await ApiService.saveSayimItem(
+              token,
+              selectedDatabase.id,
+              0, // Yeni ürün için 0
+              DateFormat('yyyy-MM-dd').format(_selectedDate),
+              _selectedDepartment?.kod ?? '',
+              barkodItem.masterGenelKod,
+              barkodItem.barkod,
+              barkodItem.masterAltbirim,
+              1,
+            );
+
+            if (success) {
+              final newItem = SayimItem(
+                sayimId: 0, // Yeni ürün için 0
+                sayimTarih: DateFormat('yyyy-MM-dd').format(_selectedDate),
+                sayimDepartman: _selectedDepartment?.kod ?? '',
+                sayimStokkod: barkodItem.masterGenelKod,
+                sayimBarkod: barkodItem.barkod,
+                sayimAltbirim: barkodItem.masterAltbirim,
+                sayimMiktar: 1,
+                sayimTipi: 'S',
+                depAd: _selectedDepartment?.ad ?? '',
+                masterAd: barkodItem.masterAd,
+                sayimOrtalama: 0,
+                sayimTutar: 0,
+              );
+
+              setState(() {
+                _sayimItems.add(newItem);
+              });
+
+              _showSuccessSnackBar('${barkodItem.masterAd} eklendi');
+            } else {
+              _showErrorSnackBar('Ürün ekleme başarısız');
+            }
+          }
+        } else {
+          // Value boş - barkod yoktur
+          _showErrorSnackBar('Barkod yoktur: $barcode');
+        }
+      } else {
+        _showErrorSnackBar('Barkod kontrolü başarısız: $barcode');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Barkod kontrolü hatası: $e');
     }
 
     // Odaklanmayı koru
     _barcodeFocusNode.requestFocus();
+  }
+
+  Future<void> _processManualBarcode(String barcode, int quantity) async {
+    print('Manuel barkod işleniyor: $barcode, Miktar: $quantity');
+
+    try {
+      // Önce mevcut listede barkod ile eşleşen ürün var mı kontrol et
+      final existingItemByBarcode = _sayimItems.firstWhere(
+        (item) => item.sayimBarkod == barcode,
+        orElse: () => SayimItem(
+          sayimId: -1,
+          sayimTarih: '',
+          sayimDepartman: '',
+          sayimStokkod: '',
+          sayimBarkod: '',
+          sayimAltbirim: '',
+          sayimMiktar: 0,
+          sayimTipi: '',
+          depAd: '',
+          masterAd: '',
+          sayimOrtalama: 0,
+          sayimTutar: 0,
+        ),
+      );
+
+      // Listede barkod bulundu
+      if (existingItemByBarcode.sayimId != -1) {
+        final token = await StorageService.getToken();
+        final selectedDatabase = Provider.of<SelectedDatabaseProvider>(
+          context,
+          listen: false,
+        ).selectedDatabase;
+
+        if (token == null || selectedDatabase == null) {
+          _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
+          return;
+        }
+
+        // Miktarı güncelle ve API'ye kaydet
+        final success = await ApiService.saveSayimItem(
+          token,
+          selectedDatabase.id,
+          existingItemByBarcode.sayimId,
+          DateFormat('yyyy-MM-dd').format(_selectedDate),
+          _selectedDepartment?.kod ?? '',
+          existingItemByBarcode.sayimStokkod,
+          existingItemByBarcode.sayimBarkod,
+          existingItemByBarcode.sayimAltbirim,
+          quantity,
+        );
+
+        if (success) {
+          final existingItemIndex = _sayimItems.indexWhere(
+            (item) => item.sayimId == existingItemByBarcode.sayimId,
+          );
+
+          setState(() {
+            _sayimItems[existingItemIndex] = SayimItem(
+              sayimId: existingItemByBarcode.sayimId,
+              sayimTarih: existingItemByBarcode.sayimTarih,
+              sayimDepartman: existingItemByBarcode.sayimDepartman,
+              sayimStokkod: existingItemByBarcode.sayimStokkod,
+              sayimBarkod: existingItemByBarcode.sayimBarkod,
+              sayimAltbirim: existingItemByBarcode.sayimAltbirim,
+              sayimMiktar: quantity.toDouble(),
+              sayimTipi: existingItemByBarcode.sayimTipi,
+              depAd: existingItemByBarcode.depAd,
+              masterAd: existingItemByBarcode.masterAd,
+              sayimOrtalama: existingItemByBarcode.sayimOrtalama,
+              sayimTutar: existingItemByBarcode.sayimTutar,
+            );
+          });
+
+          _showSuccessSnackBar(
+            '${existingItemByBarcode.masterAd} miktarı güncellendi: $quantity',
+          );
+        } else {
+          _showErrorSnackBar('Miktar güncelleme başarısız');
+        }
+        return;
+      }
+
+      // Listede yoksa API'den sorgula
+      final token = await StorageService.getToken();
+      final selectedDatabase = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      ).selectedDatabase;
+
+      if (token == null || selectedDatabase == null) {
+        _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
+        return;
+      }
+
+      // Barkod kontrolü yap
+      final barkodResponse = await ApiService.checkBarkod(
+        token,
+        selectedDatabase.id,
+        DateFormat('yyyy-MM-dd').format(_selectedDate),
+        barcode,
+      );
+
+      if (barkodResponse.isSucceded) {
+        if (barkodResponse.value.isNotEmpty) {
+          final barkodItem = barkodResponse.value.first;
+
+          // Ürün listesinde stok kodu ile var mı kontrol et (Master_GenelKod ile)
+          final existingItemIndex = _sayimItems.indexWhere(
+            (item) => item.sayimStokkod == barkodItem.masterGenelKod,
+          );
+
+          if (existingItemIndex != -1) {
+            // Ürün listede var (farklı barkod ile), miktarı güncelle ve API'ye kaydet
+            final success = await ApiService.saveSayimItem(
+              token,
+              selectedDatabase.id,
+              _sayimItems[existingItemIndex].sayimId,
+              DateFormat('yyyy-MM-dd').format(_selectedDate),
+              _selectedDepartment?.kod ?? '',
+              barkodItem.masterGenelKod,
+              barkodItem.barkod,
+              barkodItem.masterAltbirim,
+              quantity,
+            );
+
+            if (success) {
+              setState(() {
+                _sayimItems[existingItemIndex] = SayimItem(
+                  sayimId: _sayimItems[existingItemIndex].sayimId,
+                  sayimTarih: _sayimItems[existingItemIndex].sayimTarih,
+                  sayimDepartman: _sayimItems[existingItemIndex].sayimDepartman,
+                  sayimStokkod: _sayimItems[existingItemIndex].sayimStokkod,
+                  sayimBarkod: barkodItem.barkod, // Yeni barkod ile güncelle
+                  sayimAltbirim: _sayimItems[existingItemIndex].sayimAltbirim,
+                  sayimMiktar: quantity.toDouble(),
+                  sayimTipi: _sayimItems[existingItemIndex].sayimTipi,
+                  depAd: _sayimItems[existingItemIndex].depAd,
+                  masterAd: _sayimItems[existingItemIndex].masterAd,
+                  sayimOrtalama: _sayimItems[existingItemIndex].sayimOrtalama,
+                  sayimTutar: _sayimItems[existingItemIndex].sayimTutar,
+                );
+              });
+
+              _showSuccessSnackBar(
+                '${barkodItem.masterAd} miktarı güncellendi: $quantity',
+              );
+            } else {
+              _showErrorSnackBar('Miktar güncelleme başarısız');
+            }
+          } else {
+            // Yeni ürün ekle ve API'ye kaydet
+            final success = await ApiService.saveSayimItem(
+              token,
+              selectedDatabase.id,
+              0, // Yeni ürün için 0
+              DateFormat('yyyy-MM-dd').format(_selectedDate),
+              _selectedDepartment?.kod ?? '',
+              barkodItem.masterGenelKod,
+              barkodItem.barkod,
+              barkodItem.masterAltbirim,
+              quantity,
+            );
+
+            if (success) {
+              final newItem = SayimItem(
+                sayimId: 0, // Yeni ürün için 0
+                sayimTarih: DateFormat('yyyy-MM-dd').format(_selectedDate),
+                sayimDepartman: _selectedDepartment?.kod ?? '',
+                sayimStokkod: barkodItem.masterGenelKod,
+                sayimBarkod: barkodItem.barkod,
+                sayimAltbirim: barkodItem.masterAltbirim,
+                sayimMiktar: quantity.toDouble(),
+                sayimTipi: 'S',
+                depAd: _selectedDepartment?.ad ?? '',
+                masterAd: barkodItem.masterAd,
+                sayimOrtalama: 0,
+                sayimTutar: 0,
+              );
+
+              setState(() {
+                _sayimItems.insert(0, newItem); // En üste ekle
+              });
+
+              _showSuccessSnackBar('${barkodItem.masterAd} eklendi: $quantity');
+            } else {
+              _showErrorSnackBar('Ürün ekleme başarısız');
+            }
+          }
+        } else {
+          // Value boş - barkod bulunamadı
+          _showErrorSnackBar('Barkod bulunamadı: $barcode');
+        }
+      } else {
+        _showErrorSnackBar('Barkod bulunamadı: $barcode');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Barkod kontrolü hatası: $e');
+    }
   }
 
   void _moveItemToTop(String barcode) {
@@ -434,708 +728,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         );
       }
     }
-  }
-
-  void _showProductQuantityDialog(String barcode, String itemName) {
-    // Mevcut miktarı al
-    final currentQuantity = _countedItems[barcode] ?? 0;
-    final TextEditingController addQuantityController = TextEditingController();
-    final TextEditingController totalQuantityController =
-        TextEditingController();
-    final FocusNode addQuantityFocusNode = FocusNode();
-    final FocusNode totalQuantityFocusNode = FocusNode();
-    bool isAddQuantityFocused = true;
-
-    // Focus listener'ları ekle
-    addQuantityFocusNode.addListener(() {
-      if (addQuantityFocusNode.hasFocus) {
-        isAddQuantityFocused = true;
-      }
-    });
-
-    totalQuantityFocusNode.addListener(() {
-      if (totalQuantityFocusNode.hasFocus) {
-        isAddQuantityFocused = false;
-      }
-    });
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final addQuantity = int.tryParse(addQuantityController.text) ?? 0;
-          final totalQuantity = int.tryParse(totalQuantityController.text) ?? 0;
-
-          // Hesaplamalar
-          final calculatedTotal = currentQuantity + addQuantity;
-          final calculatedAdd = totalQuantity - currentQuantity;
-
-          // Görüntülenecek değerler
-          final displayTotal = isAddQuantityFocused
-              ? calculatedTotal
-              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
-          final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
-
-          // Sonuç miktarı (kaydetme için)
-          final finalQuantity = isAddQuantityFocused
-              ? calculatedTotal
-              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
-
-          return AlertDialog(
-            title: Text('Miktar Düzelt - Barkod: $barcode'),
-            content: SizedBox(
-              width: double.maxFinite,
-              height: MediaQuery.of(context).size.height * 0.9,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Mevcut miktar
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Text(
-                        'Mevcut Miktar: $currentQuantity',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // İki input alanı yan yana
-                    Row(
-                      children: [
-                        // Eklenecek/Çıkarılacak miktar
-                        Expanded(
-                          child: TextField(
-                            controller: addQuantityController,
-                            focusNode: addQuantityFocusNode,
-                            readOnly: true,
-                            showCursor: true,
-                            enableInteractiveSelection: true,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isAddQuantityFocused
-                                  ? Colors.blue
-                                  : Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                            decoration: InputDecoration(
-                              labelText: 'Eklenecek/Çıkarılacak',
-                              hintText: 'Miktar girin',
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: isAddQuantityFocused
-                                      ? Colors.blue
-                                      : Colors.grey,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            onTap: () {
-                              setDialogState(() {
-                                isAddQuantityFocused = true;
-                                addQuantityFocusNode.requestFocus();
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Toplam miktar
-                        Expanded(
-                          child: TextField(
-                            controller: totalQuantityController,
-                            focusNode: totalQuantityFocusNode,
-                            readOnly: true,
-                            showCursor: true,
-                            enableInteractiveSelection: true,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: !isAddQuantityFocused
-                                  ? Colors.green
-                                  : Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                            decoration: InputDecoration(
-                              labelText: 'Toplam Miktar',
-                              hintText: 'Toplam girin',
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: !isAddQuantityFocused
-                                      ? Colors.green
-                                      : Colors.grey,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            onTap: () {
-                              setDialogState(() {
-                                isAddQuantityFocused = false;
-                                totalQuantityFocusNode.requestFocus();
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Sonuç gösterimi
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Sonuç: $displayTotal',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (displayAdd != 0 &&
-                              (isAddQuantityFocused
-                                  ? addQuantity > 0
-                                  : totalQuantity > 0)) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              displayAdd > 0
-                                  ? 'Eklenecek: +$displayAdd'
-                                  : 'Çıkarılacak: $displayAdd',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: displayAdd > 0
-                                    ? Colors.green
-                                    : Colors.red,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Özel sayısal klavye
-                    _buildDualModeKeyboard(
-                      addQuantityController,
-                      totalQuantityController,
-                      isAddQuantityFocused,
-                      setDialogState,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('İptal'),
-                    ),
-                  ),
-                  const SizedBox(width: 30),
-                  Expanded(
-                    flex: 7,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (finalQuantity >= 0) {
-                          setState(() {
-                            _countedItems[barcode] = finalQuantity;
-                            // Ürünü en üste taşı
-                            _moveItemToTop(barcode);
-                          });
-                          Navigator.pop(context);
-                          // Odaklanmayı koru
-                          _barcodeFocusNode.requestFocus();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Kaydet'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTripleModeKeyboard(
-    TextEditingController barcodeController,
-    TextEditingController addQuantityController,
-    TextEditingController totalQuantityController,
-    bool isBarcodeFocused,
-    bool isAddQuantityFocused,
-    StateSetter setDialogState,
-  ) {
-    return Container(
-      width: 240,
-      child: Column(
-        children: [
-          // İlk satır: 1, 2, 3
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildTripleModeNumberButton(
-                '1',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildTripleModeNumberButton(
-                '2',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildTripleModeNumberButton(
-                '3',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // İkinci satır: 4, 5, 6
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildTripleModeNumberButton(
-                '4',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildTripleModeNumberButton(
-                '5',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildTripleModeNumberButton(
-                '6',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Üçüncü satır: 7, 8, 9
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildTripleModeNumberButton(
-                '7',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildTripleModeNumberButton(
-                '8',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildTripleModeNumberButton(
-                '9',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Dördüncü satır: Temizle, 0, Sil
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildActionButton('C', () {
-                if (isBarcodeFocused) {
-                  barcodeController.text = '';
-                  barcodeController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: barcodeController.text.length),
-                  );
-                } else if (isAddQuantityFocused) {
-                  addQuantityController.text = '';
-                  addQuantityController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: addQuantityController.text.length),
-                  );
-                } else {
-                  totalQuantityController.text = '';
-                  totalQuantityController
-                      .selection = TextSelection.fromPosition(
-                    TextPosition(offset: totalQuantityController.text.length),
-                  );
-                }
-                setDialogState(() {});
-              }),
-              _buildTripleModeNumberButton(
-                '0',
-                barcodeController,
-                addQuantityController,
-                totalQuantityController,
-                isBarcodeFocused,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildActionButton('⌫', () {
-                if (isBarcodeFocused) {
-                  if (barcodeController.text.isNotEmpty) {
-                    barcodeController.text = barcodeController.text.substring(
-                      0,
-                      barcodeController.text.length - 1,
-                    );
-                  }
-                  barcodeController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: barcodeController.text.length),
-                  );
-                } else if (isAddQuantityFocused) {
-                  if (addQuantityController.text.isNotEmpty) {
-                    addQuantityController.text = addQuantityController.text
-                        .substring(0, addQuantityController.text.length - 1);
-                  }
-                  addQuantityController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: addQuantityController.text.length),
-                  );
-                } else {
-                  if (totalQuantityController.text.isNotEmpty) {
-                    totalQuantityController.text = totalQuantityController.text
-                        .substring(0, totalQuantityController.text.length - 1);
-                  }
-                  totalQuantityController
-                      .selection = TextSelection.fromPosition(
-                    TextPosition(offset: totalQuantityController.text.length),
-                  );
-                }
-                setDialogState(() {});
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTripleModeNumberButton(
-    String number,
-    TextEditingController barcodeController,
-    TextEditingController addQuantityController,
-    TextEditingController totalQuantityController,
-    bool isBarcodeFocused,
-    bool isAddQuantityFocused,
-    StateSetter setDialogState,
-  ) {
-    return SizedBox(
-      width: 60,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          if (isBarcodeFocused) {
-            // Barkod girişi
-            barcodeController.text += number;
-            barcodeController.selection = TextSelection.fromPosition(
-              TextPosition(offset: barcodeController.text.length),
-            );
-          } else if (isAddQuantityFocused) {
-            // Eklenecek/çıkarılacak miktar girişi
-            addQuantityController.text += number;
-            addQuantityController.selection = TextSelection.fromPosition(
-              TextPosition(offset: addQuantityController.text.length),
-            );
-          } else {
-            // Toplam miktar girişi
-            totalQuantityController.text += number;
-            totalQuantityController.selection = TextSelection.fromPosition(
-              TextPosition(offset: totalQuantityController.text.length),
-            );
-          }
-          setDialogState(() {});
-        },
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: Text(
-          number,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDualModeKeyboard(
-    TextEditingController addQuantityController,
-    TextEditingController totalQuantityController,
-    bool isAddQuantityFocused,
-    StateSetter setDialogState,
-  ) {
-    return Container(
-      width: 240,
-      child: Column(
-        children: [
-          // İlk satır: 1, 2, 3
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildDualModeNumberButton(
-                '1',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildDualModeNumberButton(
-                '2',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildDualModeNumberButton(
-                '3',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // İkinci satır: 4, 5, 6
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildDualModeNumberButton(
-                '4',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildDualModeNumberButton(
-                '5',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildDualModeNumberButton(
-                '6',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Üçüncü satır: 7, 8, 9
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildDualModeNumberButton(
-                '7',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildDualModeNumberButton(
-                '8',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildDualModeNumberButton(
-                '9',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Dördüncü satır: Temizle, 0, Sil
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildActionButton('C', () {
-                if (isAddQuantityFocused) {
-                  addQuantityController.text = '';
-                  addQuantityController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: addQuantityController.text.length),
-                  );
-                } else {
-                  totalQuantityController.text = '';
-                  totalQuantityController
-                      .selection = TextSelection.fromPosition(
-                    TextPosition(offset: totalQuantityController.text.length),
-                  );
-                }
-                setDialogState(() {});
-              }),
-              _buildDualModeNumberButton(
-                '0',
-                addQuantityController,
-                totalQuantityController,
-                isAddQuantityFocused,
-                setDialogState,
-              ),
-              _buildActionButton('⌫', () {
-                if (isAddQuantityFocused) {
-                  if (addQuantityController.text.isNotEmpty) {
-                    addQuantityController.text = addQuantityController.text
-                        .substring(0, addQuantityController.text.length - 1);
-                  }
-                  addQuantityController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: addQuantityController.text.length),
-                  );
-                } else {
-                  if (totalQuantityController.text.isNotEmpty) {
-                    totalQuantityController.text = totalQuantityController.text
-                        .substring(0, totalQuantityController.text.length - 1);
-                  }
-                  totalQuantityController
-                      .selection = TextSelection.fromPosition(
-                    TextPosition(offset: totalQuantityController.text.length),
-                  );
-                }
-                setDialogState(() {});
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDualModeNumberButton(
-    String number,
-    TextEditingController addQuantityController,
-    TextEditingController totalQuantityController,
-    bool isAddQuantityFocused,
-    StateSetter setDialogState,
-  ) {
-    return SizedBox(
-      width: 60,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          if (isAddQuantityFocused) {
-            // Eklenecek/çıkarılacak miktar girişi
-            addQuantityController.text += number;
-            addQuantityController.selection = TextSelection.fromPosition(
-              TextPosition(offset: addQuantityController.text.length),
-            );
-          } else {
-            // Toplam miktar girişi
-            totalQuantityController.text += number;
-            totalQuantityController.selection = TextSelection.fromPosition(
-              TextPosition(offset: totalQuantityController.text.length),
-            );
-          }
-          setDialogState(() {});
-        },
-        style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: Text(
-          number,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(String text, VoidCallback onPressed) {
-    return SizedBox(
-      width: 60,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
   }
 
   void _showManualBarcodeDialog() {
@@ -1421,7 +1013,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       const SizedBox(height: 16),
                     ],
 
-                    // Özel sayısal klavye
+                    // Sayısal klavye
                     _buildTripleModeKeyboard(
                       barcodeInputController,
                       addQuantityController,
@@ -1453,47 +1045,22 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   Expanded(
                     flex: 7,
                     child: ElevatedButton(
-                      onPressed: () {
-                        final barcode = barcodeInputController.text.trim();
-                        if (barcode.isNotEmpty && finalQuantity >= 0) {
-                          // Barkod var mı kontrol et
-                          final existingItemIndex = _inventoryItems.indexWhere(
-                            (item) => item.barcode == barcode,
-                          );
-
-                          if (existingItemIndex != -1) {
-                            // Mevcut ürün - miktarını güncelle
-                            setState(() {
-                              _countedItems[barcode] = finalQuantity;
-                              // Ürünü en üste taşı
-                              _moveItemToTop(barcode);
-                            });
-                          } else {
-                            // Yeni ürün - listeye ekle
-                            final newItem = InventoryItem(
-                              id: DateTime.now().millisecondsSinceEpoch
-                                  .toString(),
-                              barcode: barcode,
-                              name: '',
-                              unit: 'Adet',
-                              quantity: 0,
-                              averagePrice: 0,
-                              totalAmount: 0,
-                              date: _selectedDate,
-                              department: _selectedDepartment?.ad ?? '',
-                            );
-
-                            setState(() {
-                              _inventoryItems.insert(0, newItem);
-                              _countedItems[barcode] = finalQuantity;
-                            });
-                          }
-
-                          Navigator.pop(context);
-                          // Odaklanmayı koru
-                          _barcodeFocusNode.requestFocus();
-                        }
-                      },
+                      onPressed:
+                          (barcodeInputController.text.trim().isNotEmpty &&
+                              finalQuantity > 0)
+                          ? () async {
+                              final barcode = barcodeInputController.text
+                                  .trim();
+                              Navigator.pop(context);
+                              // Barkodu işle
+                              await _processManualBarcode(
+                                barcode,
+                                finalQuantity,
+                              );
+                              // Odaklanmayı koru
+                              _barcodeFocusNode.requestFocus();
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -1511,91 +1078,551 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  void _showDeleteConfirmationDialog(String barcode, String itemName) {
-    final currentQuantity = _countedItems[barcode] ?? 0;
+  // Silme onayı dialogu (SayimItem için)
+  void _showDeleteConfirmationDialog(SayimItem item) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red.shade700,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Silme Onayı',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (item.masterAd != null && item.masterAd!.isNotEmpty) ...[
+                Text(
+                  item.masterAd!,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Stok Kodu: ${item.sayimStokkod}'),
+                    const SizedBox(height: 4),
+                    Text('Barkod: ${item.sayimBarkod}'),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Miktar: ${item.sayimMiktar.toStringAsFixed(0)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Bu ürünü silmek istediğinize emin misiniz?',
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 30,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade400,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('İptal'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 70,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _deleteItem(item);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Evet, Sil'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Silme işlemi
+  Future<void> _deleteItem(SayimItem item) async {
+    try {
+      final token = await StorageService.getToken();
+      final selectedDatabase = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      ).selectedDatabase;
+
+      if (token == null || selectedDatabase == null) {
+        _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
+        return;
+      }
+
+      final success = await ApiService.deleteSayimItem(
+        token,
+        selectedDatabase.id,
+        item.sayimId,
+      );
+
+      if (success) {
+        _showSuccessSnackBar('Ürün başarıyla silindi');
+        _loadInventory(); // Listeyi yenile
+      } else {
+        _showErrorSnackBar('Silme işlemi başarısız');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Hata: $e');
+    }
+  }
+
+  // Düzeltme dialogu
+  void _showProductQuantityDialog(SayimItem item) {
+    final TextEditingController addQuantityController = TextEditingController();
+    final TextEditingController totalQuantityController =
+        TextEditingController();
+    final FocusNode addQuantityFocusNode = FocusNode();
+    final FocusNode totalQuantityFocusNode = FocusNode();
+    bool isAddQuantityFocused = true;
+
+    // Focus listener'ları ekle
+    addQuantityFocusNode.addListener(() {
+      if (addQuantityFocusNode.hasFocus) {
+        isAddQuantityFocused = true;
+      }
+    });
+
+    totalQuantityFocusNode.addListener(() {
+      if (totalQuantityFocusNode.hasFocus) {
+        isAddQuantityFocused = false;
+      }
+    });
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Silme Onayı'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Barkod: $barcode',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final currentQuantity = item.sayimMiktar.toInt();
+          final addQuantity = int.tryParse(addQuantityController.text) ?? 0;
+          final totalQuantity = int.tryParse(totalQuantityController.text) ?? 0;
+
+          // Hesaplamalar
+          final calculatedTotal = currentQuantity + addQuantity;
+          final calculatedAdd = totalQuantity - currentQuantity;
+
+          // Görüntülenecek değerler
+          final displayTotal = isAddQuantityFocused
+              ? calculatedTotal
+              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
+          final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
+
+          // Sonuç miktarı (kaydetme için)
+          final finalQuantity = isAddQuantityFocused
+              ? calculatedTotal
+              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
+
+          return AlertDialog(
+            title: Text('Miktar Düzelt - ${item.masterAd ?? "Ürün"}'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Mevcut miktar
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Text(
+                        'Mevcut Miktar: $currentQuantity',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // İki input alanı yan yana
+                    Row(
+                      children: [
+                        // Eklenecek/Çıkarılacak miktar
+                        Expanded(
+                          child: TextField(
+                            controller: addQuantityController,
+                            focusNode: addQuantityFocusNode,
+                            readOnly: true,
+                            showCursor: true,
+                            enableInteractiveSelection: true,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isAddQuantityFocused
+                                  ? Colors.blue
+                                  : Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              labelText: 'Eklenecek/Çıkarılacak',
+                              hintText: 'Miktar girin',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: isAddQuantityFocused
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                isAddQuantityFocused = true;
+                                addQuantityFocusNode.requestFocus();
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Toplam miktar
+                        Expanded(
+                          child: TextField(
+                            controller: totalQuantityController,
+                            focusNode: totalQuantityFocusNode,
+                            readOnly: true,
+                            showCursor: true,
+                            enableInteractiveSelection: true,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: !isAddQuantityFocused
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                            decoration: InputDecoration(
+                              labelText: 'Toplam Miktar',
+                              hintText: 'Toplam girin',
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: !isAddQuantityFocused
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                isAddQuantityFocused = false;
+                                totalQuantityFocusNode.requestFocus();
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sonuç gösterimi
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Sonuç: $displayTotal',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (displayAdd != 0 &&
+                              (isAddQuantityFocused
+                                  ? addQuantity > 0
+                                  : totalQuantity > 0)) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              displayAdd > 0
+                                  ? 'Eklenecek: +$displayAdd'
+                                  : 'Çıkarılacak: $displayAdd',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: displayAdd > 0
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Sayısal klavye
+                    _buildNumericKeyboard(
+                      addQuantityController,
+                      totalQuantityController,
+                      isAddQuantityFocused,
+                      setDialogState,
+                    ),
+                  ],
+                ),
+              ),
             ),
-            if (itemName.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Ürün: $itemName'),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('İptal'),
+                    ),
+                  ),
+                  const SizedBox(width: 30),
+                  Expanded(
+                    flex: 7,
+                    child: ElevatedButton(
+                      onPressed: finalQuantity > 0
+                          ? () {
+                              Navigator.pop(context);
+                              _updateItem(item, finalQuantity.toString());
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Kaydet'),
+                    ),
+                  ),
+                ],
+              ),
             ],
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Text(
-                'Mevcut Miktar: $currentQuantity',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Bu ürünü listeden silmek istediğinize emin misiniz?',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
+          );
+        },
+      ),
+    );
+  }
+
+  // Sayısal klavye
+  Widget _buildNumericKeyboard(
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
+    bool isAddQuantityFocused,
+    StateSetter setDialogState,
+  ) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Expanded(
-                flex: 3,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('İptal'),
-                ),
+              _buildNumberButton(
+                '1',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
               ),
-              const SizedBox(width: 30),
-              Expanded(
-                flex: 7,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _countedItems.remove(barcode);
-                      // Eğer sayılan miktar yoksa, ürünü listeden de kaldır
-                      if (_countedItems[barcode] == null) {
-                        _inventoryItems.removeWhere(
-                          (item) => item.barcode == barcode,
-                        );
-                      }
-                    });
-                    Navigator.pop(context);
-                    // Odaklanmayı koru
-                    _barcodeFocusNode.requestFocus();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Sil'),
-                ),
+              _buildNumberButton(
+                '2',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
               ),
+              _buildNumberButton(
+                '3',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNumberButton(
+                '4',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildNumberButton(
+                '5',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildNumberButton(
+                '6',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNumberButton(
+                '7',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildNumberButton(
+                '8',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildNumberButton(
+                '9',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton('C', () {
+                if (isAddQuantityFocused) {
+                  addQuantityController.text = '';
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  totalQuantityController.text = '';
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
+                  );
+                }
+                setDialogState(() {});
+              }),
+              _buildNumberButton(
+                '0',
+                addQuantityController,
+                totalQuantityController,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildActionButton('⌫', () {
+                if (isAddQuantityFocused) {
+                  if (addQuantityController.text.isNotEmpty) {
+                    addQuantityController.text = addQuantityController.text
+                        .substring(0, addQuantityController.text.length - 1);
+                  }
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  if (totalQuantityController.text.isNotEmpty) {
+                    totalQuantityController.text = totalQuantityController.text
+                        .substring(0, totalQuantityController.text.length - 1);
+                  }
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
+                  );
+                }
+                setDialogState(() {});
+              }),
             ],
           ),
         ],
@@ -1603,155 +1630,348 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  void _showSummaryDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade400, Colors.green.shade600],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
+  Widget _buildNumberButton(
+    String number,
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
+    bool isAddQuantityFocused,
+    StateSetter setDialogState,
+  ) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          if (isAddQuantityFocused) {
+            // Eklenecek/çıkarılacak miktar girişi
+            addQuantityController.text += number;
+            addQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: addQuantityController.text.length),
+            );
+          } else {
+            // Toplam miktar girişi
+            totalQuantityController.text += number;
+            totalQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: totalQuantityController.text.length),
+            );
+          }
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String text, VoidCallback onPressed) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // Üç modlu klavye (Barkod, Eklenecek, Toplam)
+  Widget _buildTripleModeKeyboard(
+    TextEditingController barcodeController,
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
+    bool isBarcodeFocused,
+    bool isAddQuantityFocused,
+    StateSetter setDialogState,
+  ) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Icon(Icons.inventory, color: Colors.white, size: 28),
-              SizedBox(width: 12),
-              Text(
-                'Sayım Özeti',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              _buildTripleModeNumberButton(
+                '1',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildTripleModeNumberButton(
+                '2',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildTripleModeNumberButton(
+                '3',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
               ),
             ],
           ),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 500,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Barkod listesi
-                _countedItems.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Text(
-                            'Henüz sayım yapılmadı',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        children: _countedItems.entries.map((entry) {
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.shade200,
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.qr_code_scanner,
-                                  color: Colors.green.shade700,
-                                  size: 20,
-                                ),
-                              ),
-                              title: Text(
-                                'Barkod: ${entry.key}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade100,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '${entry.value} adet',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Expanded(
-                flex: 3,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('İptal'),
-                ),
+              _buildTripleModeNumberButton(
+                '4',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
               ),
-              const SizedBox(width: 30),
-              Expanded(
-                flex: 7,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Tamam'),
-                ),
+              _buildTripleModeNumberButton(
+                '5',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
               ),
+              _buildTripleModeNumberButton(
+                '6',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildTripleModeNumberButton(
+                '7',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildTripleModeNumberButton(
+                '8',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildTripleModeNumberButton(
+                '9',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton('C', () {
+                if (isBarcodeFocused) {
+                  barcodeController.text = '';
+                  barcodeController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: barcodeController.text.length),
+                  );
+                } else if (isAddQuantityFocused) {
+                  addQuantityController.text = '';
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  totalQuantityController.text = '';
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
+                  );
+                }
+                setDialogState(() {});
+              }),
+              _buildTripleModeNumberButton(
+                '0',
+                barcodeController,
+                addQuantityController,
+                totalQuantityController,
+                isBarcodeFocused,
+                isAddQuantityFocused,
+                setDialogState,
+              ),
+              _buildActionButton('⌫', () {
+                if (isBarcodeFocused) {
+                  if (barcodeController.text.isNotEmpty) {
+                    barcodeController.text = barcodeController.text.substring(
+                      0,
+                      barcodeController.text.length - 1,
+                    );
+                  }
+                  barcodeController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: barcodeController.text.length),
+                  );
+                } else if (isAddQuantityFocused) {
+                  if (addQuantityController.text.isNotEmpty) {
+                    addQuantityController.text = addQuantityController.text
+                        .substring(0, addQuantityController.text.length - 1);
+                  }
+                  addQuantityController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: addQuantityController.text.length),
+                  );
+                } else {
+                  if (totalQuantityController.text.isNotEmpty) {
+                    totalQuantityController.text = totalQuantityController.text
+                        .substring(0, totalQuantityController.text.length - 1);
+                  }
+                  totalQuantityController
+                      .selection = TextSelection.fromPosition(
+                    TextPosition(offset: totalQuantityController.text.length),
+                  );
+                }
+                setDialogState(() {});
+              }),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTripleModeNumberButton(
+    String number,
+    TextEditingController barcodeController,
+    TextEditingController addQuantityController,
+    TextEditingController totalQuantityController,
+    bool isBarcodeFocused,
+    bool isAddQuantityFocused,
+    StateSetter setDialogState,
+  ) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          if (isBarcodeFocused) {
+            // Barkod girişi
+            barcodeController.text += number;
+            barcodeController.selection = TextSelection.fromPosition(
+              TextPosition(offset: barcodeController.text.length),
+            );
+          } else if (isAddQuantityFocused) {
+            // Eklenecek/çıkarılacak miktar girişi
+            addQuantityController.text += number;
+            addQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: addQuantityController.text.length),
+            );
+          } else {
+            // Toplam miktar girişi
+            totalQuantityController.text += number;
+            totalQuantityController.selection = TextSelection.fromPosition(
+              TextPosition(offset: totalQuantityController.text.length),
+            );
+          }
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // Güncelleme işlemi
+  Future<void> _updateItem(SayimItem item, String miktarText) async {
+    try {
+      final miktar = int.tryParse(miktarText);
+      if (miktar == null) {
+        _showErrorSnackBar('Geçerli bir miktar giriniz');
+        return;
+      }
+
+      final token = await StorageService.getToken();
+      final selectedDatabase = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      ).selectedDatabase;
+
+      if (token == null || selectedDatabase == null) {
+        _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
+        return;
+      }
+
+      final success = await ApiService.saveSayimItem(
+        token,
+        selectedDatabase.id,
+        item.sayimId,
+        DateFormat('yyyy-MM-dd').format(_selectedDate),
+        _selectedDepartment?.kod ?? '',
+        item.sayimStokkod,
+        item.sayimBarkod,
+        item.sayimAltbirim,
+        miktar,
+      );
+
+      if (success) {
+        _showSuccessSnackBar('Ürün başarıyla güncellendi');
+        _loadInventory(); // Listeyi yenile
+      } else {
+        _showErrorSnackBar('Güncelleme işlemi başarısız');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Hata: $e');
+    }
+  }
+
+  // Başarı mesajı
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
+    );
+  }
+
+  // Hata mesajı
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -1806,86 +2026,174 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                             border: Border.all(color: Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Üst satır - Stok kodu ve barkod
-                              Row(
-                                children: [
-                                  if (item.sayimStokkod.isNotEmpty) ...[
+                              // Sol taraf - Ana içerik
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Ürün adı
+                                    if (item.masterAd != null &&
+                                        item.masterAd!.isNotEmpty) ...[
+                                      Text(
+                                        item.masterAd!,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+
+                                    // Stok kodu
+                                    if (item.sayimStokkod.isNotEmpty) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade100,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Stok: ${item.sayimStokkod}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                    ],
+                                    // Barkod
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.shade100,
+                                        color: Colors.green.shade100,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        'Stok: ${item.sayimStokkod}',
+                                        'Barkod: ${item.sayimBarkod}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(height: 8),
+
+                                    // Alt satır - ID, Miktar, Birim
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'ID: ${item.sayimId}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Miktar: ${item.sayimMiktar.toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        if (item.sayimAltbirim.isNotEmpty) ...[
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Birim: ${item.sayimAltbirim}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ],
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.shade100,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'Barkod: ${item.sayimBarkod}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Orta satır - Ürün adı
-                              if (item.masterAd != null &&
-                                  item.masterAd!.isNotEmpty)
-                                Text(
-                                  item.masterAd!,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
                                 ),
+                              ),
 
-                              const SizedBox(height: 8),
+                              const SizedBox(width: 12),
 
-                              // Alt satır - Miktar ve birim
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              // Sağ taraf - Butonlar
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    'Miktar: ${item.sayimMiktar.toStringAsFixed(0)}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  if (item.sayimAltbirim.isNotEmpty)
-                                    Text(
-                                      item.sayimAltbirim,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
+                                  // Düzelt button
+                                  SizedBox(
+                                    width: 120,
+                                    height: 42,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _showProductQuantityDialog(item),
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      label: const Padding(
+                                        padding: EdgeInsets.only(right: 8.0),
+                                        child: Text('Düzelt'),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue.shade700,
+                                        foregroundColor: Colors.white,
+                                        elevation: 2,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  // Sil button
+                                  SizedBox(
+                                    width: 120,
+                                    height: 42,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _showDeleteConfirmationDialog(item),
+                                      icon: const Icon(Icons.delete, size: 20),
+                                      label: const Text('Sil'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red.shade700,
+                                        foregroundColor: Colors.white,
+                                        elevation: 2,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -2120,11 +2428,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           _buildListButtonWidget(),
           _buildInventoryListWidget(),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _countedItems.isNotEmpty ? _showSummaryDialog : null,
-        icon: const Icon(Icons.check),
-        label: const Text('KAYDET'),
       ),
     );
   }
