@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -489,15 +490,16 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       return;
     }
 
+    String searchQuery = '';
+    List<StokMaster> filteredStoklar = _allStoklar;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          String searchQuery = '';
-          List<StokMaster> filteredStoklar = _allStoklar;
-
+          bool isLoadingProduct = false;
           return Container(
             height: MediaQuery.of(context).size.height * 0.85,
             decoration: const BoxDecoration(
@@ -663,10 +665,15 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 elevation: 1,
                                 child: InkWell(
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    _processStokSelection(stok);
-                                  },
+                                  onTap: isLoadingProduct
+                                      ? null
+                                      : () {
+                                          _processStokSelectionFromDialog(
+                                            stok,
+                                            setDialogState,
+                                            isLoadingProduct,
+                                          );
+                                        },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Padding(
                                     padding: const EdgeInsets.all(16),
@@ -770,12 +777,21 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                             ],
                                           ),
                                         ),
-                                        // Arrow icon
-                                        Icon(
-                                          Icons.arrow_forward_ios,
-                                          size: 16,
-                                          color: Colors.grey[400],
-                                        ),
+                                        // Arrow icon veya loading
+                                        isLoadingProduct
+                                            ? const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : Icon(
+                                                Icons.arrow_forward_ios,
+                                                size: 16,
+                                                color: Colors.grey[400],
+                                              ),
                                       ],
                                     ),
                                   ),
@@ -826,7 +842,11 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     _barcodeFocusNode.requestFocus();
   }
 
-  Future<void> _processStokSelection(StokMaster stok) async {
+  Future<void> _processStokSelectionFromDialog(
+    StokMaster stok,
+    StateSetter setDialogState,
+    bool isLoadingProduct,
+  ) async {
     if (_selectedDepartment == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -837,12 +857,102 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       return;
     }
 
-    // Loading göster
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    // Loading başlat
+    setDialogState(() {
+      isLoadingProduct = true;
+    });
+
+    try {
+      final now = DateTime.now();
+      final tarih1 = DateTime(now.year, now.month, 1).toIso8601String();
+      final tarih2 = now.toIso8601String();
+
+      log('Stok fiyat bilgisi alınıyor: ${stok.genelKod}');
+      final response = await ApiService.getStokBirimFiyat(
+        _token!,
+        _dbId!,
+        stok.genelKod,
+        tarih1,
+        tarih2,
+        _selectedDepartment!.kod,
+      );
+
+      log(
+        'API Response: ${response.isSucceded}, Value count: ${response.value.length}',
+      );
+
+      if (response.isSucceded && response.value.isNotEmpty) {
+        final fiyatBilgisi = response.value.first;
+        log(
+          'Fiyat bilgisi: Kalan=${fiyatBilgisi.kalanMiktar}, Fiyat=${fiyatBilgisi.birimFiyat}',
+        );
+
+        // Kalan miktar kontrolü
+        if (fiyatBilgisi.kalanMiktar <= 0) {
+          if (mounted) {
+            setDialogState(() {
+              isLoadingProduct = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Kalan miktar sıfırdan küçük: ${fiyatBilgisi.kalanMiktar}',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Dialog'u kapat ve miktar girme dialogunu aç
+        if (mounted) {
+          Navigator.pop(context); // Ürün seçim dialog'unu kapat
+          _showQuantityDialog(
+            stok,
+            fiyatBilgisi.kalanMiktar,
+            fiyatBilgisi.birimFiyat,
+            fiyatBilgisi.birim,
+          );
+        }
+      } else {
+        if (mounted) {
+          setDialogState(() {
+            isLoadingProduct = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Stok fiyat bilgisi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      log('Hata: $e');
+      if (mounted) {
+        setDialogState(() {
+          isLoadingProduct = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _processStokSelection(StokMaster stok) async {
+    if (_selectedDepartment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen önce departman seçiniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     try {
       final now = DateTime.now();
@@ -861,9 +971,23 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       if (response.isSucceded && response.value.isNotEmpty) {
         final fiyatBilgisi = response.value.first;
 
+        // Kalan miktar kontrolü
+        if (fiyatBilgisi.kalanMiktar <= 0) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Kalan miktar sıfırdan küçük: ${fiyatBilgisi.kalanMiktar}',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
         // Miktar girme dialogunu aç
         if (mounted) {
-          Navigator.pop(context); // Loading'i kapat
           _showQuantityDialog(
             stok,
             fiyatBilgisi.kalanMiktar,
@@ -873,7 +997,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         }
       } else {
         if (mounted) {
-          Navigator.pop(context); // Loading'i kapat
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -886,7 +1009,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Loading'i kapat
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );
@@ -1905,13 +2027,23 @@ class QRScannerPage extends StatefulWidget {
 }
 
 class _QRScannerPageState extends State<QRScannerPage> {
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  Barcode? result;
   QRViewController? controller;
-  bool isScanning = true;
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  bool _isCameraInitialized = false;
+  bool _isDisposed = false;
 
+  // In order to get hot reload to work we need to pause the camera if the platform
+  // is android, or resume the camera if the platform is iOS.
   @override
-  void initState() {
-    super.initState();
+  void reassemble() {
+    super.reassemble();
+    if (!_isDisposed && controller != null) {
+      if (Platform.isAndroid) {
+        controller!.pauseCamera();
+      }
+      controller!.resumeCamera();
+    }
   }
 
   @override
@@ -1919,7 +2051,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Barkod Tara'),
-        backgroundColor: Colors.blue[600],
+        backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -1927,57 +2059,133 @@ class _QRScannerPageState extends State<QRScannerPage> {
           Expanded(flex: 4, child: _buildQrView(context)),
           Expanded(
             flex: 1,
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[
-                  const Text('Barkodu kameraya gösterin'),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.toggleFlash();
-                            setState(() {});
-                          },
-                          child: FutureBuilder(
-                            future: controller?.getFlashStatus(),
-                            builder: (context, snapshot) {
-                              return Icon(
-                                snapshot.data == true
-                                    ? Icons.flash_on
-                                    : Icons.flash_off,
-                              );
-                            },
+            child: Container(
+              color: Colors.black,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    if (result != null)
+                      Text(
+                        'Barkod: ${result!.code}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else
+                      const Text(
+                        'Barkodu kameraya gösterin',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.toggleFlash();
+                                      if (mounted) setState(() {});
+                                    } catch (e) {
+                                      log('Flash toggle error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: _isCameraInitialized
+                                ? FutureBuilder(
+                                    future: controller?.getFlashStatus(),
+                                    builder: (context, snapshot) {
+                                      return Text(
+                                        'Flash: ${snapshot.data ?? 'Bilinmiyor'}',
+                                      );
+                                    },
+                                  )
+                                : const Text('Flash: Yükleniyor...'),
                           ),
                         ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.flipCamera();
-                            setState(() {});
-                          },
-                          child: FutureBuilder(
-                            future: controller?.getCameraInfo(),
-                            builder: (context, snapshot) {
-                              if (snapshot.data != null) {
-                                return const Icon(Icons.switch_camera);
-                              } else {
-                                return const Icon(Icons.camera_alt);
-                              }
-                            },
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.flipCamera();
+                                      if (mounted) setState(() {});
+                                    } catch (e) {
+                                      log('Camera flip error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: _isCameraInitialized
+                                ? FutureBuilder(
+                                    future: controller?.getCameraInfo(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.data != null) {
+                                        return Text(
+                                          'Kamera: ${snapshot.data!.name}',
+                                        );
+                                      } else {
+                                        return const Text(
+                                          'Kamera: Yükleniyor...',
+                                        );
+                                      }
+                                    },
+                                  )
+                                : const Text('Kamera: Yükleniyor...'),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.pauseCamera();
+                                    } catch (e) {
+                                      log('Camera pause error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: const Text(
+                              'Duraklat',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.all(8),
+                          child: ElevatedButton(
+                            onPressed: _isCameraInitialized && !_isDisposed
+                                ? () async {
+                                    try {
+                                      await controller?.resumeCamera();
+                                    } catch (e) {
+                                      log('Camera resume error: $e');
+                                    }
+                                  }
+                                : null,
+                            child: const Text(
+                              'Devam Et',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1987,11 +2195,14 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   Widget _buildQrView(BuildContext context) {
+    // For this example we check how width or tall the device is and change the scanArea and overlay accordingly.
     var scanArea =
         (MediaQuery.of(context).size.width < 400 ||
             MediaQuery.of(context).size.height < 400)
         ? 150.0
         : 300.0;
+    // To ensure the Scanner view is properly sizes after rotation
+    // we need to listen for Flutter SizeChanged notification and update controller
     return QRView(
       key: qrKey,
       onQRViewCreated: _onQRViewCreated,
@@ -2007,15 +2218,23 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   void _onQRViewCreated(QRViewController controller) {
+    if (_isDisposed) return;
+
     setState(() {
       this.controller = controller;
+      _isCameraInitialized = true;
     });
+
     controller.scannedDataStream.listen((scanData) {
-      if (isScanning) {
-        setState(() {
-          isScanning = false;
-        });
-        Navigator.pop(context, scanData.code);
+      if (_isDisposed) return;
+
+      setState(() {
+        result = scanData;
+      });
+
+      // Barkod okunduğunda ana sayfaya dön ve işle
+      if (result != null && result!.code != null) {
+        Navigator.pop(context, result!.code);
       }
     });
   }
@@ -2031,7 +2250,12 @@ class _QRScannerPageState extends State<QRScannerPage> {
 
   @override
   void dispose() {
-    controller?.dispose();
+    _isDisposed = true;
+    if (controller != null) {
+      controller!.pauseCamera();
+      controller!.dispose();
+      controller = null;
+    }
     super.dispose();
   }
 }
