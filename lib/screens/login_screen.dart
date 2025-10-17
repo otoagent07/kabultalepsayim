@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
-import 'main_menu_screen.dart';
+import '../services/api_service.dart';
+import '../services/storage_service.dart';
+import 'database_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,19 +15,33 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController(
-    text: "mehmet@rmosyazilim.com",
   );
-  final _passwordController = TextEditingController(text: "7266");
-  final _hotelIdController = TextEditingController(text: "15");
+  final _passwordController = TextEditingController(
+  );
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
-    _hotelIdController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final username = await StorageService.getUsername();
+    final password = await StorageService.getPassword();
+
+    if (username != null && password != null) {
+      _usernameController.text = username;
+      _passwordController.text = password;
+    }
   }
 
   Future<void> _login() async {
@@ -35,23 +51,38 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulate login process
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // API'den token al
+      final token = await ApiService.getToken(
+        _usernameController.text,
+        _passwordController.text,
+      );
 
-    // Demo login - accept any non-empty values
-    if (_usernameController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty &&
-        _hotelIdController.text.isNotEmpty) {
+      // Token'ı kaydet
+      await StorageService.saveToken(token);
+
+      // Kullanıcı bilgilerini kaydet
+      await StorageService.saveUserCredentials(
+        _usernameController.text,
+        _passwordController.text,
+      );
+
+      // Token ile login yap ve database listesini al
+      final loginResponse = await ApiService.loginByToken(token);
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainMenuScreen()),
+          MaterialPageRoute(
+            builder: (context) =>
+                DatabaseSelectionScreen(databases: loginResponse.databases),
+          ),
         );
       }
-    } else {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lütfen tüm alanları doldurun'),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
             backgroundColor: Colors.red,
           ),
         );
@@ -86,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Barkodlu Sayım',
+                      'Rmos Barkodlu Sayım',
                       style: Theme.of(context).textTheme.headlineLarge,
                       textAlign: TextAlign.center,
                     ),
@@ -139,22 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Şifre gerekli';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Hotel ID Field
-                    TextFormField(
-                      controller: _hotelIdController,
-                      decoration: const InputDecoration(
-                        labelText: 'Otel ID',
-                        prefixIcon: Icon(Icons.business),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Otel ID gerekli';
                         }
                         return null;
                       },
