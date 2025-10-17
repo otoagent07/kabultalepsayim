@@ -2219,132 +2219,157 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                 horizontal: 8,
                                 vertical: 4,
                               ),
-                              child: ListTile(
-                                title: Text(
-                                  item.stokAd,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
                                   children: [
-                                    Text('Stok Kodu: ${item.stokkod}'),
-                                    Text('Birim: ${item.birim}'),
-                                    const SizedBox(height: 4),
-                                    // Miktar gösterimi: girilenmiktar/toplammiktar
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue[50],
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: Colors.blue[200]!,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Miktar: ${item.miktar}/${item.kalanMiktar.toInt()} ${item.birim}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.blue[800],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Fiyat hesaplama: girilenmiktar*birimfiyat = toplamfiyat
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green[50],
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: Colors.green[200]!,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        '${item.miktar} × ${item.birimFiyat.toStringAsFixed(2)} = ${item.tutar.toStringAsFixed(2)} ₺',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.green[800],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Düzelt button
-                                    SizedBox(
-                                      width: 80,
-                                      height: 28,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () =>
-                                            _showEditQuantityDialog(
-                                              item,
-                                              index,
-                                            ),
-                                        icon: const Icon(Icons.edit, size: 14),
-                                        label: const Text(
-                                          'Düzelt',
-                                          style: TextStyle(fontSize: 10),
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue.shade700,
-                                          foregroundColor: Colors.white,
-                                          elevation: 1,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              4,
+                                    // Sol taraf - %70 içerik
+                                    Expanded(
+                                      flex: 7,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.stokAd,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 16,
                                             ),
                                           ),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 2,
-                                            horizontal: 4,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Sil button
-                                    SizedBox(
-                                      width: 80,
-                                      height: 28,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () =>
-                                            _removeTalepItem(index),
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          size: 14,
-                                        ),
-                                        label: const Text(
-                                          'Sil',
-                                          style: TextStyle(fontSize: 10),
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red.shade700,
-                                          foregroundColor: Colors.white,
-                                          elevation: 1,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              4,
+                                          const SizedBox(height: 4),
+                                          Text('Stok Kodu: ${item.stokkod}'),
+                                          Text('Birim: ${item.birim}'),
+                                          const SizedBox(height: 8),
+                                          // Miktar gösterimi: girilenmiktar/toplammiktar
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: Colors.blue[200]!,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Miktar: ${item.miktar}/${item.kalanMiktar.toInt()} ${item.birim}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.blue[800],
+                                              ),
                                             ),
                                           ),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 2,
-                                            horizontal: 4,
+                                          const SizedBox(height: 4),
+                                          // Fiyat hesaplama: girilenmiktar*birimfiyat = toplamfiyat
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: Colors.green[200]!,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              '${item.miktar} × ${item.birimFiyat.toStringAsFixed(2)} = ${item.tutar.toStringAsFixed(2)} ₺',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.green[800],
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    // Sağ taraf - %30 butonlar
+                                    Expanded(
+                                      flex: 3,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // Düzelt button
+                                          SizedBox(
+                                            width: double.infinity,
+                                            height: 40,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () =>
+                                                  _showEditQuantityDialog(
+                                                    item,
+                                                    index,
+                                                  ),
+                                              icon: const Icon(
+                                                Icons.edit,
+                                                size: 16,
+                                              ),
+                                              label: const Text(
+                                                'Düzelt',
+                                                style: TextStyle(fontSize: 12),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.blue.shade700,
+                                                foregroundColor: Colors.white,
+                                                elevation: 1,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                      horizontal: 4,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          // Sil button
+                                          SizedBox(
+                                            width: double.infinity,
+                                            height: 40,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () =>
+                                                  _removeTalepItem(index),
+                                              icon: const Icon(
+                                                Icons.delete,
+                                                size: 16,
+                                              ),
+                                              label: const Text(
+                                                'Sil',
+                                                style: TextStyle(fontSize: 12),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.red.shade700,
+                                                foregroundColor: Colors.white,
+                                                elevation: 1,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
+                                                      horizontal: 4,
+                                                    ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
