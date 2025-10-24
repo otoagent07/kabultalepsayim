@@ -1021,7 +1021,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
       if (databaseProvider.selectedDatabase != null && token != null) {
         final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-        final refNo = '${DateFormat('ddMMyy').format(_selectedDate)}001';
+        final refNo = _orderNumberController.text
+            .trim(); // Use order number as RefNo
 
         final satirlar = <Map<String, dynamic>>[];
 
@@ -1032,11 +1033,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           print(
             'Processing item: ID=${item.id}, Stokkod=${item.stokkod}, Miktar=$acceptedQuantity',
           );
-          print('EfatId will be set to: 0');
+          print('EfatId will be set to: ${item.id}');
 
           satirlar.add({
-            'Id': item.id, // ID from the fetched order
-            'EfatId': 0, // Always 0
+            'Id':0, // ID from the fetched order
+            'EfatId': item.id, // Use the same ID
             'Sira': 0,
             'UrunAdi': 'Ürün ${item.stokkod}',
             'Firma': 'Tedarikçi',
