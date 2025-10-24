@@ -4,6 +4,7 @@ import '../providers/theme_provider.dart';
 import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_screen.dart';
 import 'amber_request_screen.dart';
+import 'mal_kabul_screen.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -138,7 +139,11 @@ class MainMenuScreen extends StatelessWidget {
                         Icons.inbox,
                         Colors.blue,
                         () {
-                          _showComingSoon(context, 'Mal Kabul');
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const MalKabulScreen(),
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -251,21 +256,5 @@ class MainMenuScreen extends StatelessWidget {
           ),
         ) ??
         false;
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(feature),
-        content: const Text('Bu özellik yakında eklenecek.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Tamam'),
-          ),
-        ],
-      ),
-    );
   }
 }

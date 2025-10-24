@@ -7,6 +7,8 @@ import '../models/barkod_kontrol_response.dart';
 import '../models/sube_response.dart';
 import '../models/stok_master_response.dart';
 import '../models/stok_birim_fiyat_response.dart';
+import '../models/mal_kabul_order_response.dart';
+import '../models/mal_kabul_save_response.dart';
 
 class ApiService {
   static const String baseUrl = 'https://service.rmosweb.com';
@@ -28,6 +30,8 @@ class ApiService {
       '/api/Procedure/Stok_Birim_Fiyat';
   static const String amberTalepKaydetEndpoint =
       '/api/StokHareket/InsertAmbarVeDepartman';
+  static const String malKabulOrderEndpoint = '/api/SatTalep/GetBySiparisno';
+  static const String malKabulSaveEndpoint = '/api/MalKabul/Insert';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -436,6 +440,73 @@ class ApiService {
         return jsonData;
       } else {
         throw Exception('Talep kaydetme hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  // Mal Kabul - Sipariş getir
+  static Future<MalKabulOrderResponse> getMalKabulOrder(
+    String token,
+    int dbId,
+    String siparisno,
+    bool detayli,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '$backApiBaseUrl$malKabulOrderEndpoint?Db_Id=$dbId&siparisno=$siparisno&detayli=$detayli',
+        ),
+        headers: {'accept': '*/*', 'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(response.body);
+        return MalKabulOrderResponse.fromJson(jsonData);
+      } else {
+        throw Exception('Sipariş getirme hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  // Mal Kabul - Kaydet
+  static Future<MalKabulSaveResponse> saveMalKabul(
+    String token,
+    int dbId,
+    String tarih,
+    String refTip,
+    String refNo,
+    int efatSirket,
+    String efatDb,
+    List<Map<String, dynamic>> satirlar,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$backApiBaseUrl$malKabulSaveEndpoint'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'db_Id': dbId,
+          'Tarih': tarih,
+          'RefTip': refTip,
+          'RefNo': refNo,
+          'Efat_Sirket': efatSirket,
+          'Efat_Db': efatDb,
+          'Satirlar': satirlar,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(response.body);
+        return MalKabulSaveResponse.fromJson(jsonData);
+      } else {
+        throw Exception('Mal Kabul kaydetme hatası: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
