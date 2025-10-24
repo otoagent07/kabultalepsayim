@@ -473,7 +473,7 @@ class ApiService {
   }
 
   // Mal Kabul - Kaydet
-  static Future<MalKabulSaveResponse> saveMalKabul(
+  static Future<Map<String, dynamic>> saveMalKabul(
     String token,
     int dbId,
     String tarih,
@@ -504,7 +504,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = jsonDecode(response.body);
-        return MalKabulSaveResponse.fromJson(jsonData);
+        return jsonData;
       } else {
         throw Exception('Mal Kabul kaydetme hatası: ${response.statusCode}');
       }

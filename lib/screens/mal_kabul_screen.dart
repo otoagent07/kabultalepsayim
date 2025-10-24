@@ -1085,20 +1085,23 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
         // Log response details
         developer.log(
-          'isSucceded: ${response.isSucceded}',
+          'isSucceded: ${response['isSucceded']}',
           name: 'MAL_KABUL_RESPONSE',
         );
         developer.log(
-          'message: ${response.message}',
+          'message: ${response['message']}',
           name: 'MAL_KABUL_RESPONSE',
         );
         developer.log(
-          'messageList: ${response.messageList}',
+          'messageList: ${response['messageList']}',
           name: 'MAL_KABUL_RESPONSE',
         );
-        developer.log('value: ${response.value}', name: 'MAL_KABUL_RESPONSE');
+        developer.log(
+          'value: ${response['value']}',
+          name: 'MAL_KABUL_RESPONSE',
+        );
 
-        if (response.isSucceded) {
+        if (response['isSucceded'] == true) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1117,7 +1120,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(response.message ?? 'Bilinmeyen hata'),
+                content: Text(response['message'] ?? 'Bilinmeyen hata'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 5),
               ),
