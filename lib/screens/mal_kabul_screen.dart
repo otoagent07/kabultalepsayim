@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -756,53 +758,26 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }
 
   void _showQuantityDialog(MalKabulOrderItem item) {
-    final TextEditingController addQuantityController = TextEditingController();
-    final TextEditingController totalQuantityController = TextEditingController();
-    final FocusNode addQuantityFocusNode = FocusNode();
-    final FocusNode totalQuantityFocusNode = FocusNode();
-    bool isAddQuantityFocused = true;
+    final TextEditingController quantityController = TextEditingController();
+    final FocusNode quantityFocusNode = FocusNode();
 
-    // Focus listener'ları ekle
-    addQuantityFocusNode.addListener(() {
-      if (addQuantityFocusNode.hasFocus) {
-        isAddQuantityFocused = true;
-      }
-    });
-
-    totalQuantityFocusNode.addListener(() {
-      if (totalQuantityFocusNode.hasFocus) {
-        isAddQuantityFocused = false;
-      }
-    });
+    // Set initial value
+    quantityController.text = (_acceptedQuantities[item.stokkod] ?? item.miktar)
+        .toString();
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          final currentQuantity = _acceptedQuantities[item.stokkod] ?? item.miktar;
-          final addQuantity = double.tryParse(addQuantityController.text) ?? 0;
-          final totalQuantity = double.tryParse(totalQuantityController.text) ?? 0;
-
-          // Hesaplamalar
-          final calculatedTotal = currentQuantity + addQuantity;
-          final calculatedAdd = totalQuantity - currentQuantity;
-
-          // Görüntülenecek değerler
-          final displayTotal = isAddQuantityFocused
-              ? calculatedTotal
-              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
-          final displayAdd = isAddQuantityFocused ? addQuantity : calculatedAdd;
-
-          // Sonuç miktarı (kaydetme için)
-          final finalQuantity = isAddQuantityFocused
-              ? calculatedTotal
-              : (totalQuantity > 0 ? totalQuantity : currentQuantity);
+          final currentQuantity =
+              _acceptedQuantities[item.stokkod] ?? item.miktar;
+          final enteredQuantity = double.tryParse(quantityController.text) ?? 0;
 
           return AlertDialog(
             title: Text('Miktar Düzelt - ${item.stokkod}'),
             content: SizedBox(
               width: double.maxFinite,
-              height: MediaQuery.of(context).size.height * 0.7,
+              height: MediaQuery.of(context).size.height * 0.5,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -827,145 +802,34 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // İki input alanı yan yana
-                    Row(
-                      children: [
-                        // Eklenecek/Çıkarılacak miktar
-                        Expanded(
-                          child: TextField(
-                            controller: addQuantityController,
-                            focusNode: addQuantityFocusNode,
-                            readOnly: true,
-                            showCursor: true,
-                            enableInteractiveSelection: true,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isAddQuantityFocused
-                                  ? Colors.blue
-                                  : Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                            decoration: InputDecoration(
-                              labelText: 'Eklenecek/Çıkarılacak',
-                              hintText: 'Miktar girin',
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: isAddQuantityFocused
-                                      ? Colors.blue
-                                      : Colors.grey,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            onTap: () {
-                              setDialogState(() {
-                                isAddQuantityFocused = true;
-                                addQuantityFocusNode.requestFocus();
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Toplam miktar
-                        Expanded(
-                          child: TextField(
-                            controller: totalQuantityController,
-                            focusNode: totalQuantityFocusNode,
-                            readOnly: true,
-                            showCursor: true,
-                            enableInteractiveSelection: true,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: !isAddQuantityFocused
-                                  ? Colors.green
-                                  : Colors.grey,
-                            ),
-                            textAlign: TextAlign.center,
-                            decoration: InputDecoration(
-                              labelText: 'Toplam Miktar',
-                              hintText: 'Toplam girin',
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: !isAddQuantityFocused
-                                      ? Colors.green
-                                      : Colors.grey,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            onTap: () {
-                              setDialogState(() {
-                                isAddQuantityFocused = false;
-                                totalQuantityFocusNode.requestFocus();
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Sonuç gösterimi
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade200),
+                    // Miktar girişi
+                    TextField(
+                      controller: quantityController,
+                      focusNode: quantityFocusNode,
+                      readOnly: true,
+                      showCursor: true,
+                      enableInteractiveSelection: true,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
                       ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Sonuç: $displayTotal',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (displayAdd != 0 &&
-                              (isAddQuantityFocused
-                                  ? addQuantity > 0
-                                  : totalQuantity > 0)) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              displayAdd > 0
-                                  ? 'Eklenecek: +$displayAdd'
-                                  : 'Çıkarılacak: $displayAdd',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: displayAdd > 0
-                                    ? Colors.green
-                                    : Colors.red,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ],
+                      textAlign: TextAlign.center,
+                      decoration: const InputDecoration(
+                        labelText: 'Miktar',
+                        hintText: 'Miktar girin',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     // Sayısal klavye
-                    _buildNumericKeyboard(
-                      addQuantityController,
-                      totalQuantityController,
-                      isAddQuantityFocused,
+                    _buildSimpleNumericKeyboard(
+                      quantityController,
                       setDialogState,
                     ),
                   ],
@@ -991,15 +855,18 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   Expanded(
                     flex: 7,
                     child: ElevatedButton(
-                      onPressed: finalQuantity > 0
+                      onPressed: enteredQuantity > 0
                           ? () {
                               Navigator.pop(context);
                               setState(() {
-                                _acceptedQuantities[item.stokkod] = finalQuantity;
+                                _acceptedQuantities[item.stokkod] =
+                                    enteredQuantity;
                               });
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Miktar güncellendi: $finalQuantity'),
+                                  content: Text(
+                                    'Miktar güncellendi: $enteredQuantity',
+                                  ),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -1024,6 +891,103 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
   void _editQuantity(MalKabulOrderItem item) {
     _showQuantityDialog(item);
+  }
+
+  // Basit sayısal klavye
+  Widget _buildSimpleNumericKeyboard(
+    TextEditingController quantityController,
+    StateSetter setDialogState,
+  ) {
+    return Container(
+      width: 240,
+      child: Column(
+        children: [
+          // İlk satır: 1, 2, 3
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildSimpleNumberButton('1', quantityController, setDialogState),
+              _buildSimpleNumberButton('2', quantityController, setDialogState),
+              _buildSimpleNumberButton('3', quantityController, setDialogState),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // İkinci satır: 4, 5, 6
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildSimpleNumberButton('4', quantityController, setDialogState),
+              _buildSimpleNumberButton('5', quantityController, setDialogState),
+              _buildSimpleNumberButton('6', quantityController, setDialogState),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Üçüncü satır: 7, 8, 9
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildSimpleNumberButton('7', quantityController, setDialogState),
+              _buildSimpleNumberButton('8', quantityController, setDialogState),
+              _buildSimpleNumberButton('9', quantityController, setDialogState),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Dördüncü satır: Temizle, 0, Sil
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton('C', () {
+                quantityController.text = '';
+                quantityController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: quantityController.text.length),
+                );
+                setDialogState(() {});
+              }),
+              _buildSimpleNumberButton('0', quantityController, setDialogState),
+              _buildActionButton('⌫', () {
+                if (quantityController.text.isNotEmpty) {
+                  quantityController.text = quantityController.text.substring(
+                    0,
+                    quantityController.text.length - 1,
+                  );
+                }
+                quantityController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: quantityController.text.length),
+                );
+                setDialogState(() {});
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleNumberButton(
+    String number,
+    TextEditingController quantityController,
+    StateSetter setDialogState,
+  ) {
+    return SizedBox(
+      width: 60,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          quantityController.text += number;
+          quantityController.selection = TextSelection.fromPosition(
+            TextPosition(offset: quantityController.text.length),
+          );
+          setDialogState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          number,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveMalKabul() async {
@@ -1058,9 +1022,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final acceptedQuantity =
               _acceptedQuantities[item.stokkod] ?? item.miktar;
 
+          print(
+            'Processing item: ID=${item.id}, Stokkod=${item.stokkod}, Miktar=$acceptedQuantity',
+          );
+
           satirlar.add({
             'Id': 0,
-            'EfatId': item.id,
+            'EfatId': item.id, // This should be the correct ID from the order
             'Sira': 0,
             'UrunAdi': 'Ürün ${item.stokkod}',
             'Firma': 'Tedarikçi',
@@ -1081,6 +1049,29 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           });
         }
 
+        final requestBody = {
+          'db_Id': databaseProvider.selectedDatabase!.id,
+          'Tarih': dateStr,
+          'RefTip': 'S',
+          'RefNo': refNo,
+          'Efat_Sirket': 1,
+          'Efat_Db': '10001_Rmos_E',
+          'Satirlar': satirlar,
+        };
+
+        // Log request details
+        print('=== MAL KABUL REQUEST ===');
+        print('URL: https://backapi.rmosweb.com/api/MalKabul/Insert');
+        print(
+          'Headers: {"accept": "*/*", "Authorization": "Bearer $token", "Content-Type": "application/json"}',
+        );
+
+        // Log complete JSON request body
+        const encoder = JsonEncoder.withIndent('  ');
+        final jsonString = encoder.convert(requestBody);
+        developer.log(jsonString, name: 'MAL_KABUL_REQUEST_JSON');
+        print('========================');
+
         final response = await ApiService.saveMalKabul(
           token,
           databaseProvider.selectedDatabase!.id,
@@ -1091,6 +1082,21 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           '10001_Rmos_E',
           satirlar,
         );
+
+        // Log response details
+        developer.log(
+          'isSucceded: ${response.isSucceded}',
+          name: 'MAL_KABUL_RESPONSE',
+        );
+        developer.log(
+          'message: ${response.message}',
+          name: 'MAL_KABUL_RESPONSE',
+        );
+        developer.log(
+          'messageList: ${response.messageList}',
+          name: 'MAL_KABUL_RESPONSE',
+        );
+        developer.log('value: ${response.value}', name: 'MAL_KABUL_RESPONSE');
 
         if (response.isSucceded) {
           if (mounted) {
@@ -1111,16 +1117,19 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  'Kaydetme hatası: ${response.message ?? 'Bilinmeyen hata'}',
-                ),
+                content: Text(response.message ?? 'Bilinmeyen hata'),
                 backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
               ),
             );
           }
         }
       }
     } catch (e) {
+      print('=== MAL KABUL ERROR ===');
+      print('Error: $e');
+      print('=======================');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
