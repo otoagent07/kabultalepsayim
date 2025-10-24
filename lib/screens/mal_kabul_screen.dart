@@ -100,6 +100,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             }
           });
 
+          // Log the IDs from the fetched order
+          print('=== FETCHED ORDER ITEMS ===');
+          for (var item in _orderItems) {
+            print('ID: ${item.id}, Stokkod: ${item.stokkod}');
+          }
+          print('==========================');
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1025,9 +1032,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           print(
             'Processing item: ID=${item.id}, Stokkod=${item.stokkod}, Miktar=$acceptedQuantity',
           );
+          print('EfatId will be set to: ${item.id}');
 
           satirlar.add({
-            'Id': 0,
+            'Id': item.id, // ID from the fetched order
             'EfatId': item.id, // This should be the correct ID from the order
             'Sira': 0,
             'UrunAdi': 'Ürün ${item.stokkod}',
@@ -1071,6 +1079,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         final jsonString = encoder.convert(requestBody);
         developer.log(jsonString, name: 'MAL_KABUL_REQUEST_JSON');
         print('========================');
+
+        // Log EfatId values being sent
+        print('=== EFAT IDS BEING SENT ===');
+        for (var satir in satirlar) {
+          print('EfatId: ${satir['EfatId']}, Stokkod: ${satir['UrunAdi']}');
+        }
+        print('===========================');
 
         final response = await ApiService.saveMalKabul(
           token,

@@ -505,6 +505,12 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = jsonDecode(response.body);
         return jsonData;
+      } else if (response.statusCode == 400) {
+        final Map<String, dynamic> errorData = jsonDecode(response.body);
+        throw Exception(
+          errorData['message'] ??
+              'Mal Kabul kaydetme hatası: ${response.statusCode}',
+        );
       } else {
         throw Exception('Mal Kabul kaydetme hatası: ${response.statusCode}');
       }
