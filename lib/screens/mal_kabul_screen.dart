@@ -1032,11 +1032,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           print(
             'Processing item: ID=${item.id}, Stokkod=${item.stokkod}, Miktar=$acceptedQuantity',
           );
-          print('EfatId will be set to: ${item.id}');
+          print('EfatId will be set to: 0');
 
           satirlar.add({
             'Id': item.id, // ID from the fetched order
-            'EfatId': item.id, // This should be the correct ID from the order
+            'EfatId': 0, // Always 0
             'Sira': 0,
             'UrunAdi': 'Ürün ${item.stokkod}',
             'Firma': 'Tedarikçi',
@@ -1363,6 +1363,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Text('ID: ${item.id}'),
                               Text('Sipariş: ${item.miktar} ${item.birim}'),
                               Text('Kabul: $acceptedQuantity ${item.birim}'),
                               Text('Fiyat: ${item.seciliFiyat} TL'),
