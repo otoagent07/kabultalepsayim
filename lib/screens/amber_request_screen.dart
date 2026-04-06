@@ -1657,6 +1657,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 80,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).maybePop(),
@@ -1710,22 +1711,49 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         ),
         actions: [
           // Kamera ile barkod okuma butonu
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: _scanBarcode,
-            tooltip: 'Kamera ile Tara',
+          Card(
+            margin: const EdgeInsets.only(left: 5, right: 5),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              iconSize: 48,
+              onPressed: _scanBarcode,
+              tooltip: 'Kamera ile Tara',
+            ),
           ),
           // Manuel barkod ekleme butonu
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _showProductSelectionDialog,
-            tooltip: 'Ürün Seçiniz',
+          Card(
+            margin: const EdgeInsets.only(left: 5, right: 8),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              icon: const Icon(Icons.add),
+              iconSize: 48,
+              onPressed: _showProductSelectionDialog,
+              tooltip: 'Ürün Seçiniz',
+            ),
           ),
           // Refresh butonu
-          IconButton(
-            onPressed: _showRefreshConfirmation,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Ekranı Temizle',
+          Card(
+            margin: const EdgeInsets.only(left: 5, right: 8),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              onPressed: _showRefreshConfirmation,
+              icon: const Icon(Icons.refresh),
+              iconSize: 48,
+              tooltip: 'Ekranı Temizle',
+            ),
           ),
         ],
       ),
