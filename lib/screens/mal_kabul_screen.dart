@@ -1393,7 +1393,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     final scaledFontSize =
                         (Theme.of(context).textTheme.bodyMedium?.fontSize ??
                             14) *
-                        2;
+                        1.5;
 
                     final orderField = TextField(
                       controller: _orderNumberController,
@@ -1426,25 +1426,20 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                               height: 40,
                               child: CircularProgressIndicator(strokeWidth: 3),
                             )
-                          : const Text('Sipariş Getir'),
+                          : const Text('LİSTELE'),
                     );
-
-                    // Dar ekranlarda Row overflow olmasın.
-                    if (constraints.maxWidth < 520) {
-                      return Column(
-                        children: [
-                          orderField,
-                          const SizedBox(height: 12),
-                          SizedBox(width: double.infinity, child: orderButton),
-                        ],
-                      );
-                    }
 
                     return Row(
                       children: [
                         Expanded(child: orderField),
                         const SizedBox(width: 8),
-                        orderButton,
+                        SizedBox(
+                          width:
+                              constraints.maxWidth < 520
+                                  ? (constraints.maxWidth * 0.35)
+                                  : null,
+                          child: orderButton,
+                        ),
                       ],
                     );
                   },
