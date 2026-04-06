@@ -192,17 +192,50 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
                             const SizedBox(height: 32),
-                            ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 40,
-                                      width: 40,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 4,
-                                      ),
-                                    )
-                                  : const Text('Giriş Yap'),
+                            SizedBox(
+                              height: 64,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.blue,
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _isLoading ? null : _login,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Center(
+                                      child: _isLoading
+                                          ? const SizedBox(
+                                              height: 40,
+                                              width: 40,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 4,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(Colors.white),
+                                              ),
+                                            )
+                                          : const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'Giriş Yap',
+                                                  style: TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 12),
+                                                Icon(Icons.login, size: 28),
+                                              ],
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 24),
                             SizedBox(
