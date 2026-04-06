@@ -386,7 +386,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ElevatedButton(
+                        ElevatedButton.icon(
                           onPressed: () => Navigator.pop(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
@@ -398,10 +398,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             minimumSize: const Size.fromHeight(56),
                             textStyle: actionTextStyle,
                           ),
-                          child: const Text('İptal'),
+                          icon: Icon(Icons.close, size: actionFontSize * 1.15),
+                          label: const Text('İptal'),
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton(
+                        ElevatedButton.icon(
                           onPressed:
                               (barcodeInputController.text.trim().isNotEmpty &&
                                   quantityController.text.trim().isNotEmpty)
@@ -429,7 +430,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             minimumSize: const Size.fromHeight(56),
                             textStyle: actionTextStyle,
                           ),
-                          child: const Text('Kaydet'),
+                          icon: Icon(Icons.save, size: actionFontSize * 1.15),
+                          label: const Text('Kaydet'),
                         ),
                       ],
                     ),
