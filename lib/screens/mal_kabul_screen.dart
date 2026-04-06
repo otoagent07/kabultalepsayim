@@ -1243,69 +1243,61 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         toolbarHeight: 80,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
+          iconSize: 28,
           onPressed: () => Navigator.pop(context),
           tooltip: 'Geri',
         ),
-        actions: [
-          // Geri butonu
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-            tooltip: 'Geri',
+        titleSpacing: 8,
+        title: Card(
+          margin: const EdgeInsets.only(right: 4),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          // Lazer okuyucu TextField
-          Expanded(
-            child: Card(
-              margin: const EdgeInsets.only(right: 5, left: 5),
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _manualBarcodeController,
-                focusNode: _barcodeFocusNode,
-                keyboardType: TextInputType.none,
-                textInputAction: TextInputAction.none,
-                enableInteractiveSelection: false,
-                showCursor: false,
-                readOnly: false,
-                decoration: const InputDecoration(
-                  hintText: 'Barkod okutun...',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                onChanged: (value) {
-                  // Lazer okuyucu verisi kontrolü
-                  print('TextField değişti: $value');
-
-                  if (value.endsWith('\n')) {
-                    final barcode = value.replaceAll('\n', '').trim();
-                    if (barcode.isNotEmpty) {
-                      print('Lazer okuyucu barkod tespit edildi: $barcode');
-                      _processBarcode(barcode);
-                      _manualBarcodeController.clear();
-                      // Odaklanmayı koru
-                      _barcodeFocusNode.requestFocus();
-                    }
-                  }
-                },
-                onSubmitted: (value) {
-                  // Enter tuşu işleme
-                  if (value.isNotEmpty) {
-                    print('Manuel giriş barkod: $value');
-                    _processBarcode(value);
-                    _manualBarcodeController.clear();
-                    // Odaklanmayı koru
-                    _barcodeFocusNode.requestFocus();
-                  }
-                },
+          child: TextField(
+            controller: _manualBarcodeController,
+            focusNode: _barcodeFocusNode,
+            keyboardType: TextInputType.none,
+            textInputAction: TextInputAction.none,
+            enableInteractiveSelection: false,
+            showCursor: false,
+            readOnly: false,
+            decoration: const InputDecoration(
+              hintText: 'Barkod okutun...',
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
             ),
-          ),
+            onChanged: (value) {
+              // Lazer okuyucu verisi kontrolü
+              print('TextField değişti: $value');
 
+              if (value.endsWith('\n')) {
+                final barcode = value.replaceAll('\n', '').trim();
+                if (barcode.isNotEmpty) {
+                  print('Lazer okuyucu barkod tespit edildi: $barcode');
+                  _processBarcode(barcode);
+                  _manualBarcodeController.clear();
+                  // Odaklanmayı koru
+                  _barcodeFocusNode.requestFocus();
+                }
+              }
+            },
+            onSubmitted: (value) {
+              // Enter tuşu işleme
+              if (value.isNotEmpty) {
+                print('Manuel giriş barkod: $value');
+                _processBarcode(value);
+                _manualBarcodeController.clear();
+                // Odaklanmayı koru
+                _barcodeFocusNode.requestFocus();
+              }
+            },
+          ),
+        ),
+        actions: [
           // Kamera ile barkod okuma butonu
           Card(
             margin: const EdgeInsets.only(left: 5, right: 5),
