@@ -1293,60 +1293,86 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               ),
             ),
             actions: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('İptal'),
-                    ),
-                  ),
-                  const SizedBox(width: 30),
-                  Expanded(
-                    flex: 7,
-                    child: ElevatedButton(
-                      onPressed: isValidQuantity
-                          ? () {
+              Builder(
+                builder: (dialogContext) {
+                  final actionFontSize =
+                      (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
+                              14) *
+                          2;
+                  final actionTextStyle = TextStyle(
+                    fontSize: actionFontSize,
+                    inherit: true,
+                  );
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 24,
+                            ),
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon: Icon(Icons.close, size: actionFontSize * 1.15),
+                          label: const Text('İptal'),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            if (isValidQuantity) {
                               _updateTalepItemQuantity(index, miktar);
                               Navigator.pop(context);
+                              return;
                             }
-                          : () {
-                              // Uyarı göster
-                              String message;
-                              if (isEmpty) {
-                                message = 'Lütfen miktar giriniz';
-                              } else if (miktar <= 0) {
-                                message = 'Miktar 0\'dan büyük olmalıdır';
-                              } else {
-                                message =
-                                    'Miktar maksimum ${item.kalanMiktar.toInt()} olabilir';
-                              }
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(message),
-                                  backgroundColor: Colors.red,
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isValidQuantity
-                            ? Colors.green
-                            : Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text(isValidQuantity ? 'Kaydet' : 'Uyar'),
+                            String message;
+                            if (isEmpty) {
+                              message = 'Lütfen miktar giriniz';
+                            } else if (miktar <= 0) {
+                              message = 'Miktar 0\'dan büyük olmalıdır';
+                            } else {
+                              message =
+                                  'Miktar maksimum ${item.kalanMiktar.toInt()} olabilir';
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(message),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isValidQuantity ? Colors.green : Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 24,
+                            ),
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon: Icon(
+                            isValidQuantity ? Icons.save : Icons.warning,
+                            size: actionFontSize * 1.15,
+                          ),
+                          label: Text(isValidQuantity ? 'Kaydet' : 'Uyar'),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ],
           );

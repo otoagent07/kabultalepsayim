@@ -788,49 +788,72 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               ),
             ),
             actions: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('İptal'),
+              Builder(
+                builder: (dialogContext) {
+                  final actionFontSize =
+                      (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
+                              14) *
+                          2;
+                  final actionTextStyle = TextStyle(
+                    fontSize: actionFontSize,
+                    inherit: true,
+                  );
+
+                  final canSave = barcodeInputController.text.trim().isNotEmpty &&
+                      finalQuantity > 0;
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 24,
+                            ),
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon: Icon(Icons.close, size: actionFontSize * 1.15),
+                          label: const Text('İptal'),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: canSave
+                              ? () async {
+                                  final barcode =
+                                      barcodeInputController.text.trim();
+                                  Navigator.pop(context);
+                                  await _processManualBarcode(
+                                    barcode,
+                                    finalQuantity,
+                                  );
+                                  _barcodeFocusNode.requestFocus();
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 24,
+                            ),
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon: Icon(Icons.save, size: actionFontSize * 1.15),
+                          label: const Text('Kaydet'),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 30),
-                  Expanded(
-                    flex: 7,
-                    child: ElevatedButton(
-                      onPressed:
-                          (barcodeInputController.text.trim().isNotEmpty &&
-                              finalQuantity > 0)
-                          ? () async {
-                              final barcode = barcodeInputController.text
-                                  .trim();
-                              Navigator.pop(context);
-                              // Barkodu işle
-                              await _processManualBarcode(
-                                barcode,
-                                finalQuantity,
-                              );
-                              // Odaklanmayı koru
-                              _barcodeFocusNode.requestFocus();
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Kaydet'),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ],
           );

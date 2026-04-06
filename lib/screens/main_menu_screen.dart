@@ -20,52 +20,42 @@ class MainMenuScreen extends StatelessWidget {
         data: const IconThemeData(size: 48),
         child: Builder(
           builder: (themedContext) {
-            void goBack() => Navigator.of(themedContext).maybePop();
-
-            return PopScope(
-              canPop: false,
-              onPopInvokedWithResult: (bool didPop, dynamic result) {
-                if (didPop) return;
-                goBack();
-              },
-              child: Scaffold(
-                appBar: AppBar(
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    iconSize: 28,
-                    onPressed: goBack,
-                  ),
-                  title: Text('Ana Menü'),
-                  actions: [
-                    Consumer<ThemeProvider>(
-                      builder: (context, themeProvider, child) {
-                        return IconButton(
-                          icon: Icon(
-                            themeProvider.isDarkMode
-                                ? Icons.light_mode
-                                : Icons.dark_mode,
-                          ),
-                          iconSize: 28,
-                          onPressed: () => themeProvider.toggleTheme(),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.logout),
-                      iconSize: 28,
-                      onPressed: () {
-                        Provider.of<SelectedDatabaseProvider>(
-                          themedContext,
-                          listen: false,
-                        ).clearSelection();
-                        Navigator.of(
-                          themedContext,
-                        ).pushReplacementNamed('/login');
-                      },
-                    ),
-                  ],
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  iconSize: 28,
+                  onPressed: () => Navigator.of(themedContext).pop(),
                 ),
-                body: SafeArea(
+                title: Text('Ana Menü'),
+                actions: [
+                  Consumer<ThemeProvider>(
+                    builder: (context, themeProvider, child) {
+                      return IconButton(
+                        icon: Icon(
+                          themeProvider.isDarkMode
+                              ? Icons.light_mode
+                              : Icons.dark_mode,
+                        ),
+                        iconSize: 28,
+                        onPressed: () => themeProvider.toggleTheme(),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    iconSize: 28,
+                    onPressed: () {
+                      Provider.of<SelectedDatabaseProvider>(
+                        themedContext,
+                        listen: false,
+                      ).clearSelection();
+                      Navigator.of(themedContext).pushReplacementNamed('/login');
+                    },
+                  ),
+                ],
+              ),
+              body: SafeArea(
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(32.0),
@@ -204,7 +194,6 @@ class MainMenuScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
               ),
             );
           },
