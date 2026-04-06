@@ -2050,7 +2050,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                 showCursor: false,
                 readOnly: false,
                 decoration: const InputDecoration(
-                  hintText: 'Lazer ile barkod okutun...',
+                  hintText: 'Barkod okutun...',
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,

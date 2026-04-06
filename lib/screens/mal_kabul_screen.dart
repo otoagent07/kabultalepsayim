@@ -1208,6 +1208,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 80,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -1237,7 +1238,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 showCursor: false,
                 readOnly: false,
                 decoration: const InputDecoration(
-                  hintText: 'Lazer ile barkod okutun...',
+                  hintText: 'Barkod okutun...',
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1274,16 +1275,34 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           ),
 
           // Kamera ile barkod okuma butonu
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: _scanBarcode,
-            tooltip: 'Kamera ile Tara',
+          Card(
+            margin: const EdgeInsets.only(left: 5, right: 5),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              iconSize: 48,
+              onPressed: _scanBarcode,
+              tooltip: 'Kamera ile Tara',
+            ),
           ),
           // Manuel barkod ekleme butonu
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _showManualBarcodeDialog,
-            tooltip: 'Manuel Barkod Ekle',
+          Card(
+            margin: const EdgeInsets.only(left: 5, right: 8),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              icon: const Icon(Icons.add),
+              iconSize: 48,
+              onPressed: _showManualBarcodeDialog,
+              tooltip: 'Manuel Barkod Ekle',
+            ),
           ),
         ],
       ),
