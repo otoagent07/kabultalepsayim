@@ -161,10 +161,25 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               children: [
                 Text(
                   'Tarih Seçin',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontSize: (Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.fontSize ??
+                                22) *
+                            2,
+                      ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    textStyle: TextStyle(
+                      fontSize:
+                          (Theme.of(context).textTheme.bodyMedium?.fontSize ??
+                                  14) *
+                              2,
+                    ),
+                  ),
                   child: const Text('Tamam'),
                 ),
               ],
@@ -1272,8 +1287,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         onTap: _selectDate,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                            horizontal: 32,
+                            vertical: 24,
                           ),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
@@ -1281,11 +1296,22 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.calendar_today, size: 20),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.calendar_today, size: 40),
+                              const SizedBox(width: 16),
                               Text(
                                 DateFormat('dd.MM.yyyy').format(_selectedDate),
-                                style: Theme.of(context).textTheme.bodyMedium,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      fontSize:
+                                          (Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.fontSize ??
+                                                  14) *
+                                              2,
+                                    ),
                               ),
                             ],
                           ),
@@ -1296,31 +1322,69 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 ),
                 const SizedBox(height: 16),
                 // Order number input
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _orderNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'Sipariş No',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.receipt_long),
-                        ),
-                        keyboardType: TextInputType.number,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final scaledFontSize =
+                        (Theme.of(context).textTheme.bodyMedium?.fontSize ??
+                                14) *
+                            2;
+
+                    final orderField = TextField(
+                      controller: _orderNumberController,
+                      style: TextStyle(fontSize: scaledFontSize),
+                      decoration: InputDecoration(
+                        labelText: 'Sipariş No',
+                        labelStyle: TextStyle(fontSize: scaledFontSize),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.receipt_long, size: 40),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
+                      keyboardType: TextInputType.number,
+                    );
+
+                    final orderButton = ElevatedButton(
                       onPressed: _isLoadingOrder ? null : _loadOrder,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
+                        minimumSize: const Size(0, 56),
+                        textStyle: TextStyle(
+                          fontSize: scaledFontSize,
+                          inherit: true,
+                        ),
+                      ),
                       child: _isLoadingOrder
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              width: 40,
+                              height: 40,
+                              child: CircularProgressIndicator(strokeWidth: 3),
                             )
                           : const Text('Sipariş Getir'),
-                    ),
-                  ],
+                    );
+
+                    // Dar ekranlarda Row overflow olmasın.
+                    if (constraints.maxWidth < 520) {
+                      return Column(
+                        children: [
+                          orderField,
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: orderButton,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: orderField),
+                        const SizedBox(width: 8),
+                        orderButton,
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
