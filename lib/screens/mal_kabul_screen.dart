@@ -373,7 +373,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   final actionFontSize =
                       (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
                           14) *
-                      2;
+                      1.5;
                   final actionTextStyle = TextStyle(
                     fontSize: actionFontSize,
                     inherit: true,
@@ -390,16 +390,16 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 24,
-                              horizontal: 24,
+                              vertical: 18,
+                              horizontal: 18,
                             ),
-                            minimumSize: const Size.fromHeight(56),
+                            minimumSize: const Size.fromHeight(48),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed:
                               (barcodeInputController.text.trim().isNotEmpty &&
@@ -424,10 +424,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 24,
-                              horizontal: 24,
+                              vertical: 18,
+                              horizontal: 18,
                             ),
-                            minimumSize: const Size.fromHeight(56),
+                            minimumSize: const Size.fromHeight(48),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.save, size: actionFontSize * 1.15),
@@ -884,50 +884,74 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               ),
             ),
             actions: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('İptal'),
+              Builder(
+                builder: (dialogContext) {
+                  final actionFontSize =
+                      (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
+                              14) *
+                          1.5;
+                  final actionTextStyle = TextStyle(
+                    fontSize: actionFontSize,
+                    inherit: true,
+                  );
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                              horizontal: 18,
+                            ),
+                            minimumSize: const Size.fromHeight(48),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon: Icon(Icons.close, size: actionFontSize * 1.15),
+                          label: const Text('İptal'),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: enteredQuantity > 0
+                              ? () {
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    _acceptedQuantities[item.stokkod] =
+                                        enteredQuantity;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Miktar güncellendi: $enteredQuantity',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                              horizontal: 18,
+                            ),
+                            minimumSize: const Size.fromHeight(48),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon: Icon(Icons.save, size: actionFontSize * 1.15),
+                          label: const Text('Kaydet'),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 30),
-                  Expanded(
-                    flex: 7,
-                    child: ElevatedButton(
-                      onPressed: enteredQuantity > 0
-                          ? () {
-                              Navigator.pop(context);
-                              setState(() {
-                                _acceptedQuantities[item.stokkod] =
-                                    enteredQuantity;
-                              });
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Miktar güncellendi: $enteredQuantity',
-                                  ),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Kaydet'),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ],
           );
