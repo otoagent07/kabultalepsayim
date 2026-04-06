@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -14,19 +13,23 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class BarcodeInventoryScreen extends StatefulWidget {
-  const BarcodeInventoryScreen({super.key});
+  const BarcodeInventoryScreen({
+    super.key,
+    required this.selectedDate,
+    required this.selectedDepartment,
+  });
+
+  final DateTime selectedDate;
+  final Department selectedDepartment;
 
   @override
   State<BarcodeInventoryScreen> createState() => _BarcodeInventoryScreenState();
 }
 
 class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
-  DateTime _selectedDate = DateTime.now();
-  Department? _selectedDepartment;
-  // Sabit tip - S (Stok)
-  List<Department> _departments = [];
+  late DateTime _selectedDate;
+  late Department _selectedDepartment;
   List<SayimItem> _sayimItems = [];
-  bool _isLoadingDepartments = false;
   bool _isLoadingSayim = false;
   final Map<String, int> _countedItems = {};
   final TextEditingController _manualBarcodeController =
@@ -41,6 +44,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   void initState() {
     super.initState();
     _quantityController.text = '1';
+    _selectedDate = widget.selectedDate;
+    _selectedDepartment = widget.selectedDepartment;
 
     // Klavye açılmasını engelle
     _barcodeFocusNode.addListener(() {
@@ -53,7 +58,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     // Lazer okuyucu için odaklanma
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _barcodeFocusNode.requestFocus();
-      _loadDepartments();
+      _loadInventory();
     });
   }
 
@@ -65,259 +70,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     super.dispose();
   }
 
-  Future<void> _loadDepartments() async {
-    setState(() {
-      _isLoadingDepartments = true;
-    });
+  // Departman seçimi artık seçim ekranında yapılıyor.
 
-    try {
-      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
-        context,
-        listen: false,
-      );
-      final token = await StorageService.getToken();
-
-      if (databaseProvider.selectedDatabase != null && token != null) {
-        final response = await ApiService.getDepartments(
-          token,
-          databaseProvider.selectedDatabase!.id,
-        );
-
-        if (response.isSucceded) {
-          setState(() {
-            _departments = response.value;
-            if (response.value.isNotEmpty) {
-              _selectedDepartment = response.value.first;
-            }
-          });
-          // Departman seçildikten sonra otomatik listele
-          if (response.value.isNotEmpty) {
-            _loadInventory();
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Departman listesi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Departman yükleme hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-
-    setState(() {
-      _isLoadingDepartments = false;
-    });
-  }
-
-  void _selectDate() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-      ),
-      builder: (BuildContext context) => Container(
-        height: 300,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Header with title and done button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tarih Seçin',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    // Tarih değiştiğinde otomatik listele
-                    _loadInventory();
-                  },
-                  child: const Text('Tamam'),
-                ),
-              ],
-            ),
-            const Divider(),
-            // Date picker
-            Expanded(
-              child: CupertinoDatePicker(
-                initialDateTime: _selectedDate,
-                mode: CupertinoDatePickerMode.date,
-                use24hFormat: true,
-                showDayOfWeek: true,
-                onDateTimeChanged: (DateTime newDate) {
-                  setState(() {
-                    _selectedDate = newDate;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _selectDepartment() {
-    if (_departments.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Departman listesi yükleniyor...'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Departman Seçin',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade100,
-                    shape: const CircleBorder(),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: _departments
-                      .map(
-                        (dept) => Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedDepartment = dept;
-                              });
-                              Navigator.pop(context);
-                              // Departman değiştiğinde otomatik listele
-                              _loadInventory();
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: _selectedDepartment?.id == dept.id
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.grey.shade300,
-                                  width: 1,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                                color: _selectedDepartment?.id == dept.id
-                                    ? Theme.of(context).colorScheme.primary
-                                          .withValues(alpha: 0.1)
-                                    : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  Radio<Department>(
-                                    value: dept,
-                                    groupValue: _selectedDepartment,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedDepartment = value!;
-                                      });
-                                      Navigator.pop(context);
-                                      // Departman değiştiğinde otomatik listele
-                                      _loadInventory();
-                                    },
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          dept.ad,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                        ),
-                                        Text(
-                                          'Kod: ${dept.kod}',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: Colors.grey.shade600,
-                                                fontSize: 12,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Tarih seçimi artık seçim ekranında yapılıyor.
 
   Future<void> _loadInventory() async {
-    if (_selectedDepartment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen önce departman seçiniz'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isLoadingSayim = true;
     });
@@ -337,7 +94,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           token,
           databaseProvider.selectedDatabase!.id,
           tarih,
-          _selectedDepartment!.kod,
+          _selectedDepartment.kod,
         );
 
         if (response.isSucceded) {
@@ -422,7 +179,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               selectedDatabase.id,
               _sayimItems[existingItemIndex].sayimId,
               DateFormat('yyyy-MM-dd').format(_selectedDate),
-              _selectedDepartment?.kod ?? '',
+              _selectedDepartment.kod,
               barkodItem.masterGenelKod,
               barkodItem.barkod,
               barkodItem.masterAltbirim,
@@ -458,7 +215,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               selectedDatabase.id,
               0, // Yeni ürün için 0
               DateFormat('yyyy-MM-dd').format(_selectedDate),
-              _selectedDepartment?.kod ?? '',
+              _selectedDepartment.kod,
               barkodItem.masterGenelKod,
               barkodItem.barkod,
               barkodItem.masterAltbirim,
@@ -469,13 +226,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               final newItem = SayimItem(
                 sayimId: 0, // Yeni ürün için 0
                 sayimTarih: DateFormat('yyyy-MM-dd').format(_selectedDate),
-                sayimDepartman: _selectedDepartment?.kod ?? '',
+                sayimDepartman: _selectedDepartment.kod,
                 sayimStokkod: barkodItem.masterGenelKod,
                 sayimBarkod: barkodItem.barkod,
                 sayimAltbirim: barkodItem.masterAltbirim,
                 sayimMiktar: 1,
                 sayimTipi: 'S',
-                depAd: _selectedDepartment?.ad ?? '',
+                depAd: _selectedDepartment.ad,
                 masterAd: barkodItem.masterAd,
                 sayimOrtalama: 0,
                 sayimTutar: 0,
@@ -547,7 +304,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           selectedDatabase.id,
           existingItemByBarcode.sayimId,
           DateFormat('yyyy-MM-dd').format(_selectedDate),
-          _selectedDepartment?.kod ?? '',
+          _selectedDepartment.kod,
           existingItemByBarcode.sayimStokkod,
           existingItemByBarcode.sayimBarkod,
           existingItemByBarcode.sayimAltbirim,
@@ -628,7 +385,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               selectedDatabase.id,
               _sayimItems[existingItemIndex].sayimId,
               DateFormat('yyyy-MM-dd').format(_selectedDate),
-              _selectedDepartment?.kod ?? '',
+              _selectedDepartment.kod,
               barkodItem.masterGenelKod,
               barkodItem.barkod,
               barkodItem.masterAltbirim,
@@ -666,7 +423,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               selectedDatabase.id,
               0, // Yeni ürün için 0
               DateFormat('yyyy-MM-dd').format(_selectedDate),
-              _selectedDepartment?.kod ?? '',
+              _selectedDepartment.kod,
               barkodItem.masterGenelKod,
               barkodItem.barkod,
               barkodItem.masterAltbirim,
@@ -677,13 +434,13 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
               final newItem = SayimItem(
                 sayimId: 0, // Yeni ürün için 0
                 sayimTarih: DateFormat('yyyy-MM-dd').format(_selectedDate),
-                sayimDepartman: _selectedDepartment?.kod ?? '',
+                sayimDepartman: _selectedDepartment.kod,
                 sayimStokkod: barkodItem.masterGenelKod,
                 sayimBarkod: barkodItem.barkod,
                 sayimAltbirim: barkodItem.masterAltbirim,
                 sayimMiktar: quantity.toDouble(),
                 sayimTipi: 'S',
-                depAd: _selectedDepartment?.ad ?? '',
+                depAd: _selectedDepartment.ad,
                 masterAd: barkodItem.masterAd,
                 sayimOrtalama: 0,
                 sayimTutar: 0,
@@ -1947,7 +1704,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         selectedDatabase.id,
         item.sayimId,
         DateFormat('yyyy-MM-dd').format(_selectedDate),
-        _selectedDepartment?.kod ?? '',
+        _selectedDepartment.kod,
         item.sayimStokkod,
         item.sayimBarkod,
         item.sayimAltbirim,
@@ -2236,112 +1993,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     );
   }
 
-  Widget _buildSelectionCardsWidget() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          // Date Selection
-          Expanded(
-            child: Card(
-              child: InkWell(
-                onTap: _selectDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Tarih Seçiniz',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      const Icon(Icons.calendar_today, size: 24),
-                      const SizedBox(height: 8),
-                      Text(
-                        DateFormat(
-                          'dd MMMM yyyy',
-                          'tr_TR',
-                        ).format(_selectedDate),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Department Selection
-          Expanded(
-            child: Card(
-              child: InkWell(
-                onTap: _selectDepartment,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Departman Seçiniz',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      _isLoadingDepartments
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.business, size: 24),
-                      const SizedBox(height: 8),
-                      Text(
-                        _selectedDepartment?.ad ?? 'Yükleniyor...',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (_selectedDepartment?.kod != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Kod: ${_selectedDepartment!.kod}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey.shade600),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Tarih + departman seçimi artık seçim ekranında yapılıyor.
 
   Widget _buildMainWidget() {
     return Scaffold(
@@ -2438,7 +2090,15 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
       body: Column(
         children: [
-          _buildSelectionCardsWidget(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              '${DateFormat('dd.MM.yyyy').format(_selectedDate)} · Dep: ${_selectedDepartment.kod} · ${_selectedDepartment.ad}',
+              style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           _buildListButtonWidget(),
           _buildInventoryListWidget(),
         ],

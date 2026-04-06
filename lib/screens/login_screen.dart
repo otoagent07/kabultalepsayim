@@ -122,8 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Transform.translate(
                               offset: const Offset(-10, 0),
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Text(
                                     'Rmos Sayım',
@@ -152,6 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 48),
                             TextFormField(
                               controller: _usernameController,
+                              style: const TextStyle(fontSize: 18),
                               decoration: const InputDecoration(
                                 labelText: 'Kullanıcı Adı',
                                 prefixIcon: Icon(Icons.person),
@@ -166,6 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _passwordController,
+                              style: const TextStyle(fontSize: 18),
                               decoration: InputDecoration(
                                 labelText: 'Şifre',
                                 prefixIcon: const Icon(Icons.lock),
@@ -177,8 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   onPressed: () {
                                     setState(() {
-                                      _isPasswordVisible =
-                                          !_isPasswordVisible;
+                                      _isPasswordVisible = !_isPasswordVisible;
                                     });
                                   },
                                 ),
@@ -207,9 +207,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 24),
                             SizedBox(
                               height:
-                                  MediaQuery.of(themedContext)
-                                      .viewInsets
-                                      .bottom +
+                                  MediaQuery.of(
+                                    themedContext,
+                                  ).viewInsets.bottom +
                                   50,
                             ),
                           ],
