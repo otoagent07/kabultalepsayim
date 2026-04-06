@@ -35,6 +35,39 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     skipTraversal: true,
   );
 
+  Widget _infoChip({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: Colors.black),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: color.withValues(alpha: 0.95),
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1308,10 +1341,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 // Order number input
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final scaledFontSize =
+                    final baseFs =
                         (Theme.of(context).textTheme.bodyMedium?.fontSize ??
-                            14) *
-                        1.5;
+                            14);
+                    final scaledFontSize =
+                        (constraints.maxWidth < 520 ? baseFs * 1.25 : baseFs * 1.5);
 
                     final orderField = TextField(
                       controller: _orderNumberController,
@@ -1325,12 +1359,12 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       keyboardType: TextInputType.number,
                     );
 
-                    final orderButton = ElevatedButton(
+                    final orderButton = ElevatedButton.icon(
                       onPressed: _isLoadingOrder ? null : _loadOrder,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 20,
+                          horizontal: 20,
+                          vertical: 18,
                         ),
                         minimumSize: const Size(0, 56),
                         textStyle: TextStyle(
@@ -1338,13 +1372,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           inherit: true,
                         ),
                       ),
-                      child: _isLoadingOrder
+                      icon: _isLoadingOrder
                           ? const SizedBox(
-                              width: 40,
-                              height: 40,
+                              width: 24,
+                              height: 24,
                               child: CircularProgressIndicator(strokeWidth: 3),
                             )
-                          : const Text('LİSTELE'),
+                          : Icon(Icons.list, size: scaledFontSize * 1.2),
+                      label: const Text('LİSTELE'),
                     );
 
                     return Row(
@@ -1408,29 +1443,91 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       final acceptedQuantity =
                           _acceptedQuantities[item.stokkod] ?? item.miktar;
 
+                      final orderQtyStr = item.miktar.toStringAsFixed(0);
+                      final acceptedQtyStr =
+                          acceptedQuantity.toStringAsFixed(0);
+                      final priceStr = item.seciliFiyat.toStringAsFixed(2);
+
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          title: Text(
-                            item.stokkod,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('ID: ${item.id}'),
-                              Text('Sipariş: ${item.miktar} ${item.birim}'),
-                              Text('Kabul: $acceptedQuantity ${item.birim}'),
-                              Text('Fiyat: ${item.seciliFiyat} TL'),
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                onPressed: () => _editQuantity(item),
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Miktar Düzenle',
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item.stokkod,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Card(
+                                    elevation: 2,
+                                    margin: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      onTap: () => _editQuantity(item),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: const [
+                                            Icon(Icons.edit, size: 18),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Düzenle',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _infoChip(
+                                    label: 'Sipariş',
+                                    value: '$orderQtyStr ${item.birim}',
+                                    color: Colors.blue,
+                                  ),
+                                  _infoChip(
+                                    label: 'Kabul',
+                                    value: '$acceptedQtyStr ${item.birim}',
+                                    color: Colors.green,
+                                  ),
+                                  _infoChip(
+                                    label: 'Fiyat',
+                                    value: '$priceStr TL',
+                                    color: Colors.orange,
+                                  ),
+                                  _infoChip(
+                                    label: 'ID',
+                                    value: '${item.id}',
+                                    color: Colors.grey,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -1444,7 +1541,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       floatingActionButton: _orderItems.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: _isSaving ? null : _saveMalKabul,
-              icon: _isSaving
+              label: _isSaving
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -1453,8 +1550,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Icon(Icons.save),
-              label: Text(_isSaving ? 'Gönderiliyor...' : 'Gönder'),
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Gönder'),
+                        SizedBox(width: 10),
+                        Icon(Icons.arrow_forward),
+                      ],
+                    ),
             )
           : null,
     );
