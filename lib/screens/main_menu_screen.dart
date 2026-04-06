@@ -104,6 +104,12 @@ class MainMenuScreen extends StatelessWidget {
                                           .titleMedium
                                           ?.copyWith(
                                             fontWeight: FontWeight.w600,
+                                            fontSize: (Theme.of(themedContext)
+                                                        .textTheme
+                                                        .titleMedium
+                                                        ?.fontSize ??
+                                                    16) *
+                                                0.5,
                                           ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -117,6 +123,12 @@ class MainMenuScreen extends StatelessWidget {
                                             color: Theme.of(
                                               themedContext,
                                             ).colorScheme.onSurfaceVariant,
+                                            fontSize: (Theme.of(themedContext)
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.fontSize ??
+                                                    12) *
+                                                0.5,
                                           ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
