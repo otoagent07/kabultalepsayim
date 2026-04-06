@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -13,14 +12,16 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class MalKabulScreen extends StatefulWidget {
-  const MalKabulScreen({super.key});
+  const MalKabulScreen({super.key, required this.selectedDate});
+
+  final DateTime selectedDate;
 
   @override
   State<MalKabulScreen> createState() => _MalKabulScreenState();
 }
 
 class _MalKabulScreenState extends State<MalKabulScreen> {
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
@@ -38,6 +39,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   void initState() {
     super.initState();
     _quantityController.text = '1';
+    _selectedDate = widget.selectedDate;
 
     // Klavye açılmasını engelle
     _barcodeFocusNode.addListener(() {
@@ -152,63 +154,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
   }
 
-  void _selectDate() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-      ),
-      builder: (BuildContext context) => Container(
-        height: 300,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tarih Seçin',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontSize:
-                        (Theme.of(context).textTheme.titleLarge?.fontSize ??
-                            22) *
-                        2,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    textStyle: TextStyle(
-                      fontSize:
-                          (Theme.of(context).textTheme.bodyMedium?.fontSize ??
-                              14) *
-                          2,
-                    ),
-                  ),
-                  child: const Text('Tamam'),
-                ),
-              ],
-            ),
-            const Divider(),
-            Expanded(
-              child: CupertinoDatePicker(
-                initialDateTime: _selectedDate,
-                mode: CupertinoDatePickerMode.date,
-                use24hFormat: true,
-                showDayOfWeek: true,
-                onDateTimeChanged: (DateTime newDate) {
-                  setState(() {
-                    _selectedDate = newDate;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Tarih seçimi artık seçim ekranında yapılıyor.
 
   Future<void> _scanBarcode() async {
     try {
@@ -1347,46 +1293,18 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             ),
             child: Column(
               children: [
-                // Date selection
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: _selectDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 24,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_today, size: 40),
-                              const SizedBox(width: 16),
-                              Text(
-                                DateFormat('dd.MM.yyyy').format(_selectedDate),
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      fontSize:
-                                          (Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium
-                                                  ?.fontSize ??
-                                              14) *
-                                          2,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Tarih: ${DateFormat('dd.MM.yyyy').format(_selectedDate)}',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 16),
                 // Order number input
                 LayoutBuilder(
                   builder: (context, constraints) {

@@ -5,6 +5,7 @@ import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_selection_screen.dart';
 import 'amber_request_selection_screen.dart';
 import 'mal_kabul_screen.dart';
+import 'mal_kabul_selection_screen.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -148,7 +149,8 @@ class MainMenuScreen extends StatelessWidget {
                             () {
                               Navigator.of(themedContext).push(
                                 MaterialPageRoute(
-                                  builder: (context) => const MalKabulScreen(),
+                                  builder: (context) =>
+                                      const MalKabulSelectionScreen(),
                                 ),
                               );
                             },
