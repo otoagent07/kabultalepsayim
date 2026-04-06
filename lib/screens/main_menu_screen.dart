@@ -11,182 +11,210 @@ class MainMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        return await _showExitConfirmation(context);
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Ana Menü'),
-          actions: [
-            Consumer<ThemeProvider>(
-              builder: (context, themeProvider, child) {
-                return IconButton(
-                  icon: Icon(
-                    themeProvider.isDarkMode
-                        ? Icons.light_mode
-                        : Icons.dark_mode,
+    final baseTheme = Theme.of(context);
+    return Theme(
+      data: baseTheme.copyWith(
+        textTheme: baseTheme.textTheme.apply(fontSizeFactor: 2.0),
+      ),
+      child: IconTheme.merge(
+        data: const IconThemeData(size: 48),
+        child: Builder(
+          builder: (themedContext) {
+            void goBack() => Navigator.of(themedContext).maybePop();
+
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (bool didPop, dynamic result) {
+                if (didPop) return;
+                goBack();
+              },
+              child: Scaffold(
+                appBar: AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    iconSize: 28,
+                    onPressed: goBack,
                   ),
-                  onPressed: () => themeProvider.toggleTheme(),
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                // Seçili database bilgilerini temizle
-                Provider.of<SelectedDatabaseProvider>(
-                  context,
-                  listen: false,
-                ).clearSelection();
-                Navigator.of(context).pushReplacementNamed('/login');
-              },
-            ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // Seçili Şirket Card'ı
-              Consumer<SelectedDatabaseProvider>(
-                builder: (context, databaseProvider, child) {
-                  if (databaseProvider.selectedDatabase == null ||
-                      databaseProvider.selectedCompany == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16.0),
-                    elevation: 2,
-                    child: Container(
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.1),
-                            Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.05),
-                          ],
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.business,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 20,
+                  title: Text('Ana Menü'),
+                  actions: [
+                    Consumer<ThemeProvider>(
+                      builder: (context, themeProvider, child) {
+                        return IconButton(
+                          icon: Icon(
+                            themeProvider.isDarkMode
+                                ? Icons.light_mode
+                                : Icons.dark_mode,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Seçili Şirket',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                ),
-                                Text(
-                                  databaseProvider
-                                      .selectedCompany!
-                                      .fldSirketAdi,
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                Text(
-                                  databaseProvider.selectedDatabase!.ad,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                          iconSize: 28,
+                          onPressed: () => themeProvider.toggleTheme(),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
-
-              // Spacer to push buttons to center
-              // Menu Buttons - 60% of screen height
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.6,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Menu Buttons
-                    Expanded(
-                      child: _buildMenuButton(
-                        context,
-                        'Mal Kabul',
-                        Icons.inbox,
-                        Colors.blue,
-                        () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const MalKabulScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: _buildMenuButton(
-                        context,
-                        'Amber Talep',
-                        Icons.request_quote,
-                        Colors.orange,
-                        () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AmberRequestScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: _buildMenuButton(
-                        context,
-                        'Barkodlu Sayım',
-                        Icons.qr_code_scanner,
-                        Colors.green,
-                        () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const BarcodeInventoryScreen(),
-                            ),
-                          );
-                        },
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      iconSize: 28,
+                      onPressed: () {
+                        Provider.of<SelectedDatabaseProvider>(
+                          themedContext,
+                          listen: false,
+                        ).clearSelection();
+                        Navigator.of(
+                          themedContext,
+                        ).pushReplacementNamed('/login');
+                      },
                     ),
                   ],
                 ),
+                body: SafeArea(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Consumer<SelectedDatabaseProvider>(
+                          builder: (context, databaseProvider, child) {
+                            if (databaseProvider.selectedDatabase == null ||
+                                databaseProvider.selectedCompany == null) {
+                              return const SizedBox.shrink();
+                            }
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 16.0),
+                              elevation: 2,
+                              child: Container(
+                              padding: const EdgeInsets.all(24.0),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Theme.of(
+                                      themedContext,
+                                    ).colorScheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    Theme.of(
+                                      themedContext,
+                                    ).colorScheme.primary.withValues(
+                                      alpha: 0.05,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Seçili Şirket',
+                                    style: Theme.of(themedContext)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            themedContext,
+                                          )
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                  Text(
+                                    databaseProvider
+                                        .selectedCompany!
+                                        .fldSirketAdi,
+                                    style: Theme.of(themedContext)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    databaseProvider.selectedDatabase!.ad,
+                                    style: Theme.of(themedContext)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            themedContext,
+                                          )
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 112),
+                          child: _buildMenuButton(
+                            themedContext,
+                            'Mal Kabul',
+                            Icons.inbox,
+                            Colors.blue,
+                            () {
+                              Navigator.of(themedContext).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const MalKabulScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 112),
+                          child: _buildMenuButton(
+                            themedContext,
+                            'Amber Talep',
+                            Icons.request_quote,
+                            Colors.orange,
+                            () {
+                              Navigator.of(themedContext).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const AmberRequestScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 112),
+                          child: _buildMenuButton(
+                            themedContext,
+                            'Barkodlu Sayım',
+                            Icons.qr_code_scanner,
+                            Colors.green,
+                            () {
+                              Navigator.of(themedContext).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const BarcodeInventoryScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              // Spacer to push buttons to center
-              const Spacer(),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -217,44 +245,34 @@ class MainMenuScreen extends StatelessWidget {
               ],
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 32, color: color),
-              const SizedBox(width: 16),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 24,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8.0,
+              vertical: 12.0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 64, color: color),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Future<bool> _showExitConfirmation(BuildContext context) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Çıkış'),
-            content: const Text('Çıkmak istediğinize emin misiniz?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Hayır'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Evet'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
 }

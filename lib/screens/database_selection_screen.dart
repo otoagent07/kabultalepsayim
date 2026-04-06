@@ -21,60 +21,124 @@ class DatabaseSelectionScreen extends StatefulWidget {
 }
 
 class _DatabaseSelectionScreenState extends State<DatabaseSelectionScreen> {
+  static const List<Color> _accentColors = [
+    Colors.blue,
+    Colors.orange,
+    Colors.green,
+  ];
+
+  void _onSelectDatabase(ApiDatabase database) {
+    Provider.of<SelectedDatabaseProvider>(
+      context,
+      listen: false,
+    ).setSelectedDatabase(database, widget.company);
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MainMenuScreen(),
+      ),
+    );
+  }
+
+  Widget _buildDatabaseCard(
+    BuildContext context,
+    ApiDatabase database,
+    Color color,
+  ) {
+    final t = Theme.of(context);
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 5),
+      child: InkWell(
+        onTap: () => _onSelectDatabase(database),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.1),
+                color.withValues(alpha: 0.05),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 20.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  database.ad,
+                  style: t.textTheme.titleLarge?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'ID: ${database.id}',
+                  style: t.textTheme.bodyMedium,
+                ),
+                Text(
+                  'Kod: ${database.kod}',
+                  style: t.textTheme.bodyMedium,
+                ),
+                Text(
+                  'Program ID: ${database.programId}',
+                  style: t.textTheme.bodyMedium,
+                ),
+                if (database.grup != null)
+                  Text(
+                    'Grup: ${database.grup}',
+                    style: t.textTheme.bodyMedium,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Veritabanı Seçiniz'),
-        centerTitle: true,
+    final baseTheme = Theme.of(context);
+    return Theme(
+      data: baseTheme.copyWith(
+        textTheme: baseTheme.textTheme.apply(fontSizeFactor: 2.0),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: widget.databases.length,
-        itemBuilder: (context, index) {
-          final database = widget.databases[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12.0),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: Text(
-                  database.kod,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              title: Text(
-                database.ad,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('ID: ${database.id}'),
-                  Text('Program ID: ${database.programId}'),
-                  if (database.grup != null) Text('Grup: ${database.grup}'),
-                ],
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                // Seçilen database'i provider'a kaydet
-                Provider.of<SelectedDatabaseProvider>(
-                  context,
-                  listen: false,
-                ).setSelectedDatabase(database, widget.company);
-
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const MainMenuScreen(),
-                  ),
-                );
+      child: IconTheme.merge(
+        data: const IconThemeData(size: 48),
+        child: Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              iconSize: 28,
+              onPressed: () {
+                Navigator.of(context).pushReplacementNamed('/login');
               },
             ),
-          );
-        },
+            title: Text('Veritabanı Seçiniz'),
+            centerTitle: true,
+          ),
+          body: ListView.builder(
+            padding: const EdgeInsets.all(32.0),
+            itemCount: widget.databases.length,
+            itemBuilder: (context, index) {
+              final database = widget.databases[index];
+              final color = _accentColors[index % _accentColors.length];
+              return _buildDatabaseCard(context, database, color);
+            },
+          ),
+        ),
       ),
     );
   }

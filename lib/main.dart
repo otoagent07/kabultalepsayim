@@ -19,6 +19,16 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+
+
+
+
+
+
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -29,7 +39,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
-            title: 'Barkodlu Sayım',
+            title: 'Rmos Sayım',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.isDarkMode
