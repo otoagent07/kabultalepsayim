@@ -161,7 +161,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
     String searchQuery = '';
     List<StokMaster> filteredStoklar = _allStoklar;
-    bool isLoadingProduct = false;
+    String? loadingGenelKod;
 
     showModalBottomSheet(
       context: context,
@@ -173,7 +173,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           Future<void> processStokSelection(StokMaster stok) async {
             // Loading başlat
             setDialogState(() {
-              isLoadingProduct = true;
+              loadingGenelKod = stok.genelKod;
             });
 
             try {
@@ -205,7 +205,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                 if (fiyatBilgisi.kalanMiktar <= 0) {
                   if (mounted) {
                     setDialogState(() {
-                      isLoadingProduct = false;
+                      loadingGenelKod = null;
                     });
                     // Dialog olarak göster
                     showDialog(
@@ -222,13 +222,14 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                             Expanded(
                               child: Text(
                                 stok.ad,
-                                style: const TextStyle(fontSize: 16),
+                                style: const TextStyle(fontSize: 32),
                               ),
                             ),
                           ],
                         ),
                         content: Text(
                           'Bu ürün için kalan miktar sıfırdan küçük: ${fiyatBilgisi.kalanMiktar}',
+                          style: const TextStyle(fontSize: 28),
                         ),
                         actions: [
                           ElevatedButton(
@@ -259,7 +260,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               } else {
                 if (mounted) {
                   setDialogState(() {
-                    isLoadingProduct = false;
+                    loadingGenelKod = null;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -275,7 +276,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               log('Hata: $e');
               if (mounted) {
                 setDialogState(() {
-                  isLoadingProduct = false;
+                  loadingGenelKod = null;
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -350,6 +351,20 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                 fontWeight: FontWeight.w600,
                                 color: Colors.blue[700],
                               ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Card(
+                            margin: EdgeInsets.zero,
+                            elevation: 1,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              tooltip: 'Kapat',
+                              onPressed: () => Navigator.pop(context),
                             ),
                           ),
                         ],
@@ -445,6 +460,9 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                           itemCount: filteredStoklar.length,
                           itemBuilder: (context, index) {
                             final stok = filteredStoklar[index];
+                            final isRowLoading =
+                                loadingGenelKod != null &&
+                                loadingGenelKod == stok.genelKod;
                             return Container(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: Material(
@@ -452,7 +470,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 elevation: 1,
                                 child: InkWell(
-                                  onTap: isLoadingProduct
+                                  onTap: loadingGenelKod != null
                                       ? null
                                       : () {
                                           processStokSelection(stok);
@@ -561,7 +579,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                           ),
                                         ),
                                         // Arrow icon veya loading
-                                        isLoadingProduct
+                                        isRowLoading
                                             ? const SizedBox(
                                                 width: 16,
                                                 height: 16,
