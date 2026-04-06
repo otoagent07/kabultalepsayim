@@ -96,18 +96,6 @@ class MainMenuScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Seçili Şirket',
-                                      style: Theme.of(themedContext)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Theme.of(
-                                              themedContext,
-                                            ).colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                    Text(
                                       databaseProvider
                                           .selectedCompany!
                                           .fldSirketAdi,
