@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_screen.dart';
-import 'amber_request_screen.dart';
+import 'amber_request_selection_screen.dart';
 import 'mal_kabul_screen.dart';
 
 class MainMenuScreen extends StatelessWidget {
@@ -83,77 +83,71 @@ class MainMenuScreen extends StatelessWidget {
                               margin: const EdgeInsets.only(bottom: 16.0),
                               elevation: 2,
                               child: Container(
-                              padding: const EdgeInsets.all(24.0),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Theme.of(
-                                      themedContext,
-                                    ).colorScheme.primary.withValues(
-                                      alpha: 0.1,
+                                padding: const EdgeInsets.all(24.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Theme.of(themedContext)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.1),
+                                      Theme.of(themedContext)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.05),
+                                    ],
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Seçili Şirket',
+                                      style: Theme.of(themedContext)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              themedContext,
+                                            ).colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                     ),
-                                    Theme.of(
-                                      themedContext,
-                                    ).colorScheme.primary.withValues(
-                                      alpha: 0.05,
+                                    Text(
+                                      databaseProvider
+                                          .selectedCompany!
+                                          .fldSirketAdi,
+                                      style: Theme.of(themedContext)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      databaseProvider.selectedDatabase!.ad,
+                                      style: Theme.of(themedContext)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              themedContext,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Seçili Şirket',
-                                    style: Theme.of(themedContext)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            themedContext,
-                                          )
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                  ),
-                                  Text(
-                                    databaseProvider
-                                        .selectedCompany!
-                                        .fldSirketAdi,
-                                    style: Theme.of(themedContext)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    databaseProvider.selectedDatabase!.ad,
-                                    style: Theme.of(themedContext)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            themedContext,
-                                          )
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        ),
                         ConstrainedBox(
                           constraints: const BoxConstraints(minHeight: 112),
                           child: _buildMenuButton(
@@ -164,8 +158,7 @@ class MainMenuScreen extends StatelessWidget {
                             () {
                               Navigator.of(themedContext).push(
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const MalKabulScreen(),
+                                  builder: (context) => const MalKabulScreen(),
                                 ),
                               );
                             },
@@ -183,7 +176,7 @@ class MainMenuScreen extends StatelessWidget {
                               Navigator.of(themedContext).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const AmberRequestScreen(),
+                                      const AmberRequestSelectionScreen(),
                                 ),
                               );
                             },
@@ -274,5 +267,4 @@ class MainMenuScreen extends StatelessWidget {
       ),
     );
   }
-
 }

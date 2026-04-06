@@ -162,13 +162,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 Text(
                   'Tarih Seçin',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontSize: (Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.fontSize ??
-                                22) *
-                            2,
-                      ),
+                    fontSize:
+                        (Theme.of(context).textTheme.titleLarge?.fontSize ??
+                            22) *
+                        2,
+                  ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -176,8 +174,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     textStyle: TextStyle(
                       fontSize:
                           (Theme.of(context).textTheme.bodyMedium?.fontSize ??
-                                  14) *
-                              2,
+                              14) *
+                          2,
                     ),
                   ),
                   child: const Text('Tamam'),
@@ -374,8 +372,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 builder: (dialogContext) {
                   final actionFontSize =
                       (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
-                              14) *
-                          2;
+                          14) *
+                      2;
                   final actionTextStyle = TextStyle(
                     fontSize: actionFontSize,
                     inherit: true,
@@ -410,8 +408,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   final barcode = barcodeInputController.text
                                       .trim();
                                   final quantity =
-                                      double.tryParse(quantityController.text) ??
-                                          1;
+                                      double.tryParse(
+                                        quantityController.text,
+                                      ) ??
+                                      1;
                                   Navigator.pop(context);
                                   _processBarcodeWithQuantity(
                                     barcode,
@@ -1076,7 +1076,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           print('EfatId will be set to: ${item.id}');
 
           satirlar.add({
-            'Id':0, // ID from the fetched order
+            'Id': 0, // ID from the fetched order
             'EfatId': item.id, // Use the same ID
             'Sira': 0,
             'UrunAdi': 'Ürün ${item.stokkod}',
@@ -1344,17 +1344,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                               const SizedBox(width: 16),
                               Text(
                                 DateFormat('dd.MM.yyyy').format(_selectedDate),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
+                                style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(
                                       fontSize:
                                           (Theme.of(context)
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.fontSize ??
-                                                  14) *
-                                              2,
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.fontSize ??
+                                              14) *
+                                          2,
                                     ),
                               ),
                             ],
@@ -1370,8 +1368,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   builder: (context, constraints) {
                     final scaledFontSize =
                         (Theme.of(context).textTheme.bodyMedium?.fontSize ??
-                                14) *
-                            2;
+                            14) *
+                        2;
 
                     final orderField = TextField(
                       controller: _orderNumberController,
@@ -1413,10 +1411,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         children: [
                           orderField,
                           const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: orderButton,
-                          ),
+                          SizedBox(width: double.infinity, child: orderButton),
                         ],
                       );
                     }
@@ -1436,23 +1431,37 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           // Order items list
           Expanded(
             child: _orderItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.inventory_2_outlined,
-                          size: 64,
-                          color: Colors.grey.shade400,
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Klavye açılınca yükseklik daralıyor; scroll vererek overflow'u önle.
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 64,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Sipariş yüklemek için sipariş numarası girin',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Sipariş yüklemek için sipariş numarası girin',
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
@@ -16,17 +15,28 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class AmberRequestScreen extends StatefulWidget {
-  const AmberRequestScreen({super.key});
+  const AmberRequestScreen({
+    super.key,
+    required this.selectedDate,
+    required this.selectedDepartment,
+    required this.selectedAlanServis,
+    required this.selectedSube,
+  });
+
+  final DateTime selectedDate;
+  final Department selectedDepartment;
+  final Department selectedAlanServis;
+  final Sube selectedSube;
 
   @override
   State<AmberRequestScreen> createState() => _AmberRequestScreenState();
 }
 
 class _AmberRequestScreenState extends State<AmberRequestScreen> {
-  DateTime _selectedDate = DateTime.now();
-  Department? _selectedDepartment; // Anadepo = true olanlar
-  Department? _selectedAlanServis; // Anadepo = false olanlar
-  Sube? _selectedSube; // Şube
+  late DateTime _selectedDate;
+  late Department _selectedDepartment;
+  late Department _selectedAlanServis;
+  late Sube _selectedSube;
 
   List<StokMaster> _allStoklar = []; // Tüm stoklar (ilk açılışta yüklenir)
   final List<AmberTalepItem> _talepItems = []; // Talep edilen ürünler
@@ -34,10 +44,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   final TextEditingController _manualBarcodeController =
       TextEditingController();
   final FocusNode _barcodeFocusNode = FocusNode();
-
-  List<Department> _departments = []; // Anadepo = true olanlar
-  List<Department> _alanServisList = []; // Anadepo = false olanlar
-  List<Sube> _subeler = []; // Şubeler
 
   bool _isLoadingStoklar = false;
   bool _isSaving = false;
@@ -48,6 +54,10 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = widget.selectedDate;
+    _selectedDepartment = widget.selectedDepartment;
+    _selectedAlanServis = widget.selectedAlanServis;
+    _selectedSube = widget.selectedSube;
 
     // Lazer okuyucu için odaklanma
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,9 +80,8 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
     if (!mounted) return;
 
-    // Departmanları, şubeleri ve stokları yükle
     if (_token != null && _dbId != null) {
-      await Future.wait([_loadDepartments(), _loadSubeler(), _loadStoklar()]);
+      await _loadStoklar();
     }
   }
 
@@ -123,351 +132,10 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     }
   }
 
-  Future<void> _loadDepartments() async {
-    try {
-      final response = await ApiService.getAmberDepartments(
-        _token!,
-        _dbId!,
-        'Departman',
-        false,
-      );
-
-      if (response.isSucceded) {
-        setState(() {
-          _departments = response.value
-              .where((d) => d.anadepo == true)
-              .toList();
-          _alanServisList = response.value
-              .where((d) => d.anadepo == false)
-              .toList();
-
-          // İlk departmanı ve alan/servisi otomatik seç
-          if (_selectedDepartment == null && _departments.isNotEmpty) {
-            _selectedDepartment = _departments.first;
-          }
-          if (_selectedAlanServis == null && _alanServisList.isNotEmpty) {
-            _selectedAlanServis = _alanServisList.first;
-          }
-        });
-      }
-    } catch (e) {
-      log('Departman yükleme hatası: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Departman yükleme hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _loadSubeler() async {
-    try {
-      final response = await ApiService.getSubeler(
-        _token!,
-        _dbId!,
-        'Sube',
-        false,
-      );
-
-      if (response.isSucceded) {
-        setState(() {
-          _subeler = response.value;
-
-          // İlk şubeyi otomatik seç
-          if (_selectedSube == null && _subeler.isNotEmpty) {
-            _selectedSube = _subeler.first;
-          }
-        });
-      }
-    } catch (e) {
-      log('Şube yükleme hatası: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Şube yükleme hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
   @override
   void dispose() {
     _barcodeFocusNode.dispose();
     super.dispose();
-  }
-
-  void _selectDate() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-      ),
-      builder: (BuildContext context) => Container(
-        height: 300,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Header with title and done button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tarih Seçin',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Tamam'),
-                ),
-              ],
-            ),
-            const Divider(),
-            // Date picker
-            Expanded(
-              child: CupertinoDatePicker(
-                initialDateTime: _selectedDate,
-                mode: CupertinoDatePickerMode.date,
-                use24hFormat: true,
-                showDayOfWeek: true,
-                minimumDate: DateTime(
-                  DateTime.now().year,
-                  DateTime.now().month,
-                  1,
-                ), // Bu ayın ilk günü
-                maximumDate: DateTime(
-                  DateTime.now().year + 1,
-                  12,
-                  31,
-                ), // Gelecek yılın sonu
-                onDateTimeChanged: (DateTime newDate) {
-                  setState(() {
-                    _selectedDate = newDate;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _selectDepartment() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Departman Seçiniz',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _departments.length,
-                itemBuilder: (context, index) {
-                  final department = _departments[index];
-                  final isSelected = _selectedDepartment?.id == department.id;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isSelected ? Colors.blue[100] : null,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSelected
-                            ? Colors.blue
-                            : Colors.grey[300],
-                        child: Text(
-                          department.kod,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        department.ad,
-                        style: TextStyle(
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: Text('Kod: ${department.kod}'),
-                      trailing: isSelected
-                          ? const Icon(Icons.check, color: Colors.blue)
-                          : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedDepartment = department;
-                        });
-                        Navigator.pop(context);
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _selectAlanServis() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Alan/Servis Seçiniz',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _alanServisList.length,
-                itemBuilder: (context, index) {
-                  final alanServis = _alanServisList[index];
-                  final isSelected = _selectedAlanServis?.id == alanServis.id;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isSelected ? Colors.green[100] : null,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSelected
-                            ? Colors.green
-                            : Colors.grey[300],
-                        child: Text(
-                          alanServis.kod,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        alanServis.ad,
-                        style: TextStyle(
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: Text('Kod: ${alanServis.kod}'),
-                      trailing: isSelected
-                          ? const Icon(Icons.check, color: Colors.green)
-                          : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedAlanServis = alanServis;
-                        });
-                        Navigator.pop(context);
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _selectSube() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Şube Seçiniz',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _subeler.length,
-                itemBuilder: (context, index) {
-                  final sube = _subeler[index];
-                  final isSelected = _selectedSube?.id == sube.id;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isSelected ? Colors.orange[100] : null,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSelected
-                            ? Colors.orange
-                            : Colors.grey[300],
-                        child: Text(
-                          sube.kod,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        sube.ad,
-                        style: TextStyle(
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      subtitle: Text('Kod: ${sube.kod}'),
-                      trailing: isSelected
-                          ? const Icon(Icons.check, color: Colors.orange)
-                          : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedSube = sube;
-                        });
-                        Navigator.pop(context);
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showProductSelectionDialog() {
@@ -503,16 +171,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         builder: (context, setDialogState) {
           // Ürün seçimi fonksiyonu
           Future<void> processStokSelection(StokMaster stok) async {
-            if (_selectedDepartment == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Lütfen önce departman seçiniz'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              return;
-            }
-
             // Loading başlat
             setDialogState(() {
               isLoadingProduct = true;
@@ -530,7 +188,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                 stok.genelKod,
                 tarih1,
                 tarih2,
-                _selectedDepartment!.kod,
+                _selectedDepartment.kod,
               );
 
               log(
@@ -968,16 +626,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   }
 
   Future<void> _processStokSelection(StokMaster stok) async {
-    if (_selectedDepartment == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen önce departman seçiniz'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     try {
       final now = DateTime.now();
       final tarih1 = DateTime(now.year, now.month, 1).toIso8601String();
@@ -989,7 +637,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         stok.genelKod,
         tarih1,
         tarih2,
-        _selectedDepartment!.kod,
+        _selectedDepartment.kod,
       );
 
       if (response.isSucceded && response.value.isNotEmpty) {
@@ -1899,18 +1547,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       return;
     }
 
-    if (_selectedDepartment == null ||
-        _selectedAlanServis == null ||
-        _selectedSube == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen tüm seçimleri yapınız'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isSaving = true;
     });
@@ -1923,9 +1559,9 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       final requestData = {
         'db_Id': _dbId,
         'Tarih': tarih,
-        'Depo': _selectedDepartment!.kod,
-        'AlanServis': _selectedAlanServis!.kod,
-        'Sirketkod': _selectedSube!.kod,
+        'Depo': _selectedDepartment.kod,
+        'AlanServis': _selectedAlanServis.kod,
+        'Sirketkod': _selectedSube.kod,
         'Fisno': 0,
         'Fistipi': 'J',
         'MatbuFisno': 0,
@@ -1944,9 +1580,9 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
         _token!,
         _dbId!,
         tarih,
-        _selectedDepartment!.kod,
-        _selectedAlanServis!.kod,
-        _selectedSube!.kod,
+        _selectedDepartment.kod,
+        _selectedAlanServis.kod,
+        _selectedSube.kod,
         satirlar,
       );
 
@@ -2002,13 +1638,13 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
             onPressed: () {
               setState(() {
                 _talepItems.clear();
-                _selectedDate = DateTime.now();
-                _selectedDepartment = null;
-                _selectedAlanServis = null;
-                _selectedSube = null;
+                _selectedDate = widget.selectedDate;
+                _selectedDepartment = widget.selectedDepartment;
+                _selectedAlanServis = widget.selectedAlanServis;
+                _selectedSube = widget.selectedSube;
               });
               Navigator.pop(context);
-              _loadInitialData(); // Verileri yeniden yükle
+              _loadInitialData();
             },
             child: const Text('Evet, Temizle'),
           ),
@@ -2023,65 +1659,56 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).maybePop(),
           tooltip: 'Geri',
         ),
-        actions: [
-          // Geri butonu
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-            tooltip: 'Geri',
+        titleSpacing: 8,
+        title: Card(
+          margin: const EdgeInsets.only(right: 4),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          // Lazer okuyucu TextField
-          Expanded(
-            child: Card(
-              margin: const EdgeInsets.only(right: 5, left: 5),
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _manualBarcodeController,
-                focusNode: _barcodeFocusNode,
-                keyboardType: TextInputType.none,
-                textInputAction: TextInputAction.none,
-                enableInteractiveSelection: false,
-                showCursor: false,
-                readOnly: false,
-                decoration: const InputDecoration(
-                  hintText: 'Barkod okutun...',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                onChanged: (value) {
-                  // Lazer okuyucu verisi kontrolü
-                  if (value.endsWith('\n')) {
-                    final barcode = value.replaceAll('\n', '').trim();
-                    if (barcode.isNotEmpty) {
-                      _processBarcode(barcode);
-                      _manualBarcodeController.clear();
-                      // Odaklanmayı koru
-                      _barcodeFocusNode.requestFocus();
-                    }
-                  }
-                },
-                onSubmitted: (value) {
-                  // Enter tuşu işleme
-                  if (value.isNotEmpty) {
-                    _processBarcode(value);
-                    _manualBarcodeController.clear();
-                    // Odaklanmayı koru
-                    _barcodeFocusNode.requestFocus();
-                  }
-                },
+          child: TextField(
+            controller: _manualBarcodeController,
+            focusNode: _barcodeFocusNode,
+            keyboardType: TextInputType.none,
+            textInputAction: TextInputAction.none,
+            enableInteractiveSelection: false,
+            showCursor: false,
+            readOnly: false,
+            decoration: const InputDecoration(
+              hintText: 'Barkod okutun...',
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
             ),
+            onChanged: (value) {
+              // Lazer okuyucu verisi kontrolü
+              if (value.endsWith('\n')) {
+                final barcode = value.replaceAll('\n', '').trim();
+                if (barcode.isNotEmpty) {
+                  _processBarcode(barcode);
+                  _manualBarcodeController.clear();
+                  // Odaklanmayı koru
+                  _barcodeFocusNode.requestFocus();
+                }
+              }
+            },
+            onSubmitted: (value) {
+              // Enter tuşu işleme
+              if (value.isNotEmpty) {
+                _processBarcode(value);
+                _manualBarcodeController.clear();
+                // Odaklanmayı koru
+                _barcodeFocusNode.requestFocus();
+              }
+            },
           ),
-
+        ),
+        actions: [
           // Kamera ile barkod okuma butonu
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -2104,10 +1731,15 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       ),
       body: Column(
         children: [
-          // Seçim kartları
-          _buildSelectionCardsWidget(),
-
-          // Talep listesi
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Text(
+              '${DateFormat('dd.MM.yyyy').format(_selectedDate)} · Depo: ${_selectedDepartment.kod} · Alan/Servis: ${_selectedAlanServis.kod} · Şube: ${_selectedSube.kod}',
+              style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           Expanded(
             child: _talepItems.isEmpty
                 ? Center(
@@ -2402,276 +2034,6 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               label: Text(_isSaving ? 'Kaydediliyor...' : 'Kaydet'),
             )
           : null,
-    );
-  }
-
-  Widget _buildSelectionCardsWidget() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // İlk satır: Tarih ve Departman
-          Row(
-            children: [
-              // Tarih seçimi
-              Expanded(
-                child: Card(
-                  child: InkWell(
-                    onTap: _selectDate,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today,
-                            color: Colors.blue,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Tarih',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  DateFormat(
-                                    'dd.MM.yyyy',
-                                  ).format(_selectedDate),
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Departman seçimi
-              Expanded(
-                child: Card(
-                  color: _selectedDepartment != null ? Colors.blue[50] : null,
-                  child: InkWell(
-                    onTap: _selectDepartment,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.business,
-                            color: _selectedDepartment != null
-                                ? Colors.blue
-                                : Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Departman',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _selectedDepartment?.ad ?? 'Seçiniz',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: _selectedDepartment != null
-                                        ? Colors.blue[800]
-                                        : Colors.grey[600],
-                                    fontWeight: _selectedDepartment != null
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (_selectedDepartment != null) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Kod: ${_selectedDepartment!.kod}',
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      color: Colors.blue[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // İkinci satır: Alan/Servis ve Şube
-          Row(
-            children: [
-              // Alan/Servis seçimi
-              Expanded(
-                child: Card(
-                  color: _selectedAlanServis != null ? Colors.green[50] : null,
-                  child: InkWell(
-                    onTap: _selectAlanServis,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.room_service,
-                            color: _selectedAlanServis != null
-                                ? Colors.green
-                                : Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Alan/Servis',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _selectedAlanServis?.ad ?? 'Seçiniz',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: _selectedAlanServis != null
-                                        ? Colors.green[800]
-                                        : Colors.grey[600],
-                                    fontWeight: _selectedAlanServis != null
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (_selectedAlanServis != null) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Kod: ${_selectedAlanServis!.kod}',
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      color: Colors.green[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Şube seçimi
-              Expanded(
-                child: Card(
-                  color: _selectedSube != null ? Colors.orange[50] : null,
-                  child: InkWell(
-                    onTap: _selectSube,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.location_city,
-                            color: _selectedSube != null
-                                ? Colors.orange
-                                : Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Şube',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _selectedSube?.ad ?? 'Seçiniz',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: _selectedSube != null
-                                        ? Colors.orange[800]
-                                        : Colors.grey[600],
-                                    fontWeight: _selectedSube != null
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (_selectedSube != null) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Kod: ${_selectedSube!.kod}',
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      color: Colors.orange[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
