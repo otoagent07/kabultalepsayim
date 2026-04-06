@@ -72,6 +72,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       return;
     }
 
+    // Sipariş getirmeden önce klavyeyi kapat.
+    FocusManager.instance.primaryFocus?.unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+
     setState(() {
       _isLoadingOrder = true;
     });
@@ -142,6 +146,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     setState(() {
       _isLoadingOrder = false;
     });
+
+    // Siparişler yüklendikten sonra da klavye açık kalmasın.
+    FocusManager.instance.primaryFocus?.unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
   }
 
   void _selectDate() {
