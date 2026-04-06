@@ -370,48 +370,71 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               ),
             ),
             actions: [
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('İptal'),
+              Builder(
+                builder: (dialogContext) {
+                  final actionFontSize =
+                      (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
+                              14) *
+                          2;
+                  final actionTextStyle = TextStyle(
+                    fontSize: actionFontSize,
+                    inherit: true,
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 24,
+                            ),
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: actionTextStyle,
+                          ),
+                          child: const Text('İptal'),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed:
+                              (barcodeInputController.text.trim().isNotEmpty &&
+                                  quantityController.text.trim().isNotEmpty)
+                              ? () async {
+                                  final barcode = barcodeInputController.text
+                                      .trim();
+                                  final quantity =
+                                      double.tryParse(quantityController.text) ??
+                                          1;
+                                  Navigator.pop(context);
+                                  _processBarcodeWithQuantity(
+                                    barcode,
+                                    quantity,
+                                  );
+                                  _barcodeFocusNode.requestFocus();
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 24,
+                              horizontal: 24,
+                            ),
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: actionTextStyle,
+                          ),
+                          child: const Text('Kaydet'),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 30),
-                  Expanded(
-                    flex: 7,
-                    child: ElevatedButton(
-                      onPressed:
-                          (barcodeInputController.text.trim().isNotEmpty &&
-                              quantityController.text.trim().isNotEmpty)
-                          ? () async {
-                              final barcode = barcodeInputController.text
-                                  .trim();
-                              final quantity =
-                                  double.tryParse(quantityController.text) ?? 1;
-                              Navigator.pop(context);
-                              // Barkodu işle
-                              _processBarcodeWithQuantity(barcode, quantity);
-                              // Odaklanmayı koru
-                              _barcodeFocusNode.requestFocus();
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Kaydet'),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ],
           );
