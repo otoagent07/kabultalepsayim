@@ -30,7 +30,7 @@ class ApiService {
       '/api/Procedure/Stok_Birim_Fiyat';
   static const String amberTalepKaydetEndpoint =
       '/api/StokHareket/InsertAmbarVeDepartman';
-  static const String malKabulOrderEndpoint = '/api/SatTalep/GetBySiparisno';
+  static const String malKabulOrderEndpoint = '/api/Sat_Talep/GetBySiparisno';
   static const String malKabulSaveEndpoint = '/api/MalKabul/Insert';
 
   // Token alma
@@ -458,7 +458,7 @@ class ApiService {
         Uri.parse(
           '$backApiBaseUrl$malKabulOrderEndpoint?Db_Id=$dbId&siparisno=$siparisno&detayli=$detayli',
         ),
-        headers: {'accept': '*/*', 'Authorization': 'Bearer $token'},
+        headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
