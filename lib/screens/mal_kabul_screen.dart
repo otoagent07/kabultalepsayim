@@ -162,13 +162,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           });
 
           // Log the IDs from the fetched order
-          print('=== FETCHED ORDER ITEMS ===');
           for (var item in _orderItems) {
-            print(
-              'ID: ${item.id}, Stokkod: ${item.stokkod}, StokAd: ${item.stokAd}',
-            );
           }
-          print('==========================');
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -322,7 +317,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       }
     } catch (e) {
       // Hata durumunda kullanıcıya bilgi ver
-      print('Kamera okuma hatası: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1228,10 +1222,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final acceptedQuantity =
               _acceptedQuantities[item.stokkod] ?? item.miktar;
 
-          print(
-            'Processing item: ID=${item.id}, Stokkod=${item.stokkod}, Miktar=$acceptedQuantity',
-          );
-          print('EfatId will be set to: ${item.id}');
 
           satirlar.add({
             'Id': 0, // ID from the fetched order
@@ -1267,24 +1257,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         };
 
         // Log request details
-        print('=== MAL KABUL REQUEST ===');
-        print('URL: https://backapi.rmosweb.com/api/MalKabul/Insert');
-        print(
-          'Headers: {"accept": "*/*", "Authorization": "Bearer $token", "Content-Type": "application/json"}',
-        );
 
         // Log complete JSON request body
         const encoder = JsonEncoder.withIndent('  ');
         final jsonString = encoder.convert(requestBody);
         developer.log(jsonString, name: 'MAL_KABUL_REQUEST_JSON');
-        print('========================');
 
         // Log EfatId values being sent
-        print('=== EFAT IDS BEING SENT ===');
         for (var satir in satirlar) {
-          print('EfatId: ${satir['EfatId']}, Stokkod: ${satir['UrunAdi']}');
         }
-        print('===========================');
 
         final response = await ApiService.saveMalKabul(
           token,
@@ -1343,9 +1324,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         }
       }
     } catch (e) {
-      print('=== MAL KABUL ERROR ===');
-      print('Error: $e');
-      print('=======================');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1398,12 +1376,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             ),
             onChanged: (value) {
               // Lazer okuyucu verisi kontrolü
-              print('TextField değişti: $value');
 
               if (value.endsWith('\n')) {
                 final barcode = value.replaceAll('\n', '').trim();
                 if (barcode.isNotEmpty) {
-                  print('Lazer okuyucu barkod tespit edildi: $barcode');
                   _processBarcode(barcode);
                   _manualBarcodeController.clear();
                   // Odaklanmayı koru
@@ -1414,7 +1390,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             onSubmitted: (value) {
               // Enter tuşu işleme
               if (value.isNotEmpty) {
-                print('Manuel giriş barkod: $value');
                 _processBarcode(value);
                 _manualBarcodeController.clear();
                 // Odaklanmayı koru
@@ -1837,7 +1812,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
                                       await controller?.toggleFlash();
                                       if (mounted) setState(() {});
                                     } catch (e) {
-                                      print('Flash toggle error: $e');
                                     }
                                   }
                                 : null,
@@ -1862,7 +1836,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
                                       await controller?.flipCamera();
                                       if (mounted) setState(() {});
                                     } catch (e) {
-                                      print('Camera flip error: $e');
                                     }
                                   }
                                 : null,
@@ -1898,7 +1871,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
                                     try {
                                       await controller?.pauseCamera();
                                     } catch (e) {
-                                      print('Camera pause error: $e');
                                     }
                                   }
                                 : null,
@@ -1916,7 +1888,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
                                     try {
                                       await controller?.resumeCamera();
                                     } catch (e) {
-                                      print('Camera resume error: $e');
                                     }
                                   }
                                 : null,
@@ -1984,7 +1955,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
-    print('${DateTime.now().toIso8601String()}_onPermissionSet $p');
     if (!p) {
       ScaffoldMessenger.of(
         context,

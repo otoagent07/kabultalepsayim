@@ -136,7 +136,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   Future<void> _processBarcode(String barcode) async {
-    print('Barkod işleniyor: $barcode');
 
     try {
       final token = await StorageService.getToken();
@@ -268,7 +267,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   }
 
   Future<void> _processManualBarcode(String barcode, int quantity) async {
-    print('Manuel barkod işleniyor: $barcode, Miktar: $quantity');
 
     try {
       // Önce mevcut listede barkod ile eşleşen ürün var mı kontrol et
@@ -2057,12 +2055,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             ),
             onChanged: (value) {
               // Lazer okuyucu verisi kontrolü
-              print('TextField değişti: $value');
 
               if (value.endsWith('\n')) {
                 final barcode = value.replaceAll('\n', '').trim();
                 if (barcode.isNotEmpty) {
-                  print('Lazer okuyucu barkod tespit edildi: $barcode');
                   _processBarcode(barcode);
                   _manualBarcodeController.clear();
                   // Odaklanmayı koru
@@ -2073,7 +2069,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             onSubmitted: (value) {
               // Enter tuşu işleme
               if (value.isNotEmpty) {
-                print('Manuel giriş barkod: $value');
                 _processBarcode(value);
                 _manualBarcodeController.clear();
                 // Odaklanmayı koru
