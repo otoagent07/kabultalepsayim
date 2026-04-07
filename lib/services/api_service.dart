@@ -8,10 +8,12 @@ import '../models/sube_response.dart';
 import '../models/stok_master_response.dart';
 import '../models/stok_birim_fiyat_response.dart';
 import '../models/mal_kabul_order_response.dart';
+import '../models/efatura_irsaliye_response.dart';
 
 class ApiService {
   static const String baseUrl = 'https://service.rmosweb.com';
   static const String backApiBaseUrl = 'https://backapi.rmosweb.com';
+  static const String efaturaApiBaseUrl = 'https://e-faturaapi.rmosweb.com';
   static const String tokenEndpoint = '/security/createToken';
   static const String loginByTokenEndpoint = '/api/Users/LoginByToken';
   static const String departmentsEndpoint =
@@ -31,6 +33,8 @@ class ApiService {
       '/api/StokHareket/InsertAmbarVeDepartman';
   static const String malKabulOrderEndpoint = '/api/Sat_Talep/GetBySiparisno';
   static const String malKabulSaveEndpoint = '/api/MalKabul/Insert';
+  static const String efaturaIrsaliyeByEttnGelenEndpoint =
+      '/api/Irsaliye/GetByETTN_Gelen';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -465,6 +469,45 @@ class ApiService {
         return MalKabulOrderResponse.fromJson(jsonData);
       } else {
         throw Exception('Sipariş getirme hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<EfaturaIrsaliyeResponse> getIrsaliyeByEttnGelen({
+    required String token,
+    required int efaturaDbId,
+    required int sirketId,
+    required String ettn,
+    required bool detay,
+  }) async {
+    try {
+      final uri = Uri.parse('$efaturaApiBaseUrl$efaturaIrsaliyeByEttnGelenEndpoint')
+          .replace(
+            queryParameters: <String, String>{
+              'Db_Id': efaturaDbId.toString(),
+              'sirketId': sirketId.toString(),
+              'ETTN': ettn,
+              'detay': detay.toString(),
+            },
+          );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(response.body);
+        return EfaturaIrsaliyeResponse.fromJson(jsonData);
+      } else {
+        throw Exception(
+          'İrsaliye getirme hatası: ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');

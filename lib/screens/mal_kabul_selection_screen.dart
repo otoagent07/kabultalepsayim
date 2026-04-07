@@ -254,12 +254,18 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
       );
       return;
     }
+    final dept = _selectedDepartment!;
+    final efaturaDbId = (dept.eFatDb == null || dept.eFatDb!.isEmpty)
+        ? null
+        : _efaturaDbIdByName[dept.eFatDb!];
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => MalKabulScreen(
           selectedDate: _selectedDate,
           girisTip: girisTip,
-          selectedDepartment: _selectedDepartment!,
+          selectedDepartment: dept,
+          efaturaDbId: efaturaDbId,
+          efatSirketId: dept.eFatSirketId,
         ),
       ),
     );

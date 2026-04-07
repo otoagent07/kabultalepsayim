@@ -18,11 +18,15 @@ class MalKabulScreen extends StatefulWidget {
     required this.selectedDate,
     required this.girisTip,
     required this.selectedDepartment,
+    this.efaturaDbId,
+    this.efatSirketId,
   });
 
   final DateTime selectedDate;
   final String girisTip;
   final Department selectedDepartment;
+  final int? efaturaDbId;
+  final int? efatSirketId;
 
   @override
   State<MalKabulScreen> createState() => _MalKabulScreenState();
@@ -32,6 +36,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   late DateTime _selectedDate;
   late String _girisTip;
   late Department _selectedDepartment;
+  int? _efaturaDbId;
+  int? _efatSirketId;
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
@@ -85,6 +91,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _selectedDate = widget.selectedDate;
     _girisTip = widget.girisTip;
     _selectedDepartment = widget.selectedDepartment;
+    _efaturaDbId = widget.efaturaDbId;
+    _efatSirketId = widget.efatSirketId;
 
     // Klavye açılmasını engelle
     _barcodeFocusNode.addListener(() {
@@ -201,6 +209,96 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     // Siparişler yüklendikten sonra da klavye açık kalmasın.
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _loadByEttn() async {
+    final ettn = _orderNumberController.text.trim();
+    if (ettn.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen ETTN girin/okutun'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    if (_efaturaDbId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Departmanda efatura Db_Id bulunamadı'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (_efatSirketId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Departmanda EFat_SirketID bulunamadı'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+
+    setState(() => _isLoadingOrder = true);
+    try {
+      final token = await StorageService.getToken();
+      if (token == null) {
+        throw Exception('Token bulunamadı');
+      }
+
+      final response = await ApiService.getIrsaliyeByEttnGelen(
+        token: token,
+        efaturaDbId: _efaturaDbId!,
+        sirketId: _efatSirketId!,
+        ettn: ettn,
+        detay: true,
+      );
+
+      if (response.isSucceded) {
+        setState(() {
+          _orderItems = response.toMalKabulOrderItems();
+          _acceptedQuantities.clear();
+          for (final item in _orderItems) {
+            _acceptedQuantities[item.stokkod] = item.miktar;
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_orderItems.length} satır yüklendi'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? 'İrsaliye/Fatura yüklenemedi',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Yükleme hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingOrder = false);
+    }
   }
 
   // Tarih seçimi artık seçim ekranında yapılıyor.
@@ -657,6 +755,17 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }
 
   void _processBarcodeWithQuantity(String barcode, double quantity) {
+    if (_girisTip != 'Sipariş No') {
+      _orderNumberController.text = barcode;
+      _loadByEttn();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ETTN: $barcode'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      return;
+    }
     // Check if barcode is a number (order number)
     final orderNumber = int.tryParse(barcode);
     if (orderNumber != null) {
@@ -738,6 +847,17 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }
 
   void _processBarcode(String barcode) {
+    if (_girisTip != 'Sipariş No') {
+      _orderNumberController.text = barcode;
+      _loadByEttn();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ETTN: $barcode'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      return;
+    }
     // Check if barcode is a number (order number)
     final orderNumber = int.tryParse(barcode);
     if (orderNumber != null) {
@@ -1371,16 +1491,20 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       controller: _orderNumberController,
                       style: TextStyle(fontSize: scaledFontSize),
                       decoration: InputDecoration(
-                        labelText: 'Sipariş No',
+                        labelText: _girisTip == 'Sipariş No' ? 'Sipariş No' : 'ETTN',
                         labelStyle: TextStyle(fontSize: scaledFontSize),
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.receipt_long, size: 40),
                       ),
-                      keyboardType: TextInputType.number,
+                      keyboardType: _girisTip == 'Sipariş No'
+                          ? TextInputType.number
+                          : TextInputType.text,
                     );
 
                     final orderButton = ElevatedButton.icon(
-                      onPressed: _isLoadingOrder ? null : _loadOrder,
+                      onPressed: _isLoadingOrder
+                          ? null
+                          : (_girisTip == 'Sipariş No' ? _loadOrder : _loadByEttn),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,

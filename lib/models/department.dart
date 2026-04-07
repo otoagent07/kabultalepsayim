@@ -10,6 +10,7 @@ class Department {
   final double carpan;
   final bool satis;
   final String? eFatDb;
+  final int? eFatSirketId;
   final int dbId;
 
   Department({
@@ -24,10 +25,13 @@ class Department {
     required this.carpan,
     required this.satis,
     this.eFatDb,
+    this.eFatSirketId,
     required this.dbId,
   });
 
   factory Department.fromJson(Map<String, dynamic> json) {
+    final dynamic efatSirketRaw =
+        json['EFat_SirketID'] ?? json['EFat_SirketId'] ?? json['Efat_SirketID'];
     return Department(
       id: json['Id'] ?? 0,
       kod: json['Kod'] ?? '',
@@ -40,6 +44,7 @@ class Department {
       carpan: (json['Carpan'] ?? 0.0).toDouble(),
       satis: json['Satis'] ?? false,
       eFatDb: json['EFat_Db'],
+      eFatSirketId: efatSirketRaw is int ? efatSirketRaw : int.tryParse('$efatSirketRaw'),
       dbId: json['db_Id'] ?? 0,
     );
   }
@@ -57,6 +62,7 @@ class Department {
       'Carpan': carpan,
       'Satis': satis,
       'EFat_Db': eFatDb,
+      'EFat_SirketID': eFatSirketId,
       'db_Id': dbId,
     };
   }
