@@ -67,12 +67,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Token ile login yap ve database listesini al
       final loginResponse = await ApiService.loginByToken(token);
+      final filteredDatabases =
+          loginResponse.databases.where((d) => d.programId == 2).toList();
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => DatabaseSelectionScreen(
-              databases: loginResponse.databases,
+              databases: filteredDatabases,
               company: loginResponse.sirket,
             ),
           ),
