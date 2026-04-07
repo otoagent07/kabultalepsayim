@@ -1344,7 +1344,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 80,
+        toolbarHeight: 96,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           iconSize: 28,
@@ -1352,7 +1352,16 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           tooltip: 'Geri',
         ),
         titleSpacing: 8,
-        title: Card(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Mal Kabul — $_girisTip',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Card(
           margin: const EdgeInsets.only(right: 4),
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -1397,6 +1406,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               }
             },
           ),
+        ),
+          ],
         ),
         actions: [
           // Kamera ile barkod okuma butonu
