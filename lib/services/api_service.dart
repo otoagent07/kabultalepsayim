@@ -119,7 +119,7 @@ class ApiService {
         },
         body: jsonEncode({
           'db_Id': dbId,
-          'RaporTip': 5,
+          'RaporTip': 4,
           'BaslangicTarih': tarih,
           'BitisTarih': tarih,
           'SayimTarih': tarih,
