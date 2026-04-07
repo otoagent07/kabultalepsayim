@@ -26,7 +26,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
       ),
       builder: (BuildContext context) => Container(
-        height: 300,
+        height: 600,
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -35,26 +35,40 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
               children: [
                 Text(
                   'Tarih Seçin',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontSize: 36),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Tamam'),
+                  child: const Text(
+                    'Tamam',
+                    style: TextStyle(fontSize: 28),
+                  ),
                 ),
               ],
             ),
             const Divider(),
             Expanded(
-              child: CupertinoDatePicker(
-                initialDateTime: _selectedDate,
-                mode: CupertinoDatePickerMode.date,
-                use24hFormat: true,
-                showDayOfWeek: true,
-                onDateTimeChanged: (DateTime newDate) {
-                  setState(() {
-                    _selectedDate = newDate;
-                  });
-                },
+              child: CupertinoTheme(
+                data: CupertinoTheme.of(context).copyWith(
+                  textTheme: const CupertinoTextThemeData(
+                    dateTimePickerTextStyle: TextStyle(fontSize: 32),
+                  ),
+                ),
+                child: CupertinoDatePicker(
+                  initialDateTime: _selectedDate,
+                  mode: CupertinoDatePickerMode.date,
+                  use24hFormat: true,
+                  showDayOfWeek: true,
+                  itemExtent: 64,
+                  onDateTimeChanged: (DateTime newDate) {
+                    setState(() {
+                      _selectedDate = newDate;
+                    });
+                  },
+                ),
               ),
             ),
           ],
