@@ -479,6 +479,14 @@ class _AmberRequestSelectionScreenState
   static const double _kKodFs = 16;
   static const double _kIconSize = 40;
 
+  String _efaturaIdTextFor(Department? dept) {
+    if (dept == null || dept.eFatDb == null || dept.eFatDb!.isEmpty) {
+      return 'efutadb_id: id yok';
+    }
+    final id = _efaturaDbIdByName[dept.eFatDb!];
+    return 'efutadb_id: ${id ?? 'id yok'}';
+  }
+
   Widget _buildSelectionCards() {
     return Padding(
       padding: const EdgeInsets.all(3),
@@ -498,6 +506,9 @@ class _AmberRequestSelectionScreenState
             onTap: _selectDepartment,
             departmentName: _selectedDepartment?.ad,
             departmentKod: _selectedDepartment?.kod,
+            efutadbIdText: _selectedDepartment == null
+                ? null
+                : _efaturaIdTextFor(_selectedDepartment),
             label: 'Departman',
             selectedColor: Colors.blue,
             labelFontSize: _kLabelFs,

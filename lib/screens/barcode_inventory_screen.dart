@@ -793,9 +793,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                   final actionFontSize =
                       (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
                               14) *
-                          2;
+                          1;
+                  final actionTextFontSize = actionFontSize * 2;
                   final actionTextStyle = TextStyle(
-                    fontSize: actionFontSize,
+                    fontSize: actionTextFontSize,
                     inherit: true,
                   );
 
@@ -814,16 +815,15 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 24,
-                              horizontal: 24,
+                              vertical: 12,
+                              horizontal: 12,
                             ),
-                            minimumSize: const Size.fromHeight(56),
+                            minimumSize: const Size.fromHeight(28),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
-                        const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: canSave
                               ? () async {
@@ -841,10 +841,10 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 24,
-                              horizontal: 24,
+                              vertical: 12,
+                              horizontal: 12,
                             ),
-                            minimumSize: const Size.fromHeight(56),
+                            minimumSize: const Size.fromHeight(28),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.save, size: actionFontSize * 1.15),
@@ -1233,7 +1233,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
                       ),
                       child: const Text('İptal'),
                     ),
@@ -1251,7 +1251,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
                       ),
                       child: const Text('Kaydet'),
                     ),

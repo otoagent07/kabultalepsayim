@@ -135,11 +135,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final token = await StorageService.getToken();
 
       if (databaseProvider.selectedDatabase != null && token != null) {
+        final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
+            databaseProvider.selectedDatabase!.id;
         final response = await ApiService.getMalKabulOrder(
           token,
-          databaseProvider.selectedDatabase!.id,
+          backDbId,
           _orderNumberController.text.trim(),
-          false,
+          true,
         );
 
         if (response.isSucceded) {
@@ -154,7 +156,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           // Log the IDs from the fetched order
           print('=== FETCHED ORDER ITEMS ===');
           for (var item in _orderItems) {
-            print('ID: ${item.id}, Stokkod: ${item.stokkod}');
+            print(
+              'ID: ${item.id}, Stokkod: ${item.stokkod}, StokAd: ${item.stokAd}',
+            );
           }
           print('==========================');
 
@@ -372,9 +376,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   final actionFontSize =
                       (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
                           14) *
-                      1.5;
+                      0.75;
+                  final actionTextFontSize = actionFontSize * 2;
                   final actionTextStyle = TextStyle(
-                    fontSize: actionFontSize,
+                    fontSize: actionTextFontSize,
                     inherit: true,
                   );
                   return Padding(
@@ -389,16 +394,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 18,
+                              vertical: 9,
+                              horizontal: 9,
                             ),
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(24),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
-                        const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed:
                               (barcodeInputController.text.trim().isNotEmpty &&
@@ -423,10 +427,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 18,
+                              vertical: 9,
+                              horizontal: 9,
                             ),
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(24),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.save, size: actionFontSize * 1.15),
@@ -890,9 +894,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   final actionFontSize =
                       (Theme.of(dialogContext).textTheme.labelLarge?.fontSize ??
                               14) *
-                          1.5;
+                          0.75;
+                  final actionTextFontSize = actionFontSize * 2;
                   final actionTextStyle = TextStyle(
-                    fontSize: actionFontSize,
+                    fontSize: actionTextFontSize,
                     inherit: true,
                   );
 
@@ -908,16 +913,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 18,
+                              vertical: 9,
+                              horizontal: 9,
                             ),
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(24),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
-                        const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: enteredQuantity > 0
                               ? () {
@@ -940,10 +944,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 18,
+                              vertical: 9,
+                              horizontal: 9,
                             ),
-                            minimumSize: const Size.fromHeight(48),
+                            minimumSize: const Size.fromHeight(24),
                             textStyle: actionTextStyle,
                           ),
                           icon: Icon(Icons.save, size: actionFontSize * 1.15),
@@ -1478,28 +1482,43 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                item.stokkod,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 16,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '#${item.id}',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
                                         Text(
-                                          item.stokkod,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
+                                          item.stokAd.isEmpty
+                                              ? '(StokAd yok)'
+                                              : item.stokAd,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[700],
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        if (item.stokAd.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            item.stokAd,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey[700],
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
                                       ],
                                     ),
                                   ),
@@ -1555,11 +1574,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                     label: 'Fiyat',
                                     value: '$priceStr TL',
                                     color: Colors.orange,
-                                  ),
-                                  _infoChip(
-                                    label: 'ID',
-                                    value: '${item.id}',
-                                    color: Colors.grey,
                                   ),
                                 ],
                               ),

@@ -32,6 +32,15 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
   static const double _kValueFs = 20;
   static const double _kIconSize = 40;
 
+  String _efaturaIdTextForSelected() {
+    final dept = _selectedDepartment;
+    if (dept == null || dept.eFatDb == null || dept.eFatDb!.isEmpty) {
+      return 'efutadb_id: id yok';
+    }
+    final id = _efaturaDbIdByName[dept.eFatDb!];
+    return 'efutadb_id: ${id ?? 'id yok'}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -334,6 +343,9 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                             onTap: _selectDepartment,
                             departmentName: _selectedDepartment?.ad,
                             departmentKod: _selectedDepartment?.kod,
+                            efutadbIdText: _selectedDepartment == null
+                                ? null
+                                : _efaturaIdTextForSelected(),
                             label: 'Departman Seçin',
                             selectedColor: Colors.blue,
                             labelFontSize: _kLabelFs,

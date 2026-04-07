@@ -8,6 +8,7 @@ class DepartmentSelectionTile extends StatelessWidget {
     required this.onTap,
     required this.departmentName,
     this.departmentKod,
+    this.efutadbIdText,
     this.label = 'Departman',
     this.selectedColor = Colors.blue,
     this.unselectedColor = Colors.grey,
@@ -20,6 +21,7 @@ class DepartmentSelectionTile extends StatelessWidget {
   final VoidCallback onTap;
   final String? departmentName;
   final String? departmentKod;
+  final String? efutadbIdText;
   final String label;
   final Color selectedColor;
   final Color unselectedColor;
@@ -33,13 +35,20 @@ class DepartmentSelectionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconColor = _isSelected ? selectedColor : unselectedColor;
+    final kod = departmentKod;
+    final efatLine = efutadbIdText;
+    final kodLine = (kod == null || kod.isEmpty)
+        ? null
+        : (efatLine == null || efatLine.isEmpty)
+            ? 'Kod: $kod'
+            : 'Kod: $kod\n$efatLine';
     return SelectionTile(
       onTap: onTap,
       icon: Icons.business,
       iconColor: iconColor,
       label: label,
       value: departmentName ?? 'Seçiniz',
-      kodLine: departmentKod == null ? null : 'Kod: $departmentKod',
+      kodLine: kodLine,
       valueColor: Colors.grey[700],
       valueWeight: FontWeight.w600,
       kodColor: Colors.grey[600],
