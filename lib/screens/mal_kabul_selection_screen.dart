@@ -101,9 +101,9 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Tarih',
-                      style: TextStyle(
+                    Text(
+                      label,
+                      style: const TextStyle(
                         fontSize: _kLabelFs,
                         fontWeight: FontWeight.bold,
                       ),
@@ -206,7 +206,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                       onTap: _selectDate,
                       icon: Icons.calendar_today,
                       iconColor: Colors.blue,
-                      label: 'Tarih',
+                      label: 'Tarih Seçin',
                       value: DateFormat('dd.MM.yyyy').format(_selectedDate),
                     ),
                     const SizedBox(height: 6),
