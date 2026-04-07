@@ -688,6 +688,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         departman: '',
         altDepartman: '',
         stokkod: '',
+        stokAd: '',
         birim: '',
         miktar: 0,
         onayMiktar: 0,
@@ -768,6 +769,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         departman: '',
         altDepartman: '',
         stokkod: '',
+        stokAd: '',
         birim: '',
         miktar: 0,
         onayMiktar: 0,
@@ -1471,14 +1473,34 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                               Row(
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      item.stokkod,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 16,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          item.stokkod,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 16,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (item.stokAd.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            item.stokAd,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey[700],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(width: 8),

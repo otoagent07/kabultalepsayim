@@ -5,6 +5,7 @@ class MalKabulOrderItem {
   final String departman;
   final String altDepartman;
   final String stokkod;
+  final String stokAd;
   final String birim;
   final double miktar;
   final double onayMiktar;
@@ -34,6 +35,7 @@ class MalKabulOrderItem {
     required this.departman,
     required this.altDepartman,
     required this.stokkod,
+    required this.stokAd,
     required this.birim,
     required this.miktar,
     required this.onayMiktar,
@@ -65,6 +67,7 @@ class MalKabulOrderItem {
       departman: json['Departman'] ?? '',
       altDepartman: json['AltDepartman'] ?? '',
       stokkod: json['Stokkod'] ?? '',
+      stokAd: json['StokAd'] ?? '',
       birim: json['Birim'] ?? '',
       miktar: (json['Miktar'] ?? 0.0).toDouble(),
       onayMiktar: (json['OnayMiktar'] ?? 0.0).toDouble(),
@@ -97,6 +100,7 @@ class MalKabulOrderItem {
       'Departman': departman,
       'AltDepartman': altDepartman,
       'Stokkod': stokkod,
+      'StokAd': stokAd,
       'Birim': birim,
       'Miktar': miktar,
       'OnayMiktar': onayMiktar,
