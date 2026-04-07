@@ -72,7 +72,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       listen: false,
     ).selectedDatabase;
     if (selectedDb != null) {
-      _dbId = selectedDb.id;
+      _dbId = selectedDb.dbBackOfficeId ?? selectedDb.id;
     }
 
     // Token'ı StorageService'den al

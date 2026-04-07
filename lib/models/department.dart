@@ -9,6 +9,7 @@ class Department {
   final String sube;
   final double carpan;
   final bool satis;
+  final String? eFatDb;
   final int dbId;
 
   Department({
@@ -22,6 +23,7 @@ class Department {
     required this.sube,
     required this.carpan,
     required this.satis,
+    this.eFatDb,
     required this.dbId,
   });
 
@@ -37,6 +39,7 @@ class Department {
       sube: json['Sube'] ?? '',
       carpan: (json['Carpan'] ?? 0.0).toDouble(),
       satis: json['Satis'] ?? false,
+      eFatDb: json['EFat_Db'],
       dbId: json['db_Id'] ?? 0,
     );
   }
@@ -53,6 +56,7 @@ class Department {
       'Sube': sube,
       'Carpan': carpan,
       'Satis': satis,
+      'EFat_Db': eFatDb,
       'db_Id': dbId,
     };
   }

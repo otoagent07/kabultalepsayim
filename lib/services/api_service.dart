@@ -8,7 +8,6 @@ import '../models/sube_response.dart';
 import '../models/stok_master_response.dart';
 import '../models/stok_birim_fiyat_response.dart';
 import '../models/mal_kabul_order_response.dart';
-import '../models/mal_kabul_save_response.dart';
 
 class ApiService {
   static const String baseUrl = 'https://service.rmosweb.com';
@@ -16,7 +15,7 @@ class ApiService {
   static const String tokenEndpoint = '/security/createToken';
   static const String loginByTokenEndpoint = '/api/Users/LoginByToken';
   static const String departmentsEndpoint =
-      '/api/StokKodlar/GetKullaniciDepartman';
+      '/api/StokKodlar/GetKullaniciDepartmanWithSube';
   static const String sayimListeEndpoint = '/api/Procedure/Stok_Sayim_Liste';
   static const String sayimDeleteEndpoint = '/api/StokSayimBarkod/Delete';
   static const String sayimUpdateEndpoint = '/api/StokSayimBarkod/Update';
@@ -120,7 +119,7 @@ class ApiService {
         },
         body: jsonEncode({
           'db_Id': dbId,
-          'RaporTip': 4,
+          'RaporTip': 5,
           'BaslangicTarih': tarih,
           'BitisTarih': tarih,
           'SayimTarih': tarih,

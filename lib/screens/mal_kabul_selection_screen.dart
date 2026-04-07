@@ -1,7 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../models/department.dart';
+import '../models/department_response.dart';
+import '../models/login_response.dart';
+import '../providers/selected_database_provider.dart';
+import '../services/api_service.dart';
+import '../services/storage_service.dart';
+import '../widgets/date_selection_tile.dart';
+import '../widgets/department_selection_tile.dart';
 import 'mal_kabul_screen.dart';
 
 class MalKabulSelectionScreen extends StatefulWidget {
@@ -13,10 +21,85 @@ class MalKabulSelectionScreen extends StatefulWidget {
 
 class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
   DateTime _selectedDate = DateTime.now();
+  Department? _selectedDepartment;
+  List<Department> _departments = [];
+  final Map<String, int> _efaturaDbIdByName = {};
+  bool _isLoading = true;
+  String? _token;
+  int? _dbId;
 
   static const double _kLabelFs = 24;
   static const double _kValueFs = 20;
   static const double _kIconSize = 40;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitialData());
+  }
+
+  Future<void> _loadInitialData() async {
+    final selectedDb = Provider.of<SelectedDatabaseProvider>(
+      context,
+      listen: false,
+    ).selectedDatabase;
+    if (selectedDb != null) {
+      _dbId = selectedDb.dbBackOfficeId ?? selectedDb.id;
+    }
+
+    _token = await StorageService.getToken();
+
+    if (!mounted) return;
+
+    if (_token == null || _dbId == null) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Oturum veya veritabanı bilgisi bulunamadı'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait([
+        ApiService.getDepartments(_token!, _dbId!),
+        ApiService.loginByToken(_token!),
+      ]);
+
+      final response = results[0] as DepartmentResponse;
+      final login = results[1] as LoginResponse;
+
+      _efaturaDbIdByName
+        ..clear()
+        ..addAll({
+          for (final db in login.databases)
+            if (db.programId == 3 && (db.databaseName ?? '').isNotEmpty)
+              db.databaseName!: db.id,
+        });
+
+      if (response.isSucceded) {
+        setState(() {
+          _departments = response.value;
+          if (_selectedDepartment == null && _departments.isNotEmpty) {
+            _selectedDepartment = _departments.first;
+          }
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Departman listesi alınamadı: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _selectDate() {
     showModalBottomSheet<void>(
@@ -77,62 +160,97 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     );
   }
 
-  Widget _fullWidthTile({
-    required VoidCallback onTap,
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-  }) {
-    return Card(
-      margin: const EdgeInsets.all(3),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: iconColor, size: _kIconSize),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: _kLabelFs,
-                        fontWeight: FontWeight.bold,
+  void _selectDepartment() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Departman Seçiniz',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _departments.length,
+                itemBuilder: (context, index) {
+                  final department = _departments[index];
+                  final isSelected = _selectedDepartment?.id == department.id;
+                  final efaturaId = (department.eFatDb == null ||
+                          department.eFatDb!.isEmpty)
+                      ? null
+                      : _efaturaDbIdByName[department.eFatDb!];
+
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: isSelected ? Colors.blue[100] : null,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            isSelected ? Colors.blue : Colors.grey[300],
+                        child: Text(
+                          department.kod,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: _kValueFs,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w600,
+                      title: Text(
+                        department.ad,
+                        style: TextStyle(
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
                       ),
+                      subtitle: Text(
+                        'Kod: ${department.kod}\nefutadb_id: ${efaturaId ?? 'id yok'}',
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check, color: Colors.blue)
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedDepartment = department;
+                        });
+                        Navigator.pop(context);
+                      },
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   void _go(String girisTip) {
+    if (_selectedDepartment == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen departman seçiniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => MalKabulScreen(
           selectedDate: _selectedDate,
           girisTip: girisTip,
+          selectedDepartment: _selectedDepartment!,
         ),
       ),
     );
@@ -192,49 +310,63 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _fullWidthTile(
-                      onTap: _selectDate,
-                      icon: Icons.calendar_today,
-                      iconColor: Colors.blue,
-                      label: 'Tarih Seçin',
-                      value: DateFormat('dd.MM.yyyy').format(_selectedDate),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DateSelectionTile(
+                            onTap: _selectDate,
+                            selectedDate: _selectedDate,
+                            label: 'Tarih Seçin',
+                            labelFontSize: _kLabelFs,
+                            valueFontSize: _kValueFs,
+                            iconSize: _kIconSize,
+                          ),
+                          DepartmentSelectionTile(
+                            onTap: _selectDepartment,
+                            departmentName: _selectedDepartment?.ad,
+                            departmentKod: _selectedDepartment?.kod,
+                            label: 'Departman Seçin',
+                            selectedColor: Colors.blue,
+                            labelFontSize: _kLabelFs,
+                            valueFontSize: _kValueFs,
+                            kodFontSize: 16,
+                            iconSize: _kIconSize,
+                          ),
+                          const SizedBox(height: 6),
+                          _entryButton(
+                            text: 'Sipariş No İle Giriş',
+                            icon: Icons.receipt_long,
+                            color: Colors.blue,
+                            onPressed: () => _go('Sipariş No'),
+                          ),
+                          _entryButton(
+                            text: 'İrsaliye ile Giriş',
+                            icon: Icons.local_shipping,
+                            color: Colors.green,
+                            onPressed: () => _go('İrsaliye'),
+                          ),
+                          _entryButton(
+                            text: 'Fatura ile Giriş',
+                            icon: Icons.description,
+                            color: Colors.orange,
+                            onPressed: () => _go('Fatura'),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    _entryButton(
-                      text: 'Sipariş No İle Giriş',
-                      icon: Icons.receipt_long,
-                      color: Colors.blue,
-                      onPressed: () => _go('Sipariş No'),
-                    ),
-                    _entryButton(
-                      text: 'İrsaliye ile Giriş',
-                      icon: Icons.local_shipping,
-                      color: Colors.green,
-                      onPressed: () => _go('İrsaliye'),
-                    ),
-                    _entryButton(
-                      text: 'Fatura ile Giriş',
-                      icon: Icons.description,
-                      color: Colors.orange,
-                      onPressed: () => _go('Fatura'),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

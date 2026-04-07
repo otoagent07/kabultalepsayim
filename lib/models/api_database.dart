@@ -8,11 +8,13 @@ class ApiDatabase {
   final bool gizliMi;
   final String? grup;
   final String? updateDate;
+  final String? databaseName;
   final String? dbServer;
   final String? dbCatalog;
   final String? dbUser;
   final String? dbPass;
   final int? dbFrontOfficeId;
+  final int? dbBackOfficeId;
   final int? dbDemirbasId;
 
   ApiDatabase({
@@ -25,11 +27,13 @@ class ApiDatabase {
     required this.gizliMi,
     this.grup,
     this.updateDate,
+    this.databaseName,
     this.dbServer,
     this.dbCatalog,
     this.dbUser,
     this.dbPass,
     this.dbFrontOfficeId,
+    this.dbBackOfficeId,
     this.dbDemirbasId,
   });
 
@@ -44,11 +48,13 @@ class ApiDatabase {
       gizliMi: json['gizliMi'] ?? false,
       grup: json['grup'],
       updateDate: json['updateDate'],
+      databaseName: json['databaseName'],
       dbServer: json['dbServer'],
       dbCatalog: json['dbCatalog'],
       dbUser: json['dbUser'],
       dbPass: json['dbPass'],
       dbFrontOfficeId: json['dbFrontOffice_Id'],
+      dbBackOfficeId: json['dbBackOffice_Id'],
       dbDemirbasId: json['dbDemirbas_Id'],
     );
   }
@@ -64,11 +70,13 @@ class ApiDatabase {
       'gizliMi': gizliMi,
       'grup': grup,
       'updateDate': updateDate,
+      'databaseName': databaseName,
       'dbServer': dbServer,
       'dbCatalog': dbCatalog,
       'dbUser': dbUser,
       'dbPass': dbPass,
       'dbFrontOffice_Id': dbFrontOfficeId,
+      'dbBackOffice_Id': dbBackOfficeId,
       'dbDemirbas_Id': dbDemirbasId,
     };
   }

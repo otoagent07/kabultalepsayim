@@ -4,7 +4,6 @@ import '../providers/theme_provider.dart';
 import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_selection_screen.dart';
 import 'amber_request_selection_screen.dart';
-import 'mal_kabul_screen.dart';
 import 'mal_kabul_selection_screen.dart';
 
 class MainMenuScreen extends StatelessWidget {
