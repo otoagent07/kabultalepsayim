@@ -1344,6 +1344,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
+                        const SizedBox(height: 3),
                         ElevatedButton.icon(
                           onPressed: () {
                             if (isValidQuantity) {

@@ -403,6 +403,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
+                        const SizedBox(height: 3),
                         ElevatedButton.icon(
                           onPressed:
                               (barcodeInputController.text.trim().isNotEmpty &&
@@ -922,6 +923,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
+                        const SizedBox(height: 3),
                         ElevatedButton.icon(
                           onPressed: enteredQuantity > 0
                               ? () {
@@ -1482,14 +1484,27 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
+                                        Text(
+                                          item.stokAd.isEmpty
+                                              ? '(StokAd yok)'
+                                              : item.stokAd,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
                                         Row(
                                           children: [
                                             Expanded(
                                               child: Text(
                                                 item.stokkod,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: 16,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.grey[700],
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -1505,19 +1520,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                               ),
                                             ),
                                           ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          item.stokAd.isEmpty
-                                              ? '(StokAd yok)'
-                                              : item.stokAd,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey[700],
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ),

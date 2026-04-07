@@ -824,6 +824,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
                           icon: Icon(Icons.close, size: actionFontSize * 1.15),
                           label: const Text('İptal'),
                         ),
+                        const SizedBox(height: 3),
                         ElevatedButton.icon(
                           onPressed: canSave
                               ? () async {
