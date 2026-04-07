@@ -87,15 +87,12 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       final token = await StorageService.getToken();
 
       if (databaseProvider.selectedDatabase != null && token != null) {
-        final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
-            databaseProvider.selectedDatabase!.id;
-
         // Tarihi yyyy-MM-dd formatına çevir
         final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
         final response = await ApiService.getSayimListe(
           token,
-          backDbId,
+          databaseProvider.selectedDatabase!.id,
           tarih,
           _selectedDepartment.kod,
         );
@@ -148,8 +145,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         return;
       }
 
-      final backDbId = selectedDatabase.dbBackOfficeId ?? selectedDatabase.id;
-
       // Tarih hesaplaması - tarih1: ayın ilk günü, tarih2: seçilen tarih
       final tarih2 = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final tarih1 = DateFormat(
@@ -159,7 +154,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       // Barkod kontrolü yap
       final barkodResponse = await ApiService.checkBarkod(
         token,
-        backDbId,
+        selectedDatabase.id,
         tarih1,
         tarih2,
         barcode,
@@ -181,7 +176,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
             final success = await ApiService.saveSayimItem(
               token,
-              backDbId,
+              selectedDatabase.id,
               _sayimItems[existingItemIndex].sayimId,
               DateFormat('yyyy-MM-dd').format(_selectedDate),
               _selectedDepartment.kod,
@@ -217,7 +212,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             // Yeni ürün ekle ve API'ye kaydet
             final success = await ApiService.saveSayimItem(
               token,
-              backDbId,
+              selectedDatabase.id,
               0, // Yeni ürün için 0
               DateFormat('yyyy-MM-dd').format(_selectedDate),
               _selectedDepartment.kod,
@@ -302,12 +297,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
           return;
         }
-        final backDbId = selectedDatabase.dbBackOfficeId ?? selectedDatabase.id;
 
         // Miktarı güncelle ve API'ye kaydet
         final success = await ApiService.saveSayimItem(
           token,
-          backDbId,
+          selectedDatabase.id,
           existingItemByBarcode.sayimId,
           DateFormat('yyyy-MM-dd').format(_selectedDate),
           _selectedDepartment.kod,
@@ -359,7 +353,6 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
         _showErrorSnackBar('Token veya veritabanı bilgisi bulunamadı');
         return;
       }
-      final backDbId = selectedDatabase.dbBackOfficeId ?? selectedDatabase.id;
 
       // Tarih hesaplaması - tarih1: ayın ilk günü, tarih2: seçilen tarih
       final tarih2 = DateFormat('yyyy-MM-dd').format(_selectedDate);
@@ -370,7 +363,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
       // Barkod kontrolü yap
       final barkodResponse = await ApiService.checkBarkod(
         token,
-        backDbId,
+        selectedDatabase.id,
         tarih1,
         tarih2,
         barcode,
@@ -389,7 +382,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             // Ürün listede var (farklı barkod ile), miktarı güncelle ve API'ye kaydet
             final success = await ApiService.saveSayimItem(
               token,
-              backDbId,
+              selectedDatabase.id,
               _sayimItems[existingItemIndex].sayimId,
               DateFormat('yyyy-MM-dd').format(_selectedDate),
               _selectedDepartment.kod,
@@ -427,7 +420,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             // Yeni ürün ekle ve API'ye kaydet
             final success = await ApiService.saveSayimItem(
               token,
-              backDbId,
+              selectedDatabase.id,
               0, // Yeni ürün için 0
               DateFormat('yyyy-MM-dd').format(_selectedDate),
               _selectedDepartment.kod,
@@ -996,7 +989,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
       final success = await ApiService.deleteSayimItem(
         token,
-        selectedDatabase.dbBackOfficeId ?? selectedDatabase.id,
+        selectedDatabase.id,
         item.sayimId,
       );
 
@@ -1731,7 +1724,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
 
       final success = await ApiService.saveSayimItem(
         token,
-        selectedDatabase.dbBackOfficeId ?? selectedDatabase.id,
+        selectedDatabase.id,
         item.sayimId,
         DateFormat('yyyy-MM-dd').format(_selectedDate),
         _selectedDepartment.kod,
