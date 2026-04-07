@@ -127,10 +127,49 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     );
   }
 
-  void _continue() {
+  void _go(String girisTip) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => MalKabulScreen(selectedDate: _selectedDate),
+        builder: (context) => MalKabulScreen(
+          selectedDate: _selectedDate,
+          girisTip: girisTip,
+        ),
+      ),
+    );
+  }
+
+  Widget _entryButton({
+    required String text,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Card(
+      margin: const EdgeInsets.all(3),
+      elevation: 2,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 34),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.arrow_forward_ios, size: 18),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -170,38 +209,25 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                       label: 'Tarih',
                       value: DateFormat('dd.MM.yyyy').format(_selectedDate),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(5),
-              child: ElevatedButton(
-                onPressed: _continue,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 18,
-                    horizontal: 16,
-                  ),
-                  backgroundColor: Colors.blue[700],
-                  foregroundColor: Colors.white,
-                ),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          'Devam',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                    const SizedBox(height: 6),
+                    _entryButton(
+                      text: 'Sipariş No İle Giriş',
+                      icon: Icons.receipt_long,
+                      color: Colors.blue,
+                      onPressed: () => _go('Sipariş No'),
                     ),
-                    Icon(Icons.arrow_forward, size: 28),
+                    _entryButton(
+                      text: 'İrsaliye ile Giriş',
+                      icon: Icons.local_shipping,
+                      color: Colors.green,
+                      onPressed: () => _go('İrsaliye'),
+                    ),
+                    _entryButton(
+                      text: 'Fatura ile Giriş',
+                      icon: Icons.description,
+                      color: Colors.orange,
+                      onPressed: () => _go('Fatura'),
+                    ),
                   ],
                 ),
               ),

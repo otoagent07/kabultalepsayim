@@ -12,9 +12,14 @@ import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
 class MalKabulScreen extends StatefulWidget {
-  const MalKabulScreen({super.key, required this.selectedDate});
+  const MalKabulScreen({
+    super.key,
+    required this.selectedDate,
+    required this.girisTip,
+  });
 
   final DateTime selectedDate;
+  final String girisTip;
 
   @override
   State<MalKabulScreen> createState() => _MalKabulScreenState();
@@ -22,6 +27,7 @@ class MalKabulScreen extends StatefulWidget {
 
 class _MalKabulScreenState extends State<MalKabulScreen> {
   late DateTime _selectedDate;
+  late String _girisTip;
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
@@ -73,6 +79,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     super.initState();
     _quantityController.text = '1';
     _selectedDate = widget.selectedDate;
+    _girisTip = widget.girisTip;
 
     // Klavye açılmasını engelle
     _barcodeFocusNode.addListener(() {
@@ -1331,7 +1338,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Tarih: ${DateFormat('dd.MM.yyyy').format(_selectedDate)}',
+                      'Tarih: ${DateFormat('dd.MM.yyyy').format(_selectedDate)}  •  Giriş: $_girisTip',
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
