@@ -128,6 +128,11 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     setState(() {
       _isLoadingSayim = false;
     });
+
+    // Liste yüklendikten sonra barkod alanına odaklan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _barcodeFocusNode.requestFocus();
+    });
   }
 
   Future<void> _processBarcode(String barcode) async {
@@ -2040,7 +2045,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
             keyboardType: TextInputType.none,
             textInputAction: TextInputAction.none,
             enableInteractiveSelection: false,
-            showCursor: false,
+            showCursor: true,
             readOnly: false,
             decoration: const InputDecoration(
               hintText: 'Barkod okutun...',

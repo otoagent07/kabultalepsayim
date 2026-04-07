@@ -206,9 +206,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       _isLoadingOrder = false;
     });
 
-    // Siparişler yüklendikten sonra da klavye açık kalmasın.
-    FocusManager.instance.primaryFocus?.unfocus();
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
+    // Liste yüklendikten sonra barkod alanına odaklan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _barcodeFocusNode.requestFocus();
+    });
   }
 
   Future<void> _loadByEttn() async {
@@ -297,7 +298,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoadingOrder = false);
+      if (mounted) {
+        setState(() => _isLoadingOrder = false);
+        // Liste yüklendikten sonra barkod alanına odaklan
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _barcodeFocusNode.requestFocus();
+        });
+      }
     }
   }
 
@@ -1379,7 +1386,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             keyboardType: TextInputType.none,
             textInputAction: TextInputAction.none,
             enableInteractiveSelection: false,
-            showCursor: false,
+            showCursor: true,
             readOnly: false,
             decoration: const InputDecoration(
               hintText: 'Barkod okutun...',
@@ -1495,10 +1502,28 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         labelStyle: TextStyle(fontSize: scaledFontSize),
                         border: const OutlineInputBorder(),
                         prefixIcon: const Icon(Icons.receipt_long, size: 40),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _orderNumberController.clear();
+                            setState(() {});
+                          },
+                          tooltip: 'Temizle',
+                        ),
                       ),
                       keyboardType: _girisTip == 'Sipariş No'
                           ? TextInputType.number
                           : TextInputType.text,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (!_isLoadingOrder) {
+                          if (_girisTip == 'Sipariş No') {
+                            _loadOrder();
+                          } else {
+                            _loadByEttn();
+                          }
+                        }
+                      },
                     );
 
                     final orderButton = ElevatedButton.icon(

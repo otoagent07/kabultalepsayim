@@ -1721,7 +1721,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
             keyboardType: TextInputType.none,
             textInputAction: TextInputAction.none,
             enableInteractiveSelection: false,
-            showCursor: false,
+            showCursor: true,
             readOnly: false,
             decoration: const InputDecoration(
               hintText: 'Barkod okutun...',
