@@ -2,13 +2,16 @@ import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/department.dart';
+import '../models/department_response.dart';
+import '../models/login_response.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/date_selection_tile.dart';
+import '../widgets/department_selection_tile.dart';
 import 'barcode_inventory_screen.dart';
 
 class BarcodeInventorySelectionScreen extends StatefulWidget {
@@ -25,15 +28,11 @@ class _BarcodeInventorySelectionScreenState
   Department? _selectedDepartment;
 
   List<Department> _departments = [];
+  final Map<String, int> _efaturaDbIdByName = {};
   bool _isLoading = true;
 
   String? _token;
   int? _dbId;
-
-  static const double _kLabelFs = 24;
-  static const double _kValueFs = 20;
-  static const double _kKodFs = 16;
-  static const double _kIconSize = 40;
 
   @override
   void initState() {
@@ -47,7 +46,7 @@ class _BarcodeInventorySelectionScreenState
       listen: false,
     ).selectedDatabase;
     if (selectedDb != null) {
-      _dbId = selectedDb.id;
+      _dbId = selectedDb.dbBackOfficeId ?? selectedDb.id;
     }
 
     _token = await StorageService.getToken();
@@ -75,10 +74,25 @@ class _BarcodeInventorySelectionScreenState
 
   Future<void> _loadDepartments() async {
     try {
-      final response = await ApiService.getDepartments(_token!, _dbId!);
+      final results = await Future.wait([
+        ApiService.getDepartments(_token!, _dbId!),
+        ApiService.loginByToken(_token!),
+      ]);
+
+      final response = results[0] as DepartmentResponse;
+      final login = results[1] as LoginResponse;
+
+      _efaturaDbIdByName
+        ..clear()
+        ..addAll({
+          for (final db in login.databases)
+            if (db.programId == 3 && (db.databaseName ?? '').trim().isNotEmpty)
+              db.databaseName!.trim().toLowerCase(): db.id,
+        });
+
       if (response.isSucceded) {
         setState(() {
-          _departments = response.value;
+          _departments = response.value.where((d) => d.anadepo == true).toList();
           if (_selectedDepartment == null && _departments.isNotEmpty) {
             _selectedDepartment = _departments.first;
           }
@@ -167,6 +181,14 @@ class _BarcodeInventorySelectionScreenState
     );
   }
 
+  String _efaturaIdTextForSelected(Department? dept) {
+    if (dept == null || dept.eFatDb == null || dept.eFatDb!.isEmpty) {
+      return 'efutadb_id: id yok';
+    }
+    final id = _efaturaDbIdByName[dept.eFatDb!.trim().toLowerCase()];
+    return 'efutadb_id: ${id ?? 'id yok'}';
+  }
+
   void _selectDepartment() {
     if (_departments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -201,14 +223,18 @@ class _BarcodeInventorySelectionScreenState
                 itemBuilder: (context, index) {
                   final dept = _departments[index];
                   final isSelected = _selectedDepartment?.id == dept.id;
+                  final efaturaId =
+                      (dept.eFatDb == null || dept.eFatDb!.trim().isEmpty)
+                          ? null
+                          : _efaturaDbIdByName[dept.eFatDb!.trim().toLowerCase()];
 
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isSelected ? Colors.green[100] : null,
+                    color: isSelected ? Colors.blue[100] : null,
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: isSelected
-                            ? Colors.green
+                            ? Colors.blue
                             : Colors.grey[300],
                         child: Text(
                           dept.kod,
@@ -226,9 +252,11 @@ class _BarcodeInventorySelectionScreenState
                               : FontWeight.normal,
                         ),
                       ),
-                      subtitle: Text('Kod: ${dept.kod}'),
+                      subtitle: Text(
+                        'Kod: ${dept.kod}\nefutadb_id: ${efaturaId ?? 'id yok'}',
+                      ),
                       trailing: isSelected
-                          ? const Icon(Icons.check, color: Colors.green)
+                          ? const Icon(Icons.check, color: Colors.blue)
                           : null,
                       onTap: () {
                         setState(() {
@@ -247,107 +275,26 @@ class _BarcodeInventorySelectionScreenState
     );
   }
 
-  Widget _fullWidthSelectionTile({
-    required VoidCallback onTap,
-    required IconData icon,
-    required Color iconColor,
-    Color? cardTint,
-    required String label,
-    required String value,
-    String? kodLine,
-    Color? valueColor,
-    FontWeight? valueWeight,
-    Color? kodColor,
-  }) {
-    return Card(
-      color: cardTint,
-      margin: const EdgeInsets.all(3),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: iconColor, size: _kIconSize),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: _kLabelFs,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: _kValueFs,
-                        color: valueColor ?? Colors.grey[700],
-                        fontWeight: valueWeight ?? FontWeight.normal,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (kodLine != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        kodLine,
-                        style: TextStyle(
-                          fontSize: _kKodFs,
-                          color: kodColor ?? Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSelectionCards() {
     return Padding(
       padding: const EdgeInsets.all(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _fullWidthSelectionTile(
+          DateSelectionTile(
             onTap: _selectDate,
-            icon: Icons.calendar_today,
-            iconColor: Colors.blue,
-            label: 'Tarih',
-            value: DateFormat('dd.MM.yyyy').format(_selectedDate),
-            valueColor: Colors.grey[700],
+            selectedDate: _selectedDate,
+            label: 'Tarih Seçin',
           ),
           const SizedBox(height: 3),
-          _fullWidthSelectionTile(
+          DepartmentSelectionTile(
             onTap: _selectDepartment,
-            icon: Icons.business,
-            iconColor: _selectedDepartment != null ? Colors.green : Colors.grey,
-            cardTint: _selectedDepartment != null ? Colors.green[50] : null,
-            label: 'Departman',
-            value: _selectedDepartment?.ad ?? 'Seçiniz',
-            kodLine: _selectedDepartment != null
-                ? 'Kod: ${_selectedDepartment!.kod}'
-                : null,
-            valueColor: _selectedDepartment != null
-                ? Colors.green[800]
-                : Colors.grey[600],
-            valueWeight: _selectedDepartment != null
-                ? FontWeight.bold
-                : FontWeight.normal,
-            kodColor: Colors.green[600],
+            departmentName: _selectedDepartment?.ad,
+            departmentKod: _selectedDepartment?.kod,
+            efutadbIdText: _selectedDepartment == null
+                ? null
+                : _efaturaIdTextForSelected(_selectedDepartment),
+            label: 'Departman Seçin',
           ),
         ],
       ),
