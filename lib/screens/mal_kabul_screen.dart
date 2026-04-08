@@ -167,10 +167,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }) {
     final matched = _stokBarkodIndex[scannedBarcode];
     setState(() {
-      _rowMatchedStokBarkod[rowItem.stokkod] =
-          (matched != null && matched.stokkod == rowItem.stokkod)
-              ? matched
-              : null;
+      _rowMatchedStokBarkod[rowItem.stokkod] = matched;
     });
   }
 
@@ -2059,13 +2056,25 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           keyboardType: TextInputType.none,
                                           textInputAction: TextInputAction.none,
                                           maxLines: 1,
-                                          decoration: const InputDecoration(
+                                          decoration: InputDecoration(
                                             isDense: true,
                                             border: OutlineInputBorder(),
                                             contentPadding:
-                                                EdgeInsets.symmetric(
+                                                const EdgeInsets.symmetric(
                                               horizontal: 10,
                                               vertical: 10,
+                                            ),
+                                            suffixIcon: IconButton(
+                                              tooltip: 'Temizle',
+                                              icon: const Icon(Icons.close),
+                                              onPressed: () {
+                                                rowTextController.clear();
+                                                setState(() {
+                                                  _rowMatchedStokBarkod[
+                                                      item.stokkod] = null;
+                                                });
+                                                rowTextFocusNode.requestFocus();
+                                              },
                                             ),
                                           ),
                                           onChanged: (value) {
@@ -2090,6 +2099,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           onSubmitted: (value) {
                                             final barcode = value.trim();
                                             if (barcode.isNotEmpty) {
+                                              rowTextController.text = barcode;
+                                              rowTextController.selection =
+                                                  TextSelection.fromPosition(
+                                                TextPosition(
+                                                  offset: barcode.length,
+                                                ),
+                                              );
                                               _applyRowBarcodeMatch(
                                                 rowItem: item,
                                                 scannedBarcode: barcode,
@@ -2135,23 +2151,55 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                               ),
                               if (matched != null) ...[
                                 const SizedBox(height: 6),
-                                Text(
-                                  matched.stokAdi,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  matched.stokkod,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade700,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          matched.stokAdi,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Text(
+                                          matched.stokkod,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
