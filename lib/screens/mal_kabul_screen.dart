@@ -131,6 +131,54 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     return error.toString();
   }
 
+  void _showCurlRequestDialog({
+    required String title,
+    required String method,
+    required Uri uri,
+    required Map<String, String> headers,
+    Object? jsonBody,
+  }) {
+    final headerLines =
+        headers.entries.map((e) => "--header '${e.key}: ${e.value}'").toList();
+
+    String bodyPart = '';
+    if (jsonBody != null) {
+      const encoder = JsonEncoder.withIndent('  ');
+      final pretty = encoder.convert(jsonBody);
+      // curl single-quote escaping
+      final escaped = pretty.replaceAll("'", r"'\''");
+      bodyPart = " \\\n--data '$escaped'";
+    }
+
+    final curl = [
+      "curl --location '${uri.toString()}' \\",
+      ...headerLines.map((l) => '$l \\'),
+      '--request $method$bodyPart',
+    ].join('\n');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              curl,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _infoChip({
     required String label,
     required String value,
@@ -411,10 +459,40 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           _lastSenaryo = response.value?.senaryo;
         });
         if (mounted) {
+          final headers = <String, String>{
+            'accept': 'application/json',
+            'Authorization': 'Bearer {token}',
+          };
+          final uri = Uri.parse('${ApiService.efaturaApiBaseUrl}/api/Irsaliye/GetByETTN_Gelen')
+              .replace(
+            queryParameters: <String, String>{
+              'Db_Id': _efaturaDbId!.toString(),
+              'sirketId': _efatSirketId!.toString(),
+              'ETTN': ettn,
+              'detay': 'true',
+            },
+          );
+
+          final hasZero = _orderItems.isEmpty;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${_orderItems.length} satır yüklendi'),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+              action: hasZero
+                  ? SnackBarAction(
+                      label: 'Göster',
+                      onPressed: () {
+                        if (!mounted) return;
+                        _showCurlRequestDialog(
+                          title: 'ETTN Listele - CURL',
+                          method: 'GET',
+                          uri: uri,
+                          headers: headers,
+                        );
+                      },
+                    )
+                  : null,
             ),
           );
         }
