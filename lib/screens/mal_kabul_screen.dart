@@ -39,6 +39,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   late Department _selectedDepartment;
   int? _efaturaDbId;
   int? _efatSirketId;
+  String? _lastVergiNo;
+  String? _lastEirsaliyeENo;
+  String? _lastSenaryo;
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
@@ -56,6 +59,77 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     debugLabel: 'BarcodeInput',
     skipTraversal: true,
   );
+
+  void _showErrorSnackWithDetails({
+    required String title,
+    required Object error,
+  }) {
+    final detailText = _formatErrorDetails(error);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(title),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Detay',
+          onPressed: () {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(title),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      detailText,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Kapat'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  String _formatErrorDetails(Object error) {
+    if (error is ApiHttpException) {
+      const encoder = JsonEncoder.withIndent('  ');
+      final reqBody =
+          error.requestBody == null ? '' : encoder.convert(error.requestBody);
+
+      return [
+        'REQUEST',
+        '${error.method} ${error.uri}',
+        '',
+        'Headers:',
+        ...error.requestHeaders.entries.map((e) => '${e.key}: ${e.value}'),
+        if (reqBody.isNotEmpty) ...[
+          '',
+          'Body:',
+          reqBody,
+        ],
+        '',
+        'RESPONSE',
+        'Status: ${error.statusCode}',
+        'Body:',
+        error.responseBody,
+      ].join('\n');
+    }
+
+    return error.toString();
+  }
 
   Widget _infoChip({
     required String label,
@@ -131,7 +205,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       if (token == null || dbId == null) return;
 
       final uri = Uri.parse(
-        'https://backapi.rmosweb.com/api/Stok_Barkod/GetAll?Db_Id=$dbId',
+        'https://backapis.rmosweb.com/api/Stok_Barkod/GetAll?Db_Id=$dbId',
       );
       final res = await http.get(
         uri,
@@ -332,6 +406,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           for (final item in _orderItems) {
             _acceptedQuantities[item.stokkod] = item.miktar;
           }
+          _lastVergiNo = response.value?.vergino;
+          _lastEirsaliyeENo = response.value?.eirsaliyeENo;
+          _lastSenaryo = response.value?.senaryo;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -355,12 +432,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Yükleme hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackWithDetails(title: 'İrsaliye/Fatura yükleme hatası', error: e);
       }
     } finally {
       if (mounted) {
@@ -951,6 +1023,166 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         },
       ),
     );
+  }
+
+  bool _isFaturaGiris() {
+    final s = _girisTip.toLowerCase();
+    return s.contains('fatura');
+  }
+
+  int _fatIRSValue() => _isFaturaGiris() ? 0 : 1;
+
+  Map<String, dynamic> _buildInsertBarkodBody({
+    required String cariKod,
+    required String faturaNo,
+    required String? siparisNo,
+  }) {
+    final tarihIso = DateTime.now().toIso8601String();
+
+    final detay = <Map<String, dynamic>>[];
+    for (final item in _orderItems) {
+      final matched = _rowMatchedStokBarkod[item.stokkod];
+      final rowTextController = _rowTextControllers[item.stokkod];
+      final okutulanBarkod = (rowTextController?.text ?? '').trim().isNotEmpty
+          ? rowTextController!.text.trim()
+          : (matched?.barkod ?? '').trim();
+
+      final stokKod = (matched?.stokkod ?? item.stokkod).trim();
+      final birim = (item.birim).trim();
+      final miktar = _acceptedQuantities[item.stokkod] ?? item.miktar;
+
+      const birimFiyat = 0;
+      final tutar = miktar * birimFiyat;
+
+      detay.add({
+        'barkod': okutulanBarkod,
+        'stokKod': stokKod,
+        'birim': birim,
+        'miktar': miktar,
+        'birimFiyat': birimFiyat,
+        'tutar': tutar,
+        'netTutar': tutar,
+      });
+    }
+
+    final body = <String, dynamic>{
+      'tarih': tarihIso,
+      'cari': cariKod,
+      'fatIRS': _fatIRSValue(),
+      'faturaNo': faturaNo,
+      'subeKodu': _selectedDepartment.sube,
+      'anaDepo': _selectedDepartment.kod,
+      'detay': detay,
+    };
+
+    // e-fatura ise sadece senaryo bilgisini (varsa) ekle
+    final senaryo = (_lastSenaryo ?? '').trim();
+    if (senaryo.isNotEmpty) {
+      body['senaryo'] = senaryo;
+    }
+
+    // sipariş ise siparisNo ekle
+    final sNo = (siparisNo ?? '').trim();
+    if (sNo.isNotEmpty) {
+      body['siparisNo'] = sNo;
+    }
+
+    return body;
+  }
+
+  Future<bool> _showInsertBarkodPreviewDialog({
+    required Map<String, dynamic> body,
+    required String cariKod,
+    required String faturaNo,
+  }) async {
+    const encoder = JsonEncoder.withIndent('  ');
+    final bodyPretty = encoder.convert(body);
+
+    final curl = [
+      "curl -X POST 'https://backapis.rmosweb.com/api/StokHareket/InsertBarkod' \\",
+      "-H 'Content-Type: application/json' \\",
+      "-H 'Authorization: Bearer {token}' \\",
+      "-d '{JSON_BODY}'",
+    ].join('\n');
+
+    final mappingLines = <String>[
+      'cari → HesapPlan.Kod (GetAllByVergiNo endpointinden alındı)',
+      'faturaNo → Eirsaliye_ENo (GetByETTN_Gelen)',
+      'fatIRS → kullanıcı seçimi (Fatura/Irsaliye)',
+      'subeKodu → departman seçimi',
+      'anaDepo → depo seçimi',
+      'barkod → okutulan değer',
+      'stokKod → barkod sorgusundan geldi',
+      'miktar → kullanıcı input',
+    ];
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Gönderim Önizleme'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CURL PREVIEW',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  SelectableText(
+                    curl,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'JSON BODY',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  SelectableText(
+                    bodyPretty,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'EŞLEME DETAYI',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  ...mappingLines.map(
+                    (t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('• $t'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Özet: cari=$cariKod, faturaNo=$faturaNo, fatIRS=${_fatIRSValue()}, subeKodu=${_selectedDepartment.sube}, anaDepo=${_selectedDepartment.kod}',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Gönder'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed == true;
   }
 
   // Sayısal klavye
@@ -1619,6 +1851,74 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final token = await StorageService.getToken();
 
       if (databaseProvider.selectedDatabase != null && token != null) {
+        // Fatura / İrsaliye akışı: önce önizleme, sonra kullanıcı onayıyla POST
+        if (_girisTip != 'Sipariş No') {
+          final vergino = (_lastVergiNo ?? '').trim();
+          if (vergino.isEmpty) {
+            throw Exception('ETTN sorgusundan Vergino alınamadı');
+          }
+
+          final cariKod =
+              await ApiService.getHesapPlanKodByVergiNo(token: token, vergino: vergino) ??
+                  '';
+          if (cariKod.trim().isEmpty) {
+            throw Exception('HesapPlan.Kod bulunamadı (vergino: $vergino)');
+          }
+
+          final faturaNo = (_lastEirsaliyeENo ?? '').trim();
+          if (faturaNo.isEmpty) {
+            throw Exception('ETTN sorgusundan Eirsaliye_ENo alınamadı');
+          }
+
+          final body = _buildInsertBarkodBody(
+            cariKod: cariKod,
+            faturaNo: faturaNo,
+            siparisNo: null,
+          );
+
+          final ok = await _showInsertBarkodPreviewDialog(
+            body: body,
+            cariKod: cariKod,
+            faturaNo: faturaNo,
+          );
+          if (!ok) {
+            return;
+          }
+
+          final response = await ApiService.insertStokHareketBarkod(
+            token: token,
+            body: body,
+          );
+
+          final isOk = response['isSucceded'] == true;
+          final msg =
+              (response['message'] ?? (isOk ? 'Gönderildi' : 'Gönderim hatası'))
+                  .toString();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(msg),
+                backgroundColor: isOk ? Colors.green : Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+
+          if (isOk && mounted) {
+            setState(() {
+              _orderItems.clear();
+              _acceptedQuantities.clear();
+              _orderNumberController.clear();
+              _lastVergiNo = null;
+              _lastEirsaliyeENo = null;
+              _lastSenaryo = null;
+            });
+          }
+
+          return;
+        }
+
         final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
         final refNo = _orderNumberController.text
             .trim(); // Use order number as RefNo
@@ -1731,14 +2031,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         }
       }
     } catch (e) {
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kaydetme hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackWithDetails(title: 'Gönderim/Kaydetme hatası', error: e);
       }
     }
 

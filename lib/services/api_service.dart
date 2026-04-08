@@ -10,10 +10,31 @@ import '../models/stok_birim_fiyat_response.dart';
 import '../models/mal_kabul_order_response.dart';
 import '../models/efatura_irsaliye_response.dart';
 
+class ApiHttpException implements Exception {
+  final String method;
+  final Uri uri;
+  final Map<String, String> requestHeaders;
+  final Object? requestBody;
+  final int statusCode;
+  final String responseBody;
+
+  ApiHttpException({
+    required this.method,
+    required this.uri,
+    required this.requestHeaders,
+    required this.requestBody,
+    required this.statusCode,
+    required this.responseBody,
+  });
+
+  @override
+  String toString() => 'HTTP $statusCode $method $uri';
+}
+
 class ApiService {
   static const String baseUrl = 'https://service.rmosweb.com';
-  static const String backApiBaseUrl = 'https://backapi.rmosweb.com';
-  static const String efaturaApiBaseUrl = 'https://e-faturaapi.rmosweb.com';
+  static const String backApiBaseUrl = 'https://backapis.rmosweb.com';
+  static const String efaturaApiBaseUrl = 'https://efaturaapis.rmosweb.com';
   static const String tokenEndpoint = '/security/createToken';
   static const String loginByTokenEndpoint = '/api/Users/LoginByToken';
   static const String departmentsEndpoint =
@@ -35,6 +56,10 @@ class ApiService {
   static const String malKabulSaveEndpoint = '/api/MalKabul/Insert';
   static const String efaturaIrsaliyeByEttnGelenEndpoint =
       '/api/Irsaliye/GetByETTN_Gelen';
+  static const String hesapPlanByVergiNoEndpoint =
+      '/api/HesapPlan/GetAllByVergiNo';
+  static const String stokHareketInsertBarkodEndpoint =
+      '/api/StokHareket/InsertBarkod';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -493,20 +518,26 @@ class ApiService {
             },
           );
 
+      final headers = <String, String>{
+        'accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
       final response = await http.get(
         uri,
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = jsonDecode(response.body);
         return EfaturaIrsaliyeResponse.fromJson(jsonData);
       } else {
-        throw Exception(
-          'İrsaliye getirme hatası: ${response.statusCode}',
+        throw ApiHttpException(
+          method: 'GET',
+          uri: uri,
+          requestHeaders: headers,
+          requestBody: null,
+          statusCode: response.statusCode,
+          responseBody: response.body,
         );
       }
     } catch (e) {
@@ -556,6 +587,104 @@ class ApiService {
       } else {
         throw Exception('Mal Kabul kaydetme hatası: ${response.statusCode}');
       }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<String?> getHesapPlanKodByVergiNo({
+    required String token,
+    required String vergino,
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$hesapPlanByVergiNoEndpoint').replace(
+        queryParameters: <String, String>{
+          'vergino': vergino,
+        },
+      );
+
+      final headers = <String, String>{
+        'accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      final response = await http.get(
+        uri,
+        headers: headers,
+      );
+
+      if (response.statusCode != 200) {
+        throw ApiHttpException(
+          method: 'GET',
+          uri: uri,
+          requestHeaders: headers,
+          requestBody: null,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+        );
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final value = decoded['value'];
+        if (value is List && value.isNotEmpty) {
+          final first = value.first;
+          if (first is Map<String, dynamic>) {
+            final kod = first['Kod'] ?? first['kod'];
+            return kod?.toString().trim();
+          }
+        } else if (value is Map<String, dynamic>) {
+          final kod = value['Kod'] ?? value['kod'];
+          return kod?.toString().trim();
+        }
+      }
+
+      // Bazı servisler listeyi direkt döndürebiliyor.
+      if (decoded is List && decoded.isNotEmpty) {
+        final first = decoded.first;
+        if (first is Map<String, dynamic>) {
+          final kod = first['Kod'] ?? first['kod'];
+          return kod?.toString().trim();
+        }
+      }
+
+      return null;
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> insertStokHareketBarkod({
+    required String token,
+    required Map<String, dynamic> body,
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$stokHareketInsertBarkodEndpoint');
+      final headers = <String, String>{
+        'accept': 'application/json',
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{'raw': decoded};
+      }
+
+      throw ApiHttpException(
+        method: 'POST',
+        uri: uri,
+        requestHeaders: headers,
+        requestBody: body,
+        statusCode: response.statusCode,
+        responseBody: response.body,
+      );
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
     }

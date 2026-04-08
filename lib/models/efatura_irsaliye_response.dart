@@ -69,9 +69,19 @@ class EfaturaIrsaliyeResponse {
 class EfaturaIrsaliyeValue {
   final int? id;
   final String? tarihi;
+  final String? vergino;
+  final String? eirsaliyeENo;
+  final String? senaryo;
   final List<EfaturaIrsaliyeLine> lines;
 
-  EfaturaIrsaliyeValue({this.id, this.tarihi, required this.lines});
+  EfaturaIrsaliyeValue({
+    this.id,
+    this.tarihi,
+    this.vergino,
+    this.eirsaliyeENo,
+    this.senaryo,
+    required this.lines,
+  });
 
   factory EfaturaIrsaliyeValue.fromJson(Map<String, dynamic> json) {
     final rawLines = json['Satırlar'] ?? json['Satirlar'] ?? json['satirlar'];
@@ -85,6 +95,18 @@ class EfaturaIrsaliyeValue {
     return EfaturaIrsaliyeValue(
       id: json['Id'],
       tarihi: json['Tarihi'],
+      vergino:
+          (json['Vergino'] ?? json['VergiNo'] ?? json['Vkn'] ?? json['VKN'])
+              ?.toString()
+              .trim(),
+      eirsaliyeENo:
+          (json['Eirsaliye_ENo'] ??
+                  json['EirsaliyeENo'] ??
+                  json['EirsaliyeNo'] ??
+                  json['Eirsaliye_No'])
+              ?.toString()
+              .trim(),
+      senaryo: (json['Senaryo'] ?? json['senaryo'])?.toString().trim(),
       lines: list,
     );
   }
