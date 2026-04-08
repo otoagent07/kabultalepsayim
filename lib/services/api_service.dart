@@ -541,6 +541,7 @@ class ApiService {
         );
       }
     } catch (e) {
+      if (e is ApiHttpException) rethrow;
       throw Exception('Bağlantı hatası: $e');
     }
   }
@@ -651,6 +652,7 @@ class ApiService {
 
       return null;
     } catch (e) {
+      if (e is ApiHttpException) rethrow;
       throw Exception('Bağlantı hatası: $e');
     }
   }
@@ -688,6 +690,7 @@ class ApiService {
         responseBody: response.body,
       );
     } catch (e) {
+      if (e is ApiHttpException) rethrow;
       throw Exception('Bağlantı hatası: $e');
     }
   }

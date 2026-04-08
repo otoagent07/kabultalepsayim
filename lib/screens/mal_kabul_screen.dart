@@ -1111,6 +1111,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   int _fatIRSValue() => _isFaturaGiris() ? 0 : 1;
 
   Map<String, dynamic> _buildInsertBarkodBody({
+    required int dbId,
     required String cariKod,
     required String faturaNo,
     required String? siparisNo,
@@ -1125,7 +1126,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           ? rowTextController!.text.trim()
           : (matched?.barkod ?? '').trim();
 
-      final stokKod = (matched?.stokkod ?? item.stokkod).trim();
+      // InsertBarkod için stokKod yalnızca okutulan barkod eşleşmesinden gelmeli.
+      // Barkod boşsa veya eşleşme yoksa stokKod boş gönderilir (fallback yok).
+      final stokKod =
+          okutulanBarkod.isEmpty ? '' : (matched?.stokkod ?? '').trim();
       final birim = (item.birim).trim();
       final miktar = _acceptedQuantities[item.stokkod] ?? item.miktar;
 
@@ -1144,13 +1148,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     }
 
     final body = <String, dynamic>{
+      'db_Id': dbId,
       'tarih': tarihIso,
       'cari': cariKod,
       'fatIRS': _fatIRSValue(),
       'faturaNo': faturaNo,
       'subeKodu': _selectedDepartment.sube,
       'anaDepo': _selectedDepartment.kod,
-      'detay': detay,
+      'detaylar': detay,
     };
 
     // e-fatura ise sadece senaryo bilgisini (varsa) ekle
@@ -1955,6 +1960,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           }
 
           final body = _buildInsertBarkodBody(
+            dbId: backDbId,
             cariKod: cariKod,
             faturaNo: faturaNo,
             siparisNo: null,
