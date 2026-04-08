@@ -1966,6 +1966,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             faturaNo: faturaNo,
           );
           if (!ok) {
+            if (mounted) {
+              setState(() {
+                _isSaving = false;
+              });
+            }
             return;
           }
 
@@ -2000,6 +2005,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             });
           }
 
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+          }
           return;
         }
 
