@@ -1130,6 +1130,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       // Barkod boşsa veya eşleşme yoksa stokKod boş gönderilir (fallback yok).
       final stokKod =
           okutulanBarkod.isEmpty ? '' : (matched?.stokkod ?? '').trim();
+      if (stokKod.isEmpty) {
+        continue;
+      }
       final birim = (item.birim).trim();
       final miktar = _acceptedQuantities[item.stokkod] ?? item.miktar;
 
@@ -1229,6 +1232,21 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   SelectableText(
                     bodyPretty,
                     style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                  Builder(
+                    builder: (context) {
+                      final d = body['detaylar'];
+                      final sentCount = d is List ? d.length : 0;
+                      final skipped = _orderItems.length - sentCount;
+                      if (skipped <= 0) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Not: stokKod boş olduğu için $skipped satır gönderilmeyecek.',
+                          style: TextStyle(color: Colors.orange[800], fontSize: 12),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                   const Text(
@@ -1965,6 +1983,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             faturaNo: faturaNo,
             siparisNo: null,
           );
+          final detaylar = body['detaylar'];
+          if (detaylar is! List || detaylar.isEmpty) {
+            throw Exception('Gönderilecek satır yok (stokKod boş olanlar gönderilmez)');
+          }
 
           final ok = await _showInsertBarkodPreviewDialog(
             body: body,
