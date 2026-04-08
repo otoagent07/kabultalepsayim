@@ -594,11 +594,13 @@ class ApiService {
 
   static Future<String?> getHesapPlanKodByVergiNo({
     required String token,
+    required int dbId,
     required String vergino,
   }) async {
     try {
       final uri = Uri.parse('$backApiBaseUrl$hesapPlanByVergiNoEndpoint').replace(
         queryParameters: <String, String>{
+          'Db_Id': dbId.toString(),
           'vergino': vergino,
         },
       );

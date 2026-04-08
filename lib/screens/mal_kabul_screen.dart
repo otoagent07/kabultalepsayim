@@ -1936,8 +1936,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             throw Exception('ETTN sorgusundan Vergino alınamadı');
           }
 
+          final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
+              databaseProvider.selectedDatabase!.id;
           final cariKod =
-              await ApiService.getHesapPlanKodByVergiNo(token: token, vergino: vergino) ??
+              await ApiService.getHesapPlanKodByVergiNo(
+                    token: token,
+                    dbId: backDbId,
+                    vergino: vergino,
+                  ) ??
                   '';
           if (cariKod.trim().isEmpty) {
             throw Exception('HesapPlan.Kod bulunamadı (vergino: $vergino)');
