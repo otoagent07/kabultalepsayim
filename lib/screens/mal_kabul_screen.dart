@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
@@ -41,7 +42,12 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
+  bool _isLoadingStokBarkod = false;
+  final Map<String, _StokBarkodItem> _stokBarkodIndex = {};
+  final Map<String, _StokBarkodItem?> _rowMatchedStokBarkod = {};
   final Map<String, double> _acceptedQuantities = {};
+  final Map<String, TextEditingController> _rowTextControllers = {};
+  final Map<String, FocusNode> _rowTextFocusNodes = {};
   final TextEditingController _orderNumberController = TextEditingController();
   final TextEditingController _manualBarcodeController =
       TextEditingController();
@@ -105,10 +111,77 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _barcodeFocusNode.requestFocus();
     });
+
+    // Stok barkod listesini baştan çek (eşleştirme için)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _preloadStokBarkodIndex();
+    });
+  }
+
+  Future<void> _preloadStokBarkodIndex() async {
+    if (_isLoadingStokBarkod || _stokBarkodIndex.isNotEmpty) return;
+    setState(() => _isLoadingStokBarkod = true);
+    try {
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      final token = await StorageService.getToken();
+      final dbId = databaseProvider.selectedDatabase?.id;
+      if (token == null || dbId == null) return;
+
+      final uri = Uri.parse(
+        'https://backapi.rmosweb.com/api/Stok_Barkod/GetAll?Db_Id=$dbId',
+      );
+      final res = await http.get(
+        uri,
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(res.body);
+        final value = (jsonData['value'] as List<dynamic>?) ?? const [];
+        for (final e in value) {
+          final item = _StokBarkodItem.fromJson(e as Map<String, dynamic>);
+          if (item.barkod.isNotEmpty) {
+            _stokBarkodIndex[item.barkod] = item;
+          }
+        }
+      }
+    } catch (_) {
+      // Sessiz geç: sadece UI eşleştirmesi için.
+    } finally {
+      if (mounted) setState(() => _isLoadingStokBarkod = false);
+    }
+  }
+
+  String _mapBarcodeToStokkodIfAny(String barcode) {
+    return _stokBarkodIndex[barcode]?.stokkod ?? barcode;
+  }
+
+  void _applyRowBarcodeMatch({
+    required MalKabulOrderItem rowItem,
+    required String scannedBarcode,
+  }) {
+    final matched = _stokBarkodIndex[scannedBarcode];
+    setState(() {
+      _rowMatchedStokBarkod[rowItem.stokkod] =
+          (matched != null && matched.stokkod == rowItem.stokkod)
+              ? matched
+              : null;
+    });
   }
 
   @override
   void dispose() {
+    for (final c in _rowTextControllers.values) {
+      c.dispose();
+    }
+    for (final f in _rowTextFocusNodes.values) {
+      f.dispose();
+    }
     _orderNumberController.dispose();
     _manualBarcodeController.dispose();
     _quantityController.dispose();
@@ -504,6 +577,341 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         ),
                         const SizedBox(height: 3),
                         ElevatedButton.icon(
+                          onPressed: () {
+                            if (_isLoadingStokBarkod) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Barkodlar yükleniyor, lütfen bekleyiniz...',
+                                  ),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+                            if (_stokBarkodIndex.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Yüklü barkod bulunamadı'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            String searchQuery = '';
+                            var allItems = _stokBarkodIndex.values.toList();
+                            allItems.sort((a, b) => a.barkod.compareTo(b.barkod));
+                            var filteredItems = allItems;
+
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (sheetContext) => StatefulBuilder(
+                                builder: (sheetContext, setSheetState) {
+                                  return Container(
+                                    height:
+                                        MediaQuery.of(sheetContext).size.height *
+                                            0.85,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(20),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(20),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue[50],
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                              top: Radius.circular(20),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 40,
+                                                height: 4,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[300],
+                                                  borderRadius:
+                                                      BorderRadius.circular(2),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.qr_code_2,
+                                                    color: Colors.blue[700],
+                                                    size: 24,
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                    'Yüklenen Barkodlar',
+                                                    style: TextStyle(
+                                                      fontSize: 20,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.blue[700],
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.blue[100],
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                        16,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      '${filteredItems.length} kayıt',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.blue[700],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Card(
+                                                    margin: EdgeInsets.zero,
+                                                    elevation: 1,
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                        10,
+                                                      ),
+                                                    ),
+                                                    clipBehavior:
+                                                        Clip.antiAlias,
+                                                    child: IconButton(
+                                                      icon: const Icon(
+                                                        Icons.close,
+                                                        color: Colors.red,
+                                                      ),
+                                                      tooltip: 'Kapat',
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                        sheetContext,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 16),
+                                              TextField(
+                                                decoration: InputDecoration(
+                                                  hintText:
+                                                      'Barkod ile arayın...',
+                                                  prefixIcon: Icon(
+                                                    Icons.search,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                  suffixIcon:
+                                                      searchQuery.isNotEmpty
+                                                          ? IconButton(
+                                                              icon: Icon(
+                                                                Icons.clear,
+                                                                color: Colors
+                                                                    .grey[600],
+                                                              ),
+                                                              onPressed: () {
+                                                                setSheetState(
+                                                                    () {
+                                                                  searchQuery =
+                                                                      '';
+                                                                  filteredItems =
+                                                                      allItems;
+                                                                });
+                                                              },
+                                                            )
+                                                          : null,
+                                                  filled: true,
+                                                  fillColor: Colors.white,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                      12,
+                                                    ),
+                                                    borderSide:
+                                                        BorderSide.none,
+                                                  ),
+                                                  contentPadding:
+                                                      const EdgeInsets
+                                                          .symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                                ),
+                                                onChanged: (value) {
+                                                  setSheetState(() {
+                                                    searchQuery =
+                                                        value.toLowerCase();
+                                                    filteredItems = allItems
+                                                        .where(
+                                                          (x) => x.barkod
+                                                              .toLowerCase()
+                                                              .contains(
+                                                                searchQuery,
+                                                              ),
+                                                        )
+                                                        .toList();
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: filteredItems.isEmpty
+                                              ? Center(
+                                                  child: Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.search_off,
+                                                        size: 64,
+                                                        color: Colors.grey[400],
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 16,
+                                                      ),
+                                                      Text(
+                                                        'Kayıt bulunamadı',
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          color: Colors
+                                                              .grey[600],
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                )
+                                              : ListView.builder(
+                                                  padding:
+                                                      const EdgeInsets.all(16),
+                                                  itemCount:
+                                                      filteredItems.length,
+                                                  itemBuilder:
+                                                      (context, index) {
+                                                    final x =
+                                                        filteredItems[index];
+                                                    return Container(
+                                                      margin:
+                                                          const EdgeInsets.only(
+                                                        bottom: 8,
+                                                      ),
+                                                      child: Material(
+                                                        color: Colors.white,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        elevation: 1,
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(16),
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                x.barkod,
+                                                                style:
+                                                                    const TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 6,
+                                                              ),
+                                                              Text(
+                                                                x.stokAdi,
+                                                                style: TextStyle(
+                                                                  fontSize: 13,
+                                                                  color: Colors
+                                                                      .grey[700],
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 2,
+                                                              ),
+                                                              Text(
+                                                                x.stokkod,
+                                                                style: TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: Colors
+                                                                      .grey[700],
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 9,
+                              horizontal: 9,
+                            ),
+                            minimumSize: const Size.fromHeight(24),
+                            textStyle: actionTextStyle,
+                          ),
+                          icon:
+                              Icon(Icons.qr_code_2, size: actionFontSize * 1.15),
+                          label: const Text('Yüklenen Barkodları Göster'),
+                        ),
+                        const SizedBox(height: 3),
+                        ElevatedButton.icon(
                           onPressed:
                               (barcodeInputController.text.trim().isNotEmpty &&
                                   quantityController.text.trim().isNotEmpty)
@@ -793,9 +1201,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       return;
     }
 
+    final effectiveStokkod = _mapBarcodeToStokkodIfAny(barcode);
     // Find matching item in order
     final matchingItem = _orderItems.firstWhere(
-      (item) => item.stokkod == barcode,
+      (item) => item.stokkod == effectiveStokkod,
       orElse: () => MalKabulOrderItem(
         id: 0,
         tarih: '',
@@ -885,9 +1294,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       return;
     }
 
+    final effectiveStokkod = _mapBarcodeToStokkodIfAny(barcode);
     // Find matching item in order
     final matchingItem = _orderItems.firstWhere(
-      (item) => item.stokkod == barcode,
+      (item) => item.stokkod == effectiveStokkod,
       orElse: () => MalKabulOrderItem(
         id: 0,
         tarih: '',
@@ -1552,6 +1962,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     );
                   },
                 ),
+                if (_isLoadingStokBarkod) ...[
+                  const SizedBox(height: 10),
+                  const LinearProgressIndicator(minHeight: 2),
+                ],
               ],
             ),
           ),
@@ -1597,6 +2011,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       final item = _orderItems[index];
                       final acceptedQuantity =
                           _acceptedQuantities[item.stokkod] ?? item.miktar;
+                      final rowTextController = _rowTextControllers.putIfAbsent(
+                        item.stokkod,
+                        () => TextEditingController(),
+                      );
+                      final rowTextFocusNode = _rowTextFocusNodes.putIfAbsent(
+                        item.stokkod,
+                        () => FocusNode(debugLabel: 'RowTextField:${item.stokkod}'),
+                      );
+                      final matched = _rowMatchedStokBarkod[item.stokkod];
 
                       final orderQtyStr = item.miktar.toStringAsFixed(0);
                       final acceptedQtyStr =
@@ -1611,6 +2034,128 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 420,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Barkod:',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: TextField(
+                                          controller: rowTextController,
+                                          focusNode: rowTextFocusNode,
+                                          keyboardType: TextInputType.none,
+                                          textInputAction: TextInputAction.none,
+                                          maxLines: 1,
+                                          decoration: const InputDecoration(
+                                            isDense: true,
+                                            border: OutlineInputBorder(),
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 10,
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            if (value.endsWith('\n')) {
+                                              final barcode =
+                                                  value.replaceAll('\n', '').trim();
+                                              if (barcode.isNotEmpty) {
+                                                rowTextController.text = barcode;
+                                                rowTextController.selection =
+                                                    TextSelection.fromPosition(
+                                                  TextPosition(
+                                                    offset: barcode.length,
+                                                  ),
+                                                );
+                                                _applyRowBarcodeMatch(
+                                                  rowItem: item,
+                                                  scannedBarcode: barcode,
+                                                );
+                                              }
+                                            }
+                                          },
+                                          onSubmitted: (value) {
+                                            final barcode = value.trim();
+                                            if (barcode.isNotEmpty) {
+                                              _applyRowBarcodeMatch(
+                                                rowItem: item,
+                                                scannedBarcode: barcode,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Card(
+                                        elevation: 2,
+                                        margin: EdgeInsets.zero,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
+                                          onTap: () => _editQuantity(item),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                Icon(Icons.edit, size: 18),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Düzenle',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (matched != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  matched.stokAdi,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  matched.stokkod,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 8),
                               Row(
                                 children: [
                                   Expanded(
@@ -1625,7 +2170,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                               : item.stokAd,
                                           style: const TextStyle(
                                             fontSize: 16,
-                                            fontWeight: FontWeight.w800,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -1657,37 +2202,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           ],
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Card(
-                                    elevation: 2,
-                                    margin: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: InkWell(
-                                      onTap: () => _editQuantity(item),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 10,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            Icon(Icons.edit, size: 18),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Düzenle',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                     ),
                                   ),
                                 ],
@@ -1754,6 +2268,26 @@ class QRScannerPage extends StatefulWidget {
 
   @override
   State<QRScannerPage> createState() => _QRScannerPageState();
+}
+
+class _StokBarkodItem {
+  final String stokkod;
+  final String barkod;
+  final String stokAdi;
+
+  const _StokBarkodItem({
+    required this.stokkod,
+    required this.barkod,
+    required this.stokAdi,
+  });
+
+  factory _StokBarkodItem.fromJson(Map<String, dynamic> json) {
+    return _StokBarkodItem(
+      stokkod: (json['B_Stokkod'] ?? '').toString().trim(),
+      barkod: (json['B_Barkod'] ?? '').toString().trim(),
+      stokAdi: (json['StokAdi'] ?? '').toString().trim(),
+    );
+  }
 }
 
 class _QRScannerPageState extends State<QRScannerPage> {
