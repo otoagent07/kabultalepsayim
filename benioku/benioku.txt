@@ -2,3 +2,8 @@ genel.jks
 
 key0
 19830126
+
+
+token oluşturma bilgileri backoffice
+mehmet@rmosyazilim.com
+1224
