@@ -203,39 +203,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     );
   }
 
-  Widget _infoChip({
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: Colors.black),
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: color.withValues(alpha: 0.95),
-              ),
-            ),
-            TextSpan(
-              text: value,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   String _prettyUnit(String unit) {
     final u = unit.trim();
     if (u.isEmpty) return '';
@@ -243,40 +210,31 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     return '${lower[0].toUpperCase()}${lower.substring(1)}';
   }
 
-  Widget _metricBox({
+  Widget _metricText({
     required String label,
     required String value,
     required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return RichText(
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: const TextStyle(color: Colors.black),
         children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          TextSpan(
+            text: '$label ',
             style: TextStyle(
               fontWeight: FontWeight.w800,
-              fontSize: 12,
+              fontSize: 11,
               color: color.withValues(alpha: 0.95),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          TextSpan(
+            text: value,
             style: const TextStyle(
               fontWeight: FontWeight.w700,
-              fontSize: 13,
+              fontSize: 12,
               color: Colors.black,
             ),
           ),
@@ -2544,7 +2502,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                               child: CircularProgressIndicator(strokeWidth: 3),
                             )
                           : Icon(Icons.list, size: scaledFontSize * 1.2),
-                      label: const Text('LİSTELE'),
+                      label: Text(
+                        'LİSTELE',
+                        style: TextStyle(fontSize: scaledFontSize * 0.75),
+                      ),
                     );
 
                     return Row(
@@ -2627,10 +2588,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       final priceStr = item.seciliFiyat.toStringAsFixed(2);
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
+                        margin: const EdgeInsets.only(bottom: 6),
                         elevation: 1,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -2730,7 +2691,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 12,
-                                              vertical: 10,
+                                              vertical: 8,
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -2806,7 +2767,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Expanded(
@@ -2831,29 +2792,27 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _metricBox(
+                                    child: _metricText(
                                       label: 'Sipariş',
                                       value:
                                           '$orderQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
                                       color: Colors.blue,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
                                   Expanded(
-                                    child: _metricBox(
+                                    child: _metricText(
                                       label: 'Kabul',
                                       value:
                                           '$acceptedQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
                                       color: Colors.green,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
                                   Expanded(
-                                    child: _metricBox(
+                                    child: _metricText(
                                       label: 'Fiyat',
                                       value: priceStr,
                                       color: Colors.orange,
