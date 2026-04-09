@@ -430,6 +430,19 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     super.dispose();
   }
 
+  void _clearRowScanMemory() {
+    for (final c in _rowTextControllers.values) {
+      c.dispose();
+    }
+    for (final f in _rowTextFocusNodes.values) {
+      f.dispose();
+    }
+    _rowTextControllers.clear();
+    _rowTextFocusNodes.clear();
+    _rowMatchedStokBarkod.clear();
+    _existingStokHareketByBelgeSatirId.clear();
+  }
+
   Future<void> _loadOrder() async {
     if (_orderNumberController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -545,6 +558,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       );
       return;
     }
+
+    // Aynı ETTN ile tekrar listelemede önceki okutulanlar hafızada kalmasın.
+    _clearRowScanMemory();
 
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod('TextInput.hide');
