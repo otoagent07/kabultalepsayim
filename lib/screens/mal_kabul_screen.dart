@@ -12,6 +12,7 @@ import '../models/mal_kabul_order_item.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/app_dialogs.dart';
 
 class MalKabulScreen extends StatefulWidget {
   const MalKabulScreen({
@@ -54,13 +55,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   final Map<String, TextEditingController> _rowTextControllers = {};
   final Map<String, FocusNode> _rowTextFocusNodes = {};
   final TextEditingController _orderNumberController = TextEditingController();
-  final TextEditingController _manualBarcodeController =
-      TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  final FocusNode _barcodeFocusNode = FocusNode(
-    debugLabel: 'BarcodeInput',
-    skipTraversal: true,
-  );
+  // AppBar sadeleştirildi; global barkod focus'u kaldırıldı.
 
   void _showErrorSnackWithDetails({
     required String title,
@@ -262,18 +258,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       }
     }
 
-    // Klavye açılmasını engelle
-    _barcodeFocusNode.addListener(() {
-      if (_barcodeFocusNode.hasFocus) {
-        SystemChannels.textInput.invokeMethod('TextInput.hide');
-      }
-    });
-
-    // Lazer okuyucu için odaklanma
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _barcodeFocusNode.requestFocus();
-    });
-
     // Stok barkod listesini baştan çek (eşleştirme için)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _preloadStokBarkodIndex();
@@ -372,24 +356,16 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     required String ettn,
     required MalKabulOrderItem item,
   }) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Silme Onayı'),
-        content: Text('Kayıtlı: #$existingId silinsin mi?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Evet'),
-          ),
-        ],
-      ),
+    final ok = await AppDialogs.confirm(
+      context,
+      title: 'Silme Onayı',
+      message: 'Kayıtlı: #$existingId silinsin mi?',
+      cancelText: 'Vazgeç',
+      confirmText: 'Evet',
+      destructive: true,
+      icon: Icons.delete_outline,
     );
-    if (confirm != true) return;
+    if (!ok) return;
 
     try {
       final databaseProvider = Provider.of<SelectedDatabaseProvider>(
@@ -450,9 +426,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       f.dispose();
     }
     _orderNumberController.dispose();
-    _manualBarcodeController.dispose();
     _quantityController.dispose();
-    _barcodeFocusNode.dispose();
     super.dispose();
   }
 
@@ -539,11 +513,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
     setState(() {
       _isLoadingOrder = false;
-    });
-
-    // Liste yüklendikten sonra barkod alanına odaklan
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _barcodeFocusNode.requestFocus();
     });
   }
 
@@ -703,38 +672,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoadingOrder = false);
-        // Liste yüklendikten sonra barkod alanına odaklan
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _barcodeFocusNode.requestFocus();
-        });
       }
     }
   }
 
   // Tarih seçimi artık seçim ekranında yapılıyor.
-
-  Future<void> _scanBarcode() async {
-    try {
-      final String? result = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const QRScannerPage()),
-      );
-
-      if (result != null && result.isNotEmpty) {
-        _processBarcode(result);
-      }
-    } catch (e) {
-      // Hata durumunda kullanıcıya bilgi ver
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kamera hatası: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   void _showManualBarcodeDialog() {
     final TextEditingController barcodeInputController =
@@ -1263,7 +1205,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                     barcode,
                                     quantity,
                                   );
-                                  _barcodeFocusNode.requestFocus();
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
@@ -1379,9 +1320,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     required String cariKod,
     required String faturaNo,
   }) async {
-    const encoder = JsonEncoder.withIndent('  ');
-    final bodyPretty = encoder.convert(body);
-
     final curl = [
       "curl -X POST 'https://backapis.rmosweb.com/api/StokHareket/InsertBarkod' \\",
       "-H 'Content-Type: application/json' \\",
@@ -1400,88 +1338,23 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       'miktar → kullanıcı input',
     ];
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Gönderim Önizleme'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'CURL PREVIEW',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    curl,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'JSON BODY',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    bodyPretty,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                  Builder(
-                    builder: (context) {
-                      final d = body['detaylar'];
-                      final sentCount = d is List ? d.length : 0;
-                      final skipped = _orderItems.length - sentCount;
-                      if (skipped <= 0) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Not: stokKod boş olduğu için $skipped satır gönderilmeyecek.',
-                          style: TextStyle(color: Colors.orange[800], fontSize: 12),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'EŞLEME DETAYI',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  ...mappingLines.map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('• $t'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Özet: cari=$cariKod, faturaNo=$faturaNo, fatIRS=${_fatIRSValue()}, subeKodu=${_selectedDepartment.sube}, anaDepo=${_selectedDepartment.kod}',
-                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('İptal'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Gönder'),
-            ),
-          ],
-        );
-      },
-    );
+    final d = body['detaylar'];
+    final sentCount = d is List ? d.length : 0;
+    final skipped = _orderItems.length - sentCount;
+    final note = skipped > 0
+        ? 'Not: stokKod boş olduğu için $skipped satır gönderilmeyecek.'
+        : null;
 
-    return confirmed == true;
+    return await AppDialogs.requestPreview(
+      context,
+      title: 'Gönderim Önizleme',
+      curlPreview: curl,
+      jsonBody: body,
+      mappingLines: mappingLines,
+      note: note,
+      cancelText: 'İptal',
+      confirmText: 'Gönder',
+    );
   }
 
   Future<bool> _showMalKabulPreviewDialog({
@@ -1489,9 +1362,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     required String refNo,
     required int satirCount,
   }) async {
-    const encoder = JsonEncoder.withIndent('  ');
-    final bodyPretty = encoder.convert(body);
-
     final curl = [
       "curl -X POST 'https://backapis.rmosweb.com/api/MalKabul/Insert' \\",
       "-H 'Content-Type: application/json' \\",
@@ -1508,73 +1378,16 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       'Satirlar[].Miktar → kullanıcı input',
     ];
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Gönderim Önizleme'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'CURL PREVIEW',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    curl,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'JSON BODY',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  SelectableText(
-                    bodyPretty,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'EŞLEME DETAYI',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  ...mappingLines.map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('• $t'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Özet: refNo=$refNo, satır=$satirCount',
-                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('İptal'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Gönder'),
-            ),
-          ],
-        );
-      },
+    return await AppDialogs.requestPreview(
+      context,
+      title: 'Gönderim Önizleme',
+      curlPreview: curl,
+      jsonBody: body,
+      mappingLines: mappingLines,
+      note: 'Özet: refNo=$refNo, satır=$satirCount',
+      cancelText: 'İptal',
+      confirmText: 'Gönder',
     );
-
-    return confirmed == true;
   }
 
   // Sayısal klavye
@@ -2472,9 +2285,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isSiparis = _girisTip == 'Sipariş No';
+    final titleLabel = isSiparis ? 'Sipariş No' : 'ETTN';
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 96,
+        toolbarHeight: 112,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           iconSize: 28,
@@ -2492,206 +2307,96 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             ),
             const SizedBox(height: 4),
             Card(
-          margin: const EdgeInsets.only(right: 4),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TextField(
-            controller: _manualBarcodeController,
-            focusNode: _barcodeFocusNode,
-            keyboardType: TextInputType.none,
-            textInputAction: TextInputAction.none,
-            enableInteractiveSelection: false,
-            showCursor: true,
-            readOnly: false,
-            decoration: const InputDecoration(
-              hintText: 'Barkod okutun...',
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+              margin: const EdgeInsets.only(right: 4),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-            onChanged: (value) {
-              // Lazer okuyucu verisi kontrolü
-
-              if (value.endsWith('\n')) {
-                final barcode = value.replaceAll('\n', '').trim();
-                if (barcode.isNotEmpty) {
-                  _processBarcode(barcode);
-                  _manualBarcodeController.clear();
-                  // Odaklanmayı koru
-                  _barcodeFocusNode.requestFocus();
-                }
-              }
-            },
-            onSubmitted: (value) {
-              // Enter tuşu işleme
-              if (value.isNotEmpty) {
-                _processBarcode(value);
-                _manualBarcodeController.clear();
-                // Odaklanmayı koru
-                _barcodeFocusNode.requestFocus();
-              }
-            },
-          ),
-        ),
-          ],
-        ),
-        actions: [
-          // Kamera ile barkod okuma butonu
-          Card(
-            margin: const EdgeInsets.only(left: 5, right: 5),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: IconButton(
-              icon: const Icon(Icons.qr_code_scanner),
-              iconSize: 48,
-              onPressed: _scanBarcode,
-              tooltip: 'Kamera ile Tara',
-            ),
-          ),
-          // Manuel barkod ekleme butonu
-          Card(
-            margin: const EdgeInsets.only(left: 5, right: 8),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: IconButton(
-              icon: const Icon(Icons.add),
-              iconSize: 48,
-              onPressed: _showManualBarcodeDialog,
-              tooltip: 'Manuel Barkod Ekle',
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Header section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Tarih: ${DateFormat('dd.MM.yyyy').format(_selectedDate)}  •  Dep: ${_selectedDepartment.kod}  •  Giriş: $_girisTip',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                // Order number input
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final baseFs =
-                        (Theme.of(context).textTheme.bodyMedium?.fontSize ??
-                            14);
-                    final scaledFontSize =
-                        (constraints.maxWidth < 520 ? baseFs * 1.25 : baseFs * 1.5);
-
-                    final orderField = TextField(
-                      controller: _orderNumberController,
-                      style: TextStyle(fontSize: scaledFontSize),
-                      decoration: InputDecoration(
-                        labelText: _girisTip == 'Sipariş No' ? 'Sipariş No' : 'ETTN',
-                        labelStyle: TextStyle(fontSize: scaledFontSize),
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.receipt_long, size: 40),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            _orderNumberController.clear();
-                            setState(() {});
-                          },
-                          tooltip: 'Temizle',
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _orderNumberController,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: titleLabel,
                         ),
-                      ),
-                      keyboardType: _girisTip == 'Sipariş No'
-                          ? TextInputType.number
-                          : TextInputType.text,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) {
-                        if (!_isLoadingOrder) {
-                          if (_girisTip == 'Sipariş No') {
+                        keyboardType:
+                            isSiparis ? TextInputType.number : TextInputType.text,
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: (_) {
+                          if (_isLoadingOrder) return;
+                          if (isSiparis) {
                             _loadOrder();
                           } else {
                             _loadByEttn();
                           }
-                        }
-                      },
-                    );
-
-                    final orderButton = ElevatedButton.icon(
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_orderNumberController.text.trim().isNotEmpty) ...[
+                      IconButton(
+                        tooltip: 'Temizle',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _orderNumberController.clear();
+                          setState(() {});
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    FilledButton.tonalIcon(
                       onPressed: _isLoadingOrder
                           ? null
-                          : (_girisTip == 'Sipariş No' ? _loadOrder : _loadByEttn),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                        minimumSize: const Size(0, 56),
-                        textStyle: TextStyle(
-                          fontSize: scaledFontSize,
-                          inherit: true,
-                        ),
-                      ),
-                      icon: _isLoadingOrder
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 3),
-                            )
-                          : Icon(Icons.list, size: scaledFontSize * 1.2),
+                          : (isSiparis ? _loadOrder : _loadByEttn),
+                      icon:
+                          _isLoadingOrder
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.list_alt_outlined),
                       label: Text(
-                        'LİSTELE',
-                        style: TextStyle(fontSize: scaledFontSize * 0.75),
-                      ),
-                    );
-
-                    return Row(
-                      children: [
-                        Expanded(child: orderField),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width:
-                              constraints.maxWidth < 520
-                                  ? (constraints.maxWidth * 0.35)
-                                  : null,
-                          child: orderButton,
+                        'Listele',
+                        style: TextStyle(
+                          fontSize:
+                              (Theme.of(context).textTheme.labelLarge?.fontSize ??
+                                      14) *
+                                  0.85,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                if (_isLoadingStokBarkod) ...[
-                  const SizedBox(height: 10),
-                  const LinearProgressIndicator(minHeight: 2),
-                ],
-              ],
+              ),
             ),
-          ),
+          ],
+        ),
+        actions: const [],
+      ),
+      body: Column(
+        children: [
           // Order items list
           Expanded(
             child: _orderItems.isEmpty
@@ -3047,6 +2752,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       floatingActionButton: _orderItems.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: _isSaving ? null : _saveMalKabul,
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
               label: _isSaving
                   ? const SizedBox(
                       width: 20,
@@ -3192,18 +2899,14 @@ class _QRScannerPageState extends State<QRScannerPage> {
                                   }
                                 : null,
                             child: _isCameraInitialized
-                                ? FutureBuilder(
+                                ? FutureBuilder<CameraFacing?>(
                                     future: controller?.getCameraInfo(),
                                     builder: (context, snapshot) {
-                                      if (snapshot.data != null) {
-                                        return Text(
-                                          'Kamera: ${snapshot.data!.name}',
-                                        );
-                                      } else {
-                                        return const Text(
-                                          'Kamera: Yükleniyor...',
-                                        );
+                                      final facing = snapshot.data;
+                                      if (facing != null) {
+                                        return Text('Kamera: ${facing.name}');
                                       }
+                                      return const Text('Kamera: Yükleniyor...');
                                     },
                                   )
                                 : const Text('Kamera: Yükleniyor...'),
