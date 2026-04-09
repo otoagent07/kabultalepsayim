@@ -367,6 +367,80 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     }
   }
 
+  Future<void> _deleteExistingStokHareket({
+    required int existingId,
+    required String ettn,
+    required MalKabulOrderItem item,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Silme Onayı'),
+        content: Text('Kayıtlı: #$existingId silinsin mi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Evet'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      final token = await StorageService.getToken();
+      final backDbId =
+          databaseProvider.selectedDatabase?.dbBackOfficeId ??
+              databaseProvider.selectedDatabase?.id;
+
+      if (token == null || backDbId == null) {
+        throw Exception('Token/Db_Id bulunamadı');
+      }
+
+      await ApiService.deleteStokHareketById(
+        token: token,
+        dbId: backDbId,
+        id: existingId,
+      );
+
+      // Satırı "okutulmamış" hale getir ve listeyi yenile
+      _rowMatchedStokBarkod[item.stokkod] = null;
+      _rowTextControllers[item.stokkod]?.clear();
+      _existingStokHareketByBelgeSatirId.remove(item.id);
+
+      final existing = await ApiService.getStokHareketByEttn(
+        token: token,
+        dbId: backDbId,
+        ettn: ettn,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _applyExistingStokHareketForEttn(existing);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silindi'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackWithDetails(title: 'Silme hatası', error: e);
+      }
+    }
+  }
+
   @override
   void dispose() {
     for (final c in _rowTextControllers.values) {
@@ -2669,6 +2743,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         () => FocusNode(debugLabel: 'RowTextField:${item.stokkod}'),
                       );
                       final matched = _rowMatchedStokBarkod[item.stokkod];
+                      final ettnForRefresh = _orderNumberController.text.trim();
                       final existing =
                           _existingStokHareketByBelgeSatirId[item.id];
                       final existingIdRaw = existing?['Id'];
@@ -2777,35 +2852,62 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Card(
-                                        elevation: 2,
-                                        margin: EdgeInsets.zero,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        clipBehavior: Clip.antiAlias,
-                                        child: InkWell(
-                                          onTap: () => _editQuantity(item),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Card(
+                                            elevation: 2,
+                                            margin: EdgeInsets.zero,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: const [
-                                                Icon(Icons.edit, size: 18),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Düzenle',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
+                                            clipBehavior: Clip.antiAlias,
+                                            child: InkWell(
+                                              onTap: () => _editQuantity(item),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
                                                 ),
-                                              ],
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: const [
+                                                    Icon(Icons.edit, size: 18),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      'Düzenle',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                          if (existingId != null &&
+                                              existingId > 0) ...[
+                                            const SizedBox(width: 6),
+                                            IconButton(
+                                              tooltip: 'Sil',
+                                              onPressed: () {
+                                                if (ettnForRefresh.isEmpty) return;
+                                                _deleteExistingStokHareket(
+                                                  existingId: existingId,
+                                                  ettn: ettnForRefresh,
+                                                  item: item,
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.delete_outline,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ],
                                   ),

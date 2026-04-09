@@ -62,6 +62,8 @@ class ApiService {
       '/api/HesapPlan/GetAllByVergiNo';
   static const String stokHareketGetByEttnEndpoint =
       '/api/StokHareket/GetByETTN';
+  static const String stokHareketDeleteByIdEndpoint =
+      '/api/StokHareket/DeleteById';
   static const String stokHareketInsertBarkodEndpoint =
       '/api/StokHareket/InsertBarkod';
 
@@ -742,6 +744,46 @@ class ApiService {
         }
       }
       return const <Map<String, dynamic>>[];
+    } catch (e) {
+      if (e is ApiHttpException) rethrow;
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteStokHareketById({
+    required String token,
+    required int dbId,
+    required int id,
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$stokHareketDeleteByIdEndpoint').replace(
+        queryParameters: <String, String>{
+          'Db_Id': dbId.toString(),
+          'Id': id.toString(),
+        },
+      );
+
+      final headers = <String, String>{
+        'accept': '*/*',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.delete(uri, headers: headers);
+      if (response.statusCode != 200) {
+        throw ApiHttpException(
+          method: 'DELETE',
+          uri: uri,
+          requestHeaders: headers,
+          requestBody: null,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+        );
+      }
+
+      final decoded = jsonDecode(response.body);
+      return decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{'raw': decoded};
     } catch (e) {
       if (e is ApiHttpException) rethrow;
       throw Exception('Bağlantı hatası: $e');
