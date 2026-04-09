@@ -513,12 +513,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         throw Exception('Token bulunamadı');
       }
 
-      final response = await ApiService.getIrsaliyeByEttnGelen(
+      final response = await ApiService.getBelgeByEttnGelen(
         token: token,
         efaturaDbId: _efaturaDbId!,
         sirketId: _efatSirketId!,
         ettn: ettn,
         detay: true,
+        isFatura: _girisTip == 'Fatura',
       );
 
       if (response.isSucceded) {
@@ -572,8 +573,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             'accept': 'application/json',
             'Authorization': 'Bearer {token}',
           };
-          final uri = Uri.parse('${ApiService.efaturaApiBaseUrl}/api/Irsaliye/GetByETTN_Gelen')
-              .replace(
+          final endpointPath = _girisTip == 'Fatura'
+              ? '/api/Fatura/GetByETTN_Gelen'
+              : '/api/Irsaliye/GetByETTN_Gelen';
+          final uri = Uri.parse('${ApiService.efaturaApiBaseUrl}$endpointPath').replace(
             queryParameters: <String, String>{
               'Db_Id': _efaturaDbId!.toString(),
               'sirketId': _efatSirketId!.toString(),
@@ -585,7 +588,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final hasZero = _orderItems.isEmpty;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_orderItems.length} satır yüklendi'),
+              content: Text(
+                '${_orderItems.length} satır yüklendi (${_girisTip == 'Fatura' ? 'Fatura' : 'İrsaliye'})',
+              ),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 5),
               action: hasZero

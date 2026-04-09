@@ -56,6 +56,8 @@ class ApiService {
   static const String malKabulSaveEndpoint = '/api/MalKabul/Insert';
   static const String efaturaIrsaliyeByEttnGelenEndpoint =
       '/api/Irsaliye/GetByETTN_Gelen';
+  static const String efaturaFaturaByEttnGelenEndpoint =
+      '/api/Fatura/GetByETTN_Gelen';
   static const String hesapPlanByVergiNoEndpoint =
       '/api/HesapPlan/GetAllByVergiNo';
   static const String stokHareketGetByEttnEndpoint =
@@ -502,15 +504,20 @@ class ApiService {
     }
   }
 
-  static Future<EfaturaIrsaliyeResponse> getIrsaliyeByEttnGelen({
+  static Future<EfaturaIrsaliyeResponse> getBelgeByEttnGelen({
     required String token,
     required int efaturaDbId,
     required int sirketId,
     required String ettn,
     required bool detay,
+    required bool isFatura,
   }) async {
     try {
-      final uri = Uri.parse('$efaturaApiBaseUrl$efaturaIrsaliyeByEttnGelenEndpoint')
+      final endpoint =
+          isFatura
+              ? efaturaFaturaByEttnGelenEndpoint
+              : efaturaIrsaliyeByEttnGelenEndpoint;
+      final uri = Uri.parse('$efaturaApiBaseUrl$endpoint')
           .replace(
             queryParameters: <String, String>{
               'Db_Id': efaturaDbId.toString(),
