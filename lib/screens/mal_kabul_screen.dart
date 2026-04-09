@@ -131,6 +131,30 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     return error.toString();
   }
 
+  static const Map<String, String> _birimKodlari = {
+    'NIU': 'ADET',
+    'KGM': 'KİLOGRAM',
+    'GRM': 'GRAM',
+    'MTR': 'METRE',
+    'LTR': 'LİTRE',
+    'PA': 'PAKET (Packet)',
+    'PK': 'PAKET (Pack)',
+    'BX': 'KUTU',
+    'CMT': 'SANTİMETRE',
+    'MTQ': 'METREKÜP',
+    'MTK': 'METREKARE',
+    'ROLL': 'RULO',
+    'SET': 'SET',
+    'CMQ': 'SANTİMETREKÜP',
+  };
+
+  String _displayBirim(String kod) {
+    final raw = kod.trim();
+    if (raw.isEmpty) return raw;
+    if (_girisTip == 'Sipariş No') return raw;
+    return _birimKodlari[raw.toUpperCase()] ?? raw;
+  }
+
   void _showCurlRequestDialog({
     required String title,
     required String method,
@@ -2791,12 +2815,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                 children: [
                                   _infoChip(
                                     label: 'Sipariş',
-                                    value: '$orderQtyStr ${item.birim}',
+                                    value: '$orderQtyStr ${_displayBirim(item.birim)}',
                                     color: Colors.blue,
                                   ),
                                   _infoChip(
                                     label: 'Kabul',
-                                    value: '$acceptedQtyStr ${item.birim}',
+                                    value:
+                                        '$acceptedQtyStr ${_displayBirim(item.birim)}',
                                     color: Colors.green,
                                   ),
                                   _infoChip(
