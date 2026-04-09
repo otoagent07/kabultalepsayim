@@ -69,6 +69,8 @@ class EfaturaIrsaliyeResponse {
 class EfaturaIrsaliyeValue {
   final int? id;
   final String? tarihi;
+  final String? ettn;
+  final String? entegreEttn;
   final String? vergino;
   final String? eirsaliyeENo;
   final String? senaryo;
@@ -77,6 +79,8 @@ class EfaturaIrsaliyeValue {
   EfaturaIrsaliyeValue({
     this.id,
     this.tarihi,
+    this.ettn,
+    this.entegreEttn,
     this.vergino,
     this.eirsaliyeENo,
     this.senaryo,
@@ -95,6 +99,15 @@ class EfaturaIrsaliyeValue {
     return EfaturaIrsaliyeValue(
       id: json['Id'],
       tarihi: json['Tarihi'],
+      ettn: (json['ETTN'] ?? json['Ettn'] ?? json['ettn'])?.toString().trim(),
+      entegreEttn:
+          (json['Entegre_ETTN'] ??
+                  json['Entegre_Ettn'] ??
+                  json['EntegreEttn'] ??
+                  json['entegre_ETTN'] ??
+                  json['entegreEttn'])
+              ?.toString()
+              .trim(),
       vergino:
           (json['Vergino'] ?? json['VergiNo'] ?? json['Vkn'] ?? json['VKN'])
               ?.toString()
@@ -114,6 +127,7 @@ class EfaturaIrsaliyeValue {
 
 class EfaturaIrsaliyeLine {
   final int id;
+  final String? irsEttn;
   final String? stokKod;
   final String? hizmet;
   final double? miktar;
@@ -123,6 +137,7 @@ class EfaturaIrsaliyeLine {
 
   EfaturaIrsaliyeLine({
     required this.id,
+    this.irsEttn,
     this.stokKod,
     this.hizmet,
     this.miktar,
@@ -134,6 +149,9 @@ class EfaturaIrsaliyeLine {
   factory EfaturaIrsaliyeLine.fromJson(Map<String, dynamic> json) {
     return EfaturaIrsaliyeLine(
       id: json['Id'] ?? 0,
+      irsEttn: (json['IrsETTN'] ?? json['IrsEttn'] ?? json['irsETTN'] ?? json['irsEttn'])
+          ?.toString()
+          .trim(),
       stokKod: json['StokKod'],
       hizmet: json['Hizmet'],
       miktar: (json['Miktar'] == null) ? null : (json['Miktar'] as num).toDouble(),

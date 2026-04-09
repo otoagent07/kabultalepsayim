@@ -42,6 +42,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   String? _lastVergiNo;
   String? _lastEirsaliyeENo;
   String? _lastSenaryo;
+  String? _lastBelgeEttn;
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
@@ -495,6 +496,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           _lastVergiNo = response.value?.vergino;
           _lastEirsaliyeENo = response.value?.eirsaliyeENo;
           _lastSenaryo = response.value?.senaryo;
+          _lastBelgeEttn = (response.value?.entegreEttn ??
+                  response.value?.ettn ??
+                  '')
+              .trim();
         });
         if (mounted) {
           final headers = <String, String>{
@@ -1177,9 +1182,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       const birimFiyat = 0;
       final tutar = miktar * birimFiyat;
 
+      final belgeSatirId = item.id;
+      final belgeEttn = (_lastBelgeEttn ?? '').trim();
+
       detay.add({
         'barkod': okutulanBarkod,
         'stokKod': stokKod,
+        'BelgeETTN': belgeEttn,
+        'BelgeSatirId': belgeSatirId,
         'birim': birim,
         'miktar': miktar,
         'birimFiyat': birimFiyat,
@@ -2161,6 +2171,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               _lastVergiNo = null;
               _lastEirsaliyeENo = null;
               _lastSenaryo = null;
+              _lastBelgeEttn = null;
             });
           }
 
