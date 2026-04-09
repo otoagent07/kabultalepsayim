@@ -361,7 +361,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                           ),
                           const SizedBox(height: 6),
                           _entryButton(
-                            text: 'Sipariş No İle Giriş',
+                            text: 'Mal Kabul İle Giriş',
                             icon: Icons.receipt_long,
                             color: Colors.blue,
                             onPressed: () => _go('Sipariş No'),

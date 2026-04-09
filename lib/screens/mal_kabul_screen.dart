@@ -221,6 +221,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _selectedDepartment = widget.selectedDepartment;
     _efaturaDbId = widget.efaturaDbId;
     _efatSirketId = widget.efatSirketId;
+    if (_orderNumberController.text.trim().isEmpty) {
+      if (_girisTip == 'Sipariş No') {
+        _orderNumberController.text = '13';
+      } else {
+        _orderNumberController.text = '90cb2492-c6ef-4c7b-b44e-9b3359259c5d';
+      }
+    }
 
     // Klavye açılmasını engelle
     _barcodeFocusNode.addListener(() {
