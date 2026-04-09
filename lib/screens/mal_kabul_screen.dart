@@ -2126,11 +2126,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             );
           }
 
+          final ettn = _orderNumberController.text.trim();
+
           if (isOk && mounted) {
             setState(() {
               _orderItems.clear();
               _acceptedQuantities.clear();
-              _orderNumberController.clear();
+              // ETTN aynı kalsın: gönderim sonrası otomatik tekrar listele
+              _orderNumberController.text = ettn;
               _lastVergiNo = null;
               _lastEirsaliyeENo = null;
               _lastSenaryo = null;
@@ -2140,9 +2143,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           }
 
           if (mounted) {
-            setState(() {
-              _isSaving = false;
-            });
+            setState(() => _isSaving = false);
+          }
+
+          if (isOk && mounted && ettn.isNotEmpty) {
+            await _loadByEttn();
           }
           return;
         }
