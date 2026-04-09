@@ -236,6 +236,55 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     );
   }
 
+  String _prettyUnit(String unit) {
+    final u = unit.trim();
+    if (u.isEmpty) return '';
+    final lower = u.toLowerCase();
+    return '${lower[0].toUpperCase()}${lower.substring(1)}';
+  }
+
+  Widget _metricBox({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+              color: color.withValues(alpha: 0.95),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -2777,57 +2826,38 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                item.stokkod,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.grey[700],
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              '#${item.id}',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
                                       ],
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
+                              Row(
                                 children: [
-                                  _infoChip(
-                                    label: 'Sipariş',
-                                    value: '$orderQtyStr ${_displayBirim(item.birim)}',
-                                    color: Colors.blue,
+                                  Expanded(
+                                    child: _metricBox(
+                                      label: 'Sipariş',
+                                      value:
+                                          '$orderQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
+                                      color: Colors.blue,
+                                    ),
                                   ),
-                                  _infoChip(
-                                    label: 'Kabul',
-                                    value:
-                                        '$acceptedQtyStr ${_displayBirim(item.birim)}',
-                                    color: Colors.green,
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _metricBox(
+                                      label: 'Kabul',
+                                      value:
+                                          '$acceptedQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
+                                      color: Colors.green,
+                                    ),
                                   ),
-                                  _infoChip(
-                                    label: 'Fiyat',
-                                    value: '$priceStr TL',
-                                    color: Colors.orange,
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _metricBox(
+                                      label: 'Fiyat',
+                                      value: priceStr,
+                                      color: Colors.orange,
+                                    ),
                                   ),
                                 ],
                               ),
