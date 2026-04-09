@@ -1286,6 +1286,99 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     return confirmed == true;
   }
 
+  Future<bool> _showMalKabulPreviewDialog({
+    required Map<String, dynamic> body,
+    required String refNo,
+    required int satirCount,
+  }) async {
+    const encoder = JsonEncoder.withIndent('  ');
+    final bodyPretty = encoder.convert(body);
+
+    final curl = [
+      "curl -X POST 'https://backapis.rmosweb.com/api/MalKabul/Insert' \\",
+      "-H 'Content-Type: application/json' \\",
+      "-H 'Authorization: Bearer {token}' \\",
+      "-d '{JSON_BODY}'",
+    ].join('\n');
+
+    final mappingLines = <String>[
+      'db_Id → seçili db',
+      'Tarih → seçilen tarih',
+      'RefTip → S (Sipariş)',
+      'RefNo → sipariş no',
+      'Satirlar[].EfatId → sipariş satır id',
+      'Satirlar[].Miktar → kullanıcı input',
+    ];
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Gönderim Önizleme'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CURL PREVIEW',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  SelectableText(
+                    curl,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'JSON BODY',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  SelectableText(
+                    bodyPretty,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'EŞLEME DETAYI',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  ...mappingLines.map(
+                    (t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('• $t'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Özet: refNo=$refNo, satır=$satirCount',
+                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Gönder'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed == true;
+  }
+
   // Sayısal klavye
   Widget _buildNumericKeyboard(
     TextEditingController barcodeController,
@@ -2094,6 +2187,20 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
         // Log EfatId values being sent
         for (var satir in satirlar) {
+        }
+
+        final ok = await _showMalKabulPreviewDialog(
+          body: requestBody,
+          refNo: refNo,
+          satirCount: satirlar.length,
+        );
+        if (!ok) {
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+          }
+          return;
         }
 
         final response = await ApiService.saveMalKabul(
