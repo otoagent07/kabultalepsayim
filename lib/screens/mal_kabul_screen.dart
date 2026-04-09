@@ -2590,6 +2590,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 6),
                         elevation: 1,
+                        color:
+                            matched != null
+                                ? const Color(0xFFFFFDF5)
+                                : null,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
                           child: Column(
@@ -2729,7 +2733,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          matched.stokAdi,
+                                          matched.stokAdi.isEmpty
+                                              ? '(StokAd yok)'
+                                              : matched.stokAdi,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -2753,7 +2759,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                               BorderRadius.circular(999),
                                         ),
                                         child: Text(
-                                          matched.stokkod,
+                                          matched.stokkod.isEmpty
+                                              ? '(StokKod yok)'
+                                              : matched.stokkod,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
