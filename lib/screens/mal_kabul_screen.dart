@@ -2664,6 +2664,12 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         () => FocusNode(debugLabel: 'RowTextField:${item.stokkod}'),
                       );
                       final matched = _rowMatchedStokBarkod[item.stokkod];
+                      final existing =
+                          _existingStokHareketByBelgeSatirId[item.id];
+                      final existingIdRaw = existing?['Id'];
+                      final existingId = existingIdRaw is int
+                          ? existingIdRaw
+                          : int.tryParse('$existingIdRaw');
 
                       final orderQtyStr = item.miktar.toStringAsFixed(0);
                       final acceptedQtyStr =
@@ -2855,6 +2861,17 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                         ),
                                       ),
                                     ],
+                                  ),
+                                ),
+                              ],
+                              if (existingId != null && existingId > 0) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Kayıtlı: #$existingId',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.grey[700],
                                   ),
                                 ),
                               ],
