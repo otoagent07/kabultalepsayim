@@ -1250,8 +1250,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
       final belgeSatirId = item.id;
       final belgeEttn = (_lastBelgeEttn ?? '').trim();
+      final existing = _existingStokHareketByBelgeSatirId[belgeSatirId];
+      final existingIdRaw = existing?['Id'];
+      final existingId =
+          existingIdRaw is int ? existingIdRaw : int.tryParse('$existingIdRaw');
 
       detay.add({
+        'Id': existingId ?? 0,
         'barkod': okutulanBarkod,
         'stokKod': stokKod,
         'BelgeETTN': belgeEttn,
