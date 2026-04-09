@@ -43,6 +43,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   String? _lastEirsaliyeENo;
   String? _lastSenaryo;
   String? _lastBelgeEttn;
+  final Map<int, Map<String, dynamic>> _existingStokHareketByBelgeSatirId = {};
   List<MalKabulOrderItem> _orderItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
@@ -332,6 +333,40 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     });
   }
 
+  void _applyExistingStokHareketForEttn(List<Map<String, dynamic>> rows) {
+    _existingStokHareketByBelgeSatirId.clear();
+    for (final r in rows) {
+      final raw = r['BelgeSatirId'];
+      final id = raw is int ? raw : int.tryParse('$raw');
+      if (id == null) continue;
+      _existingStokHareketByBelgeSatirId[id] = r;
+    }
+
+    for (final item in _orderItems) {
+      final existing = _existingStokHareketByBelgeSatirId[item.id];
+      if (existing == null) continue;
+
+      final barkod = (existing['Barkod'] ?? '').toString().trim();
+      if (barkod.isNotEmpty) {
+        final c = _rowTextControllers.putIfAbsent(
+          item.stokkod,
+          () => TextEditingController(),
+        );
+        c.text = barkod;
+
+        final matched = _stokBarkodIndex[barkod];
+        _rowMatchedStokBarkod[item.stokkod] = matched;
+      }
+
+      final miktarRaw = existing['Miktar'];
+      final miktar =
+          miktarRaw is num ? miktarRaw.toDouble() : double.tryParse('$miktarRaw');
+      if (miktar != null) {
+        _acceptedQuantities[item.stokkod] = miktar;
+      }
+    }
+  }
+
   @override
   void dispose() {
     for (final c in _rowTextControllers.values) {
@@ -501,6 +536,37 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                   '')
               .trim();
         });
+
+        // Eğer backoffice tarafında bu ETTN ile daha önce InsertBarkod yapıldıysa,
+        // ilgili satırları barkod okutulmuş gibi işaretle.
+        try {
+          final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+            context,
+            listen: false,
+          );
+          final backDbId =
+              databaseProvider.selectedDatabase?.dbBackOfficeId ??
+                  databaseProvider.selectedDatabase?.id;
+          if (backDbId != null) {
+            final existing = await ApiService.getStokHareketByEttn(
+              token: token,
+              dbId: backDbId,
+              ettn: ettn,
+            );
+            if (mounted) {
+              setState(() {
+                _applyExistingStokHareketForEttn(existing);
+              });
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            _showErrorSnackWithDetails(
+              title: 'StokHareket(GetByETTN) okuma hatası',
+              error: e,
+            );
+          }
+        }
         if (mounted) {
           final headers = <String, String>{
             'accept': 'application/json',
@@ -2172,6 +2238,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               _lastEirsaliyeENo = null;
               _lastSenaryo = null;
               _lastBelgeEttn = null;
+              _existingStokHareketByBelgeSatirId.clear();
             });
           }
 

@@ -58,6 +58,8 @@ class ApiService {
       '/api/Irsaliye/GetByETTN_Gelen';
   static const String hesapPlanByVergiNoEndpoint =
       '/api/HesapPlan/GetAllByVergiNo';
+  static const String stokHareketGetByEttnEndpoint =
+      '/api/StokHareket/GetByETTN';
   static const String stokHareketInsertBarkodEndpoint =
       '/api/StokHareket/InsertBarkod';
 
@@ -689,6 +691,50 @@ class ApiService {
         statusCode: response.statusCode,
         responseBody: response.body,
       );
+    } catch (e) {
+      if (e is ApiHttpException) rethrow;
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getStokHareketByEttn({
+    required String token,
+    required int dbId,
+    required String ettn,
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$stokHareketGetByEttnEndpoint').replace(
+        queryParameters: <String, String>{
+          'Db_Id': dbId.toString(),
+          'ETTN': ettn,
+        },
+      );
+
+      final headers = <String, String>{
+        'accept': '*/*',
+        'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode != 200) {
+        throw ApiHttpException(
+          method: 'GET',
+          uri: uri,
+          requestHeaders: headers,
+          requestBody: null,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+        );
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final value = decoded['value'];
+        if (value is List) {
+          return value.whereType<Map<String, dynamic>>().toList();
+        }
+      }
+      return const <Map<String, dynamic>>[];
     } catch (e) {
       if (e is ApiHttpException) rethrow;
       throw Exception('Bağlantı hatası: $e');
