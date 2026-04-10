@@ -2163,11 +2163,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             if (!_malKabulRowSheetSaved.contains(item.stokkod)) continue;
             final acceptedQuantity = _displayAcceptedQty(item);
             final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
+            final urunAdiEkran = item.stokAd.trim().isEmpty
+                ? '(StokAd yok)'
+                : item.stokAd.trim();
             satirlar.add({
               'Id': 0,
               'EfatId': item.id,
               'Sira': 0,
-              'UrunAdi': 'Ürün ${item.stokkod}',
+              'UrunAdi': urunAdiEkran,
               'Firma': 'Tedarikçi',
               'Miktar': acceptedQuantity,
               'Birim': item.birim,
