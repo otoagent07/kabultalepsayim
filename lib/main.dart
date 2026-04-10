@@ -14,7 +14,7 @@ void main() async {
 }
 
 
-// d2 asd asd  as asd asd asd asd ssas asd
+//  asd
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

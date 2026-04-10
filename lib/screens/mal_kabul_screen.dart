@@ -66,9 +66,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       _girisTip == 'Sipariş No' || _girisTip == 'Mal Kabul Giriş';
 
   double _displayAcceptedQty(MalKabulOrderItem item) {
-    if (_girisTip == 'Mal Kabul Giriş') {
-      return _acceptedQuantities[item.stokkod] ?? 0;
-    }
     return _acceptedQuantities[item.stokkod] ?? item.miktar;
   }
 
@@ -2853,7 +2850,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   Expanded(
                                     child: _metricText(
                                       label: 'Kabul',
-                                      value: tesellumMevcut
+                                      value: (tesellumMevcut &&
+                                              _girisTip != 'Mal Kabul Giriş')
                                           ? '${item.tesellumMiktar.toStringAsFixed(0)} ${_prettyUnit(_displayBirim(item.birim))}'
                                           : '$acceptedQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
                                       color: Colors.green,
