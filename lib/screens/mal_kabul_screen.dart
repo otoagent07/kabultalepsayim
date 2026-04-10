@@ -61,16 +61,30 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   bool get _isSiparisLike =>
       _girisTip == 'Sipariş No' || _girisTip == 'Mal Kabul Giriş';
 
+  void _snack(
+    String message, {
+    Color? backgroundColor,
+    SnackBarAction? action,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 5),
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        action: action,
+      ),
+    );
+  }
+
   void _showErrorSnackWithDetails({
     required String title,
     required Object error,
   }) {
     final detailText = _formatErrorDetails(error);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(title),
-        duration: const Duration(seconds: 5),
-        action: SnackBarAction(
+        _snack(
+      title,
+      action: SnackBarAction(
           label: 'Detay',
           onPressed: () {
             if (!mounted) return;
@@ -100,7 +114,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             );
           },
         ),
-      ),
     );
   }
 
@@ -438,12 +451,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         return id == null ? true : id == existingId;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(stillExists ? 'Silinemedi (kayıt listede hâlâ var)' : 'Silindi'),
-          backgroundColor: stillExists ? Colors.orange : Colors.green,
-          duration: const Duration(seconds: 4),
-        ),
+            _snack(
+        stillExists ? 'Silinemedi (kayıt listede hâlâ var)' : 'Silindi',
+        backgroundColor: stillExists ? Colors.orange : Colors.green,
       );
     } catch (e) {
       if (mounted) {
@@ -484,12 +494,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
   Future<void> _loadOrder() async {
     if (_orderNumberController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen sipariş numarası girin'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+            _snack('Lütfen sipariş numarası girin', backgroundColor: Colors.orange);
       return;
     }
 
@@ -536,34 +541,20 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           }
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${response.value.length} ürün yüklendi'),
-                backgroundColor: Colors.green,
-              ),
-            );
+            _snack('${response.value.length} ürün yüklendi', backgroundColor: Colors.green);
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Sipariş yüklenemedi: ${response.message ?? 'Bilinmeyen hata'}',
-                ),
-                backgroundColor: Colors.red,
-              ),
+            _snack(
+              'Sipariş yüklenemedi: ${response.message ?? 'Bilinmeyen hata'}',
+              backgroundColor: Colors.red,
             );
           }
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sipariş yükleme hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+                _snack('Sipariş yükleme hatası: $e', backgroundColor: Colors.red);
       }
     }
 
@@ -575,30 +566,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   Future<void> _loadByEttn() async {
     final ettn = _orderNumberController.text.trim();
     if (ettn.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen ETTN girin/okutun'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+            _snack('Lütfen ETTN girin/okutun', backgroundColor: Colors.orange);
       return;
     }
     if (_efaturaDbId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Departmanda efatura Db_Id bulunamadı'),
-          backgroundColor: Colors.red,
-        ),
-      );
+            _snack('Departmanda efatura Db_Id bulunamadı', backgroundColor: Colors.red);
       return;
     }
     if (_efatSirketId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Departmanda EFat_SirketID bulunamadı'),
-          backgroundColor: Colors.red,
-        ),
-      );
+            _snack('Departmanda EFat_SirketID bulunamadı', backgroundColor: Colors.red);
       return;
     }
 
@@ -698,14 +674,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           );
 
           final hasZero = _orderItems.isEmpty;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${_orderItems.length} satır yüklendi (${_girisTip == 'Fatura' ? 'Fatura' : 'İrsaliye'})',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 5),
-              action: hasZero
+        _snack(
+            '${_orderItems.length} satır yüklendi (${_girisTip == 'Fatura' ? 'Fatura' : 'İrsaliye'})',
+            backgroundColor: Colors.green,
+            action: hasZero
                   ? SnackBarAction(
                       label: 'Göster',
                       onPressed: () {
@@ -719,19 +691,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       },
                     )
                   : null,
-            ),
           );
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                response.message ?? 'İrsaliye/Fatura yüklenemedi',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
+        _snack(response.message ?? 'İrsaliye/Fatura yüklenemedi', backgroundColor: Colors.red);
         }
       }
     } catch (e) {
@@ -925,23 +889,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         ElevatedButton.icon(
                           onPressed: () {
                             if (_isLoadingStokBarkod) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Barkodlar yükleniyor, lütfen bekleyiniz...',
-                                  ),
-                                  backgroundColor: Colors.orange,
-                                ),
+                                                _snack(
+                                'Barkodlar yükleniyor, lütfen bekleyiniz...',
+                                backgroundColor: Colors.orange,
                               );
                               return;
                             }
                             if (_stokBarkodIndex.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Yüklü barkod bulunamadı'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                                                _snack('Yüklü barkod bulunamadı', backgroundColor: Colors.red);
                               return;
                             }
 
@@ -1378,7 +1333,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     // sipariş ise siparisNo ekle
     final sNo = (siparisNo ?? '').trim();
     if (sNo.isNotEmpty) {
-      body['siparisNo'] = sNo;
+      body['Siparisno'] = sNo;
     }
 
     return body;
@@ -1670,12 +1625,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     if (!_isSiparisLike) {
       _orderNumberController.text = barcode;
       _loadByEttn();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ETTN: $barcode'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+            _snack('ETTN: $barcode', backgroundColor: Colors.blue);
       return;
     }
     // Check if barcode is a number (order number)
@@ -1684,23 +1634,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       // Barcode is a number, treat it as order number
       _orderNumberController.text = barcode;
       _loadOrder();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sipariş numarası: $barcode'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+            _snack('Sipariş numarası: $barcode', backgroundColor: Colors.blue);
       return;
     }
 
     // If order is not loaded yet, show message
     if (_orderItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Önce sipariş yükleyin. Barkod: $barcode'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+            _snack('Önce sipariş yükleyin. Barkod: $barcode', backgroundColor: Colors.orange);
       return;
     }
 
@@ -1743,19 +1683,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       setState(() {
         _acceptedQuantities[matchingItem.stokkod] = quantity;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Miktar güncellendi: $quantity'),
-          backgroundColor: Colors.green,
-        ),
-      );
+            _snack('Miktar güncellendi: $quantity', backgroundColor: Colors.green);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Barkod bulunamadı: $barcode'),
-          backgroundColor: Colors.red,
-        ),
-      );
+            _snack('Barkod bulunamadı: $barcode', backgroundColor: Colors.red);
     }
   }
 
@@ -1763,12 +1693,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     if (!_isSiparisLike) {
       _orderNumberController.text = barcode;
       _loadByEttn();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ETTN: $barcode'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+            _snack('ETTN: $barcode', backgroundColor: Colors.blue);
       return;
     }
     // Check if barcode is a number (order number)
@@ -1777,23 +1702,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       // Barcode is a number, treat it as order number
       _orderNumberController.text = barcode;
       _loadOrder();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sipariş numarası: $barcode'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+            _snack('Sipariş numarası: $barcode', backgroundColor: Colors.blue);
       return;
     }
 
     // If order is not loaded yet, show message
     if (_orderItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Önce sipariş yükleyin. Barkod: $barcode'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+            _snack('Önce sipariş yükleyin. Barkod: $barcode', backgroundColor: Colors.orange);
       return;
     }
 
@@ -1835,12 +1750,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     if (matchingItem.stokkod.isNotEmpty) {
       _showQuantityDialog(matchingItem);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Barkod bulunamadı: $barcode'),
-          backgroundColor: Colors.red,
-        ),
-      );
+            _snack('Barkod bulunamadı: $barcode', backgroundColor: Colors.red);
     }
   }
 
@@ -1966,13 +1876,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                     _acceptedQuantities[item.stokkod] =
                                         enteredQuantity;
                                   });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Miktar güncellendi: $enteredQuantity',
-                                      ),
-                                      backgroundColor: Colors.green,
-                                    ),
+                                                        _snack(
+                                    'Miktar güncellendi: $enteredQuantity',
+                                    backgroundColor: Colors.green,
                                   );
                                 }
                               : null,
@@ -2104,12 +2010,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
   Future<void> _saveMalKabul() async {
     if (_orderItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Önce sipariş yükleyin'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+            _snack('Önce sipariş yükleyin', backgroundColor: Colors.orange);
       return;
     }
 
@@ -2195,12 +2096,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
           if (response['isSucceded'] == true) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mal Kabul kaydedildi'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+                _snack('Mal Kabul kaydedildi', backgroundColor: Colors.green);
               setState(() {
                 _orderItems.clear();
                 _acceptedQuantities.clear();
@@ -2210,13 +2106,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             }
           } else {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(response['message'] ?? 'Bilinmeyen hata'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 5),
-                ),
-              );
+                _snack(response['message'] ?? 'Bilinmeyen hata', backgroundColor: Colors.red);
             }
           }
         } else {
@@ -2265,17 +2155,69 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             if (mounted) {
               await showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Gönderilecek Satır Yok'),
-                  content: const Text(
-                    'Hiçbir satırda stokKod eşleşmesi bulunamadı.\nBarkod okutulmayan satırlar gönderilmez.',
+                barrierDismissible: true,
+                builder: (context) => Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Tamam'),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.qr_code_scanner,
+                            size: 36,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Gönderilecek Satır Yok',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Hiçbir satırda barkod eşleşmesi bulunamadı.\nGöndermek için önce satırlara barkod okutun.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 28),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.orange.shade700,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Anladım',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               );
               setState(() => _isSaving = false);
@@ -2302,13 +2244,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final msg = (response['message'] ?? (isOk ? 'Gönderildi' : 'Gönderim hatası')).toString();
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(msg),
-                backgroundColor: isOk ? Colors.green : Colors.red,
-                duration: const Duration(seconds: 5),
-              ),
-            );
+            _snack(msg, backgroundColor: isOk ? Colors.green : Colors.red);
           }
 
           final refValue = _orderNumberController.text.trim();
@@ -3077,9 +3013,12 @@ class _QRScannerPageState extends State<QRScannerPage> {
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
     if (!p) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Kamera izni gerekli')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          duration: Duration(seconds: 5),
+          content: Text('Kamera izni gerekli'),
+        ),
+      );
     }
   }
 
