@@ -498,6 +498,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
 
     setState(() {
+      // Listele'de önce ekranı temizle ki "gelmedi" anlaşılsın.
+      _orderItems.clear();
+      _acceptedQuantities.clear();
+      _clearRowScanMemory();
       _isLoadingOrder = true;
     });
 
@@ -598,8 +602,18 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       return;
     }
 
-    // Aynı ETTN ile tekrar listelemede önceki okutulanlar hafızada kalmasın.
-    _clearRowScanMemory();
+    // Listele'de önce ekranı temizle ki "gelmedi" anlaşılsın.
+    if (mounted) {
+      setState(() {
+        _orderItems.clear();
+        _acceptedQuantities.clear();
+        _clearRowScanMemory();
+      });
+    } else {
+      _orderItems.clear();
+      _acceptedQuantities.clear();
+      _clearRowScanMemory();
+    }
 
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod('TextInput.hide');
