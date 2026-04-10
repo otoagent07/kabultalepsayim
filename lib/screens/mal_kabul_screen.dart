@@ -1342,6 +1342,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         'birimFiyat': birimFiyat,
         'tutar': tutar,
         'netTutar': tutar,
+        'TalepId': belgeSatirId,
       });
     }
 
