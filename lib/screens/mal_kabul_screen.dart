@@ -368,6 +368,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     if (!ok) return;
 
     try {
+      if (mounted) {
+        setState(() => _isLoadingOrder = true);
+      }
       final databaseProvider = Provider.of<SelectedDatabaseProvider>(
         context,
         listen: false,
@@ -387,11 +390,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         id: existingId,
       );
 
-      // Satırı "okutulmamış" hale getir ve listeyi yenile
-      _rowMatchedStokBarkod[item.stokkod] = null;
-      _rowTextControllers[item.stokkod]?.clear();
-      _existingStokHareketByBelgeSatirId.remove(item.id);
-
       final existing = await ApiService.getStokHareketByEttn(
         token: token,
         dbId: backDbId,
@@ -400,19 +398,57 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
       if (!mounted) return;
       setState(() {
+        // Endpoint sonucu ne diyorsa UI onu göstersin: gerçekten silindi mi?
+        final stillExists = existing.any((r) {
+          final rawBelgeSatirId = r['BelgeSatirId'];
+          final belgeSatirId = rawBelgeSatirId is int
+              ? rawBelgeSatirId
+              : int.tryParse('$rawBelgeSatirId');
+
+          if (belgeSatirId == null || belgeSatirId != item.id) return false;
+
+          final rawId = r['Id'];
+          final id = rawId is int ? rawId : int.tryParse('$rawId');
+
+          // Servis sadece BelgeSatirId döndürüyorsa yine de "var" say.
+          return id == null ? true : id == existingId;
+        });
+
+        if (!stillExists) {
+          // Silindiği doğrulandı: satırı "okutulmamış" hale getir.
+          _rowMatchedStokBarkod[item.stokkod] = null;
+          _rowTextControllers[item.stokkod]?.clear();
+          _existingStokHareketByBelgeSatirId.remove(item.id);
+        }
         _applyExistingStokHareketForEttn(existing);
       });
 
+      final stillExists = existing.any((r) {
+        final rawBelgeSatirId = r['BelgeSatirId'];
+        final belgeSatirId = rawBelgeSatirId is int
+            ? rawBelgeSatirId
+            : int.tryParse('$rawBelgeSatirId');
+        if (belgeSatirId == null || belgeSatirId != item.id) return false;
+
+        final rawId = r['Id'];
+        final id = rawId is int ? rawId : int.tryParse('$rawId');
+        return id == null ? true : id == existingId;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silindi'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(stillExists ? 'Silinemedi (kayıt listede hâlâ var)' : 'Silindi'),
+          backgroundColor: stillExists ? Colors.orange : Colors.green,
+          duration: const Duration(seconds: 4),
         ),
       );
     } catch (e) {
       if (mounted) {
         _showErrorSnackWithDetails(title: 'Silme hatası', error: e);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingOrder = false);
       }
     }
   }
@@ -2267,6 +2303,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         );
 
         if (response['isSucceded'] == true) {
+          final siparisNo = refNo;
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -2274,12 +2311,16 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-            // Clear the form
+            // Sipariş No aynı kalsın: kaydet sonrası otomatik tekrar listele
             setState(() {
               _orderItems.clear();
               _acceptedQuantities.clear();
-              _orderNumberController.clear();
+              _orderNumberController.text = siparisNo;
             });
+          }
+
+          if (mounted && siparisNo.trim().isNotEmpty) {
+            await _loadOrder();
           }
         } else {
           if (mounted) {
