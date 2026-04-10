@@ -29,7 +29,7 @@ class EfaturaIrsaliyeResponse {
 
   List<MalKabulOrderItem> toMalKabulOrderItems() {
     final lines = value?.lines ?? const <EfaturaIrsaliyeLine>[];
-    return lines.map((l) {
+    return lines.map<MalKabulOrderItem>((l) {
       final stokKodRaw = (l.stokKod ?? '').trim();
       final stokKod = stokKodRaw.isNotEmpty ? stokKodRaw : l.id.toString();
       return MalKabulOrderItem(
@@ -61,6 +61,10 @@ class EfaturaIrsaliyeResponse {
         sonalimMiktar: 0,
         barkodlandi: false,
         depStokMiktar: 0,
+        tesellumId: 0,
+        tesellumMiktar: 0,
+        tesellumMevcut: false,
+        tesellumBarkod: null,
       );
     }).toList();
   }

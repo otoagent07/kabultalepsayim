@@ -27,6 +27,10 @@ class MalKabulOrderItem {
   final double sonalimMiktar;
   final bool barkodlandi;
   final double depStokMiktar;
+  final int tesellumId;
+  final double tesellumMiktar;
+  final bool tesellumMevcut;
+  final String? tesellumBarkod;
 
   MalKabulOrderItem({
     required this.id,
@@ -57,6 +61,10 @@ class MalKabulOrderItem {
     required this.sonalimMiktar,
     required this.barkodlandi,
     required this.depStokMiktar,
+    required this.tesellumId,
+    required this.tesellumMiktar,
+    required this.tesellumMevcut,
+    this.tesellumBarkod,
   });
 
   factory MalKabulOrderItem.fromJson(Map<String, dynamic> json) {
@@ -89,6 +97,10 @@ class MalKabulOrderItem {
       sonalimMiktar: (json['SonalimMiktar'] ?? 0.0).toDouble(),
       barkodlandi: json['Barkodlandi'] ?? false,
       depStokMiktar: (json['DepStokMiktar'] ?? 0.0).toDouble(),
+      tesellumId: json['Tesellum_Id'] ?? 0,
+      tesellumMiktar: (json['Tesellum_Miktar'] ?? 0.0).toDouble(),
+      tesellumMevcut: json['Tesellum_Mevcut'] ?? false,
+      tesellumBarkod: json['Tesellum_Barkod']?.toString(),
     );
   }
 
@@ -122,6 +134,10 @@ class MalKabulOrderItem {
       'SonalimMiktar': sonalimMiktar,
       'Barkodlandi': barkodlandi,
       'DepStokMiktar': depStokMiktar,
+      'Tesellum_Id': tesellumId,
+      'Tesellum_Miktar': tesellumMiktar,
+      'Tesellum_Mevcut': tesellumMevcut,
+      'Tesellum_Barkod': tesellumBarkod,
     };
   }
 }

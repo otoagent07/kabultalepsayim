@@ -315,7 +315,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     } catch (_) {
       // Sessiz geç: sadece UI eşleştirmesi için.
     } finally {
-      if (mounted) setState(() => _isLoadingStokBarkod = false);
+      if (mounted) {
+        setState(() {
+          _isLoadingStokBarkod = false;
+          // Index yüklendikten sonra tesellum match'lerini güncelle
+          if (_orderItems.isNotEmpty) _applyTesellumData();
+        });
+      }
     }
   }
 
@@ -331,6 +337,31 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     setState(() {
       _rowMatchedStokBarkod[rowItem.stokkod] = matched;
     });
+  }
+
+  /// Sipariş No akışında: Tesellum_Mevcut == true olan satırları
+  /// barkod okutulmuş + miktar set edilmiş olarak işaretle.
+  void _applyTesellumData() {
+    for (final item in _orderItems) {
+      if (!item.tesellumMevcut) continue;
+
+      // Kabul miktarını tesellum miktarına set et
+      _acceptedQuantities[item.stokkod] = item.tesellumMiktar;
+
+      // Barkod alanını doldur
+      final barkod = (item.tesellumBarkod ?? '').trim();
+      if (barkod.isNotEmpty) {
+        final c = _rowTextControllers.putIfAbsent(
+          item.stokkod,
+          () => TextEditingController(),
+        );
+        c.text = barkod;
+
+        // Barkod index'te eşleşme varsa matched olarak işaretle
+        final matched = _stokBarkodIndex[barkod];
+        _rowMatchedStokBarkod[item.stokkod] = matched;
+      }
+    }
   }
 
   void _applyExistingStokHareketForEttn(List<Map<String, dynamic>> rows) {
@@ -534,6 +565,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             for (var item in _orderItems) {
               _acceptedQuantities[item.stokkod] = item.miktar;
             }
+            _applyTesellumData();
           });
 
           // Log the IDs from the fetched order
@@ -1300,7 +1332,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           existingIdRaw is int ? existingIdRaw : int.tryParse('$existingIdRaw');
 
       detay.add({
-        'Id': existingId ?? 0,
+        'Id': existingId ?? (item.tesellumId > 0 ? item.tesellumId : 0),
         'barkod': okutulanBarkod,
         'stokKod': stokKod,
         'BelgeETTN': belgeEttn,
@@ -1676,6 +1708,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         sonalimMiktar: 0,
         barkodlandi: false,
         depStokMiktar: 0,
+        tesellumId: 0,
+        tesellumMiktar: 0,
+        tesellumMevcut: false,
+        tesellumBarkod: null,
       ),
     );
 
@@ -1744,6 +1780,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         sonalimMiktar: 0,
         barkodlandi: false,
         depStokMiktar: 0,
+        tesellumId: 0,
+        tesellumMiktar: 0,
+        tesellumMevcut: false,
+        tesellumBarkod: null,
       ),
     );
 
@@ -2462,12 +2502,15 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                       final acceptedQtyStr =
                           acceptedQuantity.toStringAsFixed(0);
                       final priceStr = item.seciliFiyat.toStringAsFixed(2);
+                      final tesellumMevcut = item.tesellumMevcut;
+                      final tesellumBarkod = (item.tesellumBarkod ?? '').trim();
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 6),
                         elevation: 1,
-                        color:
-                            matched != null
+                        color: tesellumMevcut
+                            ? Colors.green.shade50
+                            : matched != null
                                 ? const Color(0xFFFFFDF5)
                                 : null,
                         child: Padding(
@@ -2678,7 +2721,46 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   ),
                                 ),
                               ],
-                              if (existingId != null && existingId > 0) ...[
+                              if (tesellumMevcut) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade700,
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.check_circle, size: 13, color: Colors.white),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            'Kayıtlı #${item.tesellumId}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (tesellumBarkod.isNotEmpty) ...[
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        tesellumBarkod,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ] else if (existingId != null && existingId > 0) ...[
                                 const SizedBox(height: 6),
                                 Text(
                                   'Kayıtlı: #$existingId',
@@ -2728,8 +2810,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   Expanded(
                                     child: _metricText(
                                       label: 'Kabul',
-                                      value:
-                                          '$acceptedQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
+                                      value: tesellumMevcut
+                                          ? '${item.tesellumMiktar.toStringAsFixed(0)} ${_prettyUnit(_displayBirim(item.birim))}'
+                                          : '$acceptedQtyStr ${_prettyUnit(_displayBirim(item.birim))}',
                                       color: Colors.green,
                                     ),
                                   ),
