@@ -52,6 +52,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   final Map<String, _StokBarkodItem> _stokBarkodIndex = {};
   final Map<String, _StokBarkodItem?> _rowMatchedStokBarkod = {};
   final Map<String, double> _acceptedQuantities = {};
+  // Mal Kabul Giriş'e özel per-satır ek alanlar
+  final Map<String, _MalKabulSatirData> _satirData = {};
   final Map<String, TextEditingController> _rowTextControllers = {};
   final Map<String, FocusNode> _rowTextFocusNodes = {};
   final TextEditingController _orderNumberController = TextEditingController();
@@ -276,7 +278,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       if (_isSiparisLike) {
         _orderNumberController.text = '13';
       } else {
-        _orderNumberController.text = '90cb2492-c6ef-4c7b-b44e-9b3359259c5d';
+        _orderNumberController.text = '495a4c72-71e1-4aaa-aa75-8693b7112ef6';
       }
     }
 
@@ -574,6 +576,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _rowTextFocusNodes.clear();
     _rowMatchedStokBarkod.clear();
     _existingStokHareketByBelgeSatirId.clear();
+    _satirData.clear();
   }
 
   Future<void> _loadOrder() async {
@@ -2002,7 +2005,35 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }
 
   void _editQuantity(MalKabulOrderItem item) {
-    _showQuantityDialog(item);
+    if (_girisTip == 'Mal Kabul Giriş') {
+      _showMalKabulEditDialog(item);
+    } else {
+      _showQuantityDialog(item);
+    }
+  }
+
+  Future<void> _showMalKabulEditDialog(MalKabulOrderItem item) async {
+    final data = _satirData.putIfAbsent(item.stokkod, () => _MalKabulSatirData());
+    final currentQty = _acceptedQuantities[item.stokkod] ?? item.miktar;
+
+    final result = await showModalBottomSheet<_MalKabulEditResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _MalKabulEditSheet(
+        item: item,
+        initialQty: currentQty,
+        data: data,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _acceptedQuantities[item.stokkod] = result.miktar;
+        data.urunSicaklik = result.urunSicaklik;
+        data.aracSicaklik = result.aracSicaklik;
+      });
+    }
   }
 
   // Basit sayısal klavye
@@ -2128,6 +2159,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final satirlar = <Map<String, dynamic>>[];
           for (var item in _orderItems) {
             final acceptedQuantity = _acceptedQuantities[item.stokkod] ?? item.miktar;
+            final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
             satirlar.add({
               'Id': 0,
               'EfatId': item.id,
@@ -2138,14 +2170,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               'Birim': item.birim,
               'PartiNo': '${item.id}-${DateTime.now().millisecondsSinceEpoch}',
               'SonKullanimTarih': DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 365))),
-              'UrunSicaklik': 24.5,
-              'AracSicaklik': 22.5,
-              'UrunOnay': true,
-              'AracOnay': true,
-              'PandemiOnay': true,
-              'HammaddeOnay': true,
-              'DezenfeksiyonOnay': true,
-              'PersonelOnay': true,
+              'UrunSicaklik': extra.urunSicaklik,
+              'AracSicaklik': extra.aracSicaklik,
+              'UrunOnay': extra.urunOnay,
+              'AracOnay': extra.aracOnay,
+              'PandemiOnay': extra.pandemiOnay,
+              'HammaddeOnay': extra.hammaddeOnay,
+              'DezenfeksiyonOnay': extra.dezenfeksiyonOnay,
+              'PersonelOnay': extra.personelOnay,
             });
           }
 
@@ -2926,6 +2958,240 @@ class QRScannerPage extends StatefulWidget {
 
   @override
   State<QRScannerPage> createState() => _QRScannerPageState();
+}
+
+class _MalKabulEditResult {
+  final double miktar;
+  final double urunSicaklik;
+  final double aracSicaklik;
+  const _MalKabulEditResult({required this.miktar, required this.urunSicaklik, required this.aracSicaklik});
+}
+
+class _MalKabulEditSheet extends StatefulWidget {
+  final MalKabulOrderItem item;
+  final double initialQty;
+  final _MalKabulSatirData data;
+
+  const _MalKabulEditSheet({
+    required this.item,
+    required this.initialQty,
+    required this.data,
+  });
+
+  @override
+  State<_MalKabulEditSheet> createState() => _MalKabulEditSheetState();
+}
+
+class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
+  late final TextEditingController _miktarCtrl;
+  late final TextEditingController _urunSicaklikCtrl;
+  late final TextEditingController _aracSicaklikCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final qty = widget.initialQty;
+    _miktarCtrl = TextEditingController(
+      text: qty % 1 == 0 ? qty.toInt().toString() : qty.toString(),
+    );
+    _urunSicaklikCtrl = TextEditingController(text: widget.data.urunSicaklik.toString());
+    _aracSicaklikCtrl = TextEditingController(text: widget.data.aracSicaklik.toString());
+  }
+
+  @override
+  void dispose() {
+    _miktarCtrl.dispose();
+    _urunSicaklikCtrl.dispose();
+    _aracSicaklikCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final qty = double.tryParse(_miktarCtrl.text.replaceAll(',', '.'));
+    if (qty == null || qty <= 0) return;
+    final urun = double.tryParse(_urunSicaklikCtrl.text.replaceAll(',', '.')) ?? widget.data.urunSicaklik;
+    final arac = double.tryParse(_aracSicaklikCtrl.text.replaceAll(',', '.')) ?? widget.data.aracSicaklik;
+    // Onay değerleri data üzerinde zaten güncellendi (setState ile)
+    Navigator.of(context).pop(_MalKabulEditResult(miktar: qty, urunSicaklik: urun, aracSicaklik: arac));
+  }
+
+  Widget _onayChip(String label, bool value, ValueChanged<bool> onChanged) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: value ? Colors.green.shade600 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: value ? Colors.green.shade600 : Colors.grey.shade300),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(value ? Icons.check_circle : Icons.cancel_outlined,
+                size: 13, color: value ? Colors.white : Colors.grey.shade400),
+            const SizedBox(width: 4),
+            Text(label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: value ? Colors.white : Colors.grey.shade600,
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 36, height: 3,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Başlık
+            Text(
+              widget.item.stokAd.isNotEmpty ? widget.item.stokAd : widget.item.stokkod,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+            ),
+            Text(widget.item.stokkod, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            const SizedBox(height: 14),
+            // Miktar + Sıcaklıklar yan yana
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _miktarCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      labelText: 'Miktar',
+                      suffixText: widget.item.birim,
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _urunSicaklikCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Ürün °C',
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.thermostat, size: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _aracSicaklikCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      labelText: 'Araç °C',
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon: const Icon(Icons.local_shipping_outlined, size: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Onaylar — 2 sütunlu wrap
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _onayChip('Ürün', widget.data.urunOnay, (v) => setState(() => widget.data.urunOnay = v)),
+                _onayChip('Araç', widget.data.aracOnay, (v) => setState(() => widget.data.aracOnay = v)),
+                _onayChip('Pandemi', widget.data.pandemiOnay, (v) => setState(() => widget.data.pandemiOnay = v)),
+                _onayChip('Hammadde', widget.data.hammaddeOnay, (v) => setState(() => widget.data.hammaddeOnay = v)),
+                _onayChip('Dezenfeksiyon', widget.data.dezenfeksiyonOnay, (v) => setState(() => widget.data.dezenfeksiyonOnay = v)),
+                _onayChip('Personel', widget.data.personelOnay, (v) => setState(() => widget.data.personelOnay = v)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Butonlar
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('İptal', style: TextStyle(fontSize: 13)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Kaydet', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MalKabulSatirData {
+  double urunSicaklik;
+  double aracSicaklik;
+  bool urunOnay;
+  bool aracOnay;
+  bool pandemiOnay;
+  bool hammaddeOnay;
+  bool dezenfeksiyonOnay;
+  bool personelOnay;
+
+  _MalKabulSatirData({
+    this.urunSicaklik = 24.5,
+    this.aracSicaklik = 22.5,
+    this.urunOnay = true,
+    this.aracOnay = true,
+    this.pandemiOnay = true,
+    this.hammaddeOnay = true,
+    this.dezenfeksiyonOnay = true,
+    this.personelOnay = true,
+  });
 }
 
 class _StokBarkodItem {
