@@ -398,6 +398,53 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     }
   }
 
+  Future<void> _deleteTesellum({
+    required MalKabulOrderItem item,
+  }) async {
+    final tesellumId = item.tesellumId;
+    final ok = await AppDialogs.confirm(
+      context,
+      title: 'Silme Onayı',
+      message: 'Kayıtlı: #$tesellumId silinsin mi?',
+      cancelText: 'Vazgeç',
+      confirmText: 'Evet',
+      destructive: true,
+      icon: Icons.delete_outline,
+    );
+    if (!ok) return;
+
+    try {
+      if (mounted) setState(() => _isLoadingOrder = true);
+
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      final token = await StorageService.getToken();
+      final backDbId =
+          databaseProvider.selectedDatabase?.dbBackOfficeId ??
+              databaseProvider.selectedDatabase?.id;
+
+      if (token == null || backDbId == null) {
+        throw Exception('Token/Db_Id bulunamadı');
+      }
+
+      await ApiService.deleteStokHareketById(
+        token: token,
+        dbId: backDbId,
+        id: tesellumId,
+      );
+
+      _snack('Silindi', backgroundColor: Colors.green);
+
+      if (mounted) await _loadOrder();
+    } catch (e) {
+      if (mounted) _showErrorSnackWithDetails(title: 'Silme hatası', error: e);
+    } finally {
+      if (mounted) setState(() => _isLoadingOrder = false);
+    }
+  }
+
   Future<void> _deleteExistingStokHareket({
     required int existingId,
     required String ettn,
@@ -2640,7 +2687,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                               ),
                                             ),
                                           ),
-                                          if (existingId != null &&
+                                          if (tesellumMevcut) ...[
+                                            const SizedBox(width: 6),
+                                            IconButton(
+                                              tooltip: 'Sil',
+                                              onPressed: () => _deleteTesellum(item: item),
+                                              icon: const Icon(Icons.delete_outline),
+                                            ),
+                                          ] else if (existingId != null &&
                                               existingId > 0) ...[
                                             const SizedBox(width: 6),
                                             IconButton(
@@ -2653,9 +2707,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                                   item: item,
                                                 );
                                               },
-                                              icon: const Icon(
-                                                Icons.delete_outline,
-                                              ),
+                                              icon: const Icon(Icons.delete_outline),
                                             ),
                                           ],
                                         ],
