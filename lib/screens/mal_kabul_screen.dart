@@ -1358,7 +1358,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     required String faturaNo,
     required String? siparisNo,
   }) {
-    final tarihIso = DateTime.now().toIso8601String();
+    final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
     final detay = <Map<String, dynamic>>[];
     for (final item in _orderItems) {
@@ -1405,7 +1405,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
     final body = <String, dynamic>{
       'db_Id': dbId,
-      'tarih': tarihIso,
+      'tarih': tarih,
       'cari': cariKod,
       'fatIRS': _fatIRSValue(),
       'faturaNo': faturaNo,
@@ -1442,6 +1442,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     ].join('\n');
 
     final mappingLines = <String>[
+      'tarih → seçilen tarih (yyyy-MM-dd, saat yok)',
       'cari → HesapPlan.Kod (GetAllByVergiNo endpointinden alındı)',
       'faturaNo → Eirsaliye_ENo (GetByETTN_Gelen)',
       'fatIRS → kullanıcı seçimi (Fatura/Irsaliye)',
