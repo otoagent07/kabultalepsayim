@@ -3083,6 +3083,7 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                     textAlign: TextAlign.center,
+                    onTap: () => _miktarCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _miktarCtrl.text.length),
                     decoration: InputDecoration(
                       labelText: 'Miktar',
                       suffixText: widget.item.birim,
@@ -3097,6 +3098,7 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
                     controller: _urunSicaklikCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                     style: const TextStyle(fontSize: 14),
+                    onTap: () => _urunSicaklikCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _urunSicaklikCtrl.text.length),
                     decoration: InputDecoration(
                       labelText: 'Ürün °C',
                       isDense: true,
@@ -3111,6 +3113,7 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
                     controller: _aracSicaklikCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                     style: const TextStyle(fontSize: 14),
+                    onTap: () => _aracSicaklikCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _aracSicaklikCtrl.text.length),
                     decoration: InputDecoration(
                       labelText: 'Araç °C',
                       isDense: true,
