@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/department.dart';
@@ -8,8 +9,6 @@ import '../models/login_response.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
-import '../widgets/date_selection_tile.dart';
-import '../widgets/department_selection_tile.dart';
 import 'mal_kabul_screen.dart';
 
 class MalKabulSelectionScreen extends StatefulWidget {
@@ -27,19 +26,6 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
   bool _isLoading = true;
   String? _token;
   int? _dbId;
-
-  static const double _kLabelFs = 24;
-  static const double _kValueFs = 20;
-  static const double _kIconSize = 40;
-
-  String _efaturaIdTextForSelected() {
-    final dept = _selectedDepartment;
-    if (dept == null || dept.eFatDb == null || dept.eFatDb!.isEmpty) {
-      return 'efutadb_id: id yok';
-    }
-    final id = _efaturaDbIdByName[dept.eFatDb!];
-    return 'efutadb_id: ${id ?? 'id yok'}';
-  }
 
   @override
   void initState() {
@@ -307,8 +293,62 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     );
   }
 
+  Widget _entryButtonWithValue({
+    required String text,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Card(
+      margin: const EdgeInsets.all(3),
+      elevation: 2,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 34),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 2,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.arrow_forward_ios, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final dateText = DateFormat('dd.MM.yyyy').format(_selectedDate);
+    final deptText = (_selectedDepartment?.ad ?? 'Seçiniz').trim();
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,
@@ -337,31 +377,23 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          DateSelectionTile(
-                            onTap: _selectDate,
-                            selectedDate: _selectedDate,
-                            label: 'Tarih Seçin',
-                            labelFontSize: _kLabelFs,
-                            valueFontSize: _kValueFs,
-                            iconSize: _kIconSize,
+                          _entryButtonWithValue(
+                            text: 'Tarih Seçin',
+                            value: dateText,
+                            icon: Icons.calendar_today,
+                            color: Colors.blue,
+                            onPressed: _selectDate,
                           ),
-                          DepartmentSelectionTile(
-                            onTap: _selectDepartment,
-                            departmentName: _selectedDepartment?.ad,
-                            departmentKod: _selectedDepartment?.kod,
-                            efutadbIdText: _selectedDepartment == null
-                                ? null
-                                : _efaturaIdTextForSelected(),
-                            label: 'Departman Seçin',
-                            selectedColor: Colors.blue,
-                            labelFontSize: _kLabelFs,
-                            valueFontSize: _kValueFs,
-                            kodFontSize: 16,
-                            iconSize: _kIconSize,
+                          _entryButtonWithValue(
+                            text: 'Departman Seçin',
+                            value: deptText,
+                            icon: Icons.business,
+                            color: Colors.blue,
+                            onPressed: _selectDepartment,
                           ),
                           const SizedBox(height: 6),
                           _entryButton(
-                            text: 'Mal Kabul İle Giriş',
+                            text: 'Sipariş No ile Giriş',
                             icon: Icons.receipt_long,
                             color: Colors.blue,
                             onPressed: () => _go('Sipariş No'),
@@ -377,6 +409,12 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                             icon: Icons.description,
                             color: Colors.orange,
                             onPressed: () => _go('Fatura'),
+                          ),
+                          _entryButton(
+                            text: 'Mal Kabul Giriş',
+                            icon: Icons.inventory_2_outlined,
+                            color: Colors.indigo,
+                            onPressed: () => _go('Mal Kabul Giriş'),
                           ),
                         ],
                       ),

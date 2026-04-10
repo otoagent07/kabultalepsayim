@@ -41,7 +41,7 @@ class DepartmentSelectionTile extends StatelessWidget {
         ? null
         : (efatLine == null || efatLine.isEmpty)
             ? 'Kod: $kod'
-            : 'Kod: $kod\n$efatLine';
+            : 'Kod: $kod   $efatLine';
     return SelectionTile(
       onTap: onTap,
       icon: Icons.business,

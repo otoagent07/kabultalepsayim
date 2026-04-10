@@ -58,6 +58,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   final TextEditingController _quantityController = TextEditingController();
   // AppBar sadeleştirildi; global barkod focus'u kaldırıldı.
 
+  bool get _isSiparisLike =>
+      _girisTip == 'Sipariş No' || _girisTip == 'Mal Kabul Giriş';
+
   void _showErrorSnackWithDetails({
     required String title,
     required Object error,
@@ -149,7 +152,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   String _displayBirim(String kod) {
     final raw = kod.trim();
     if (raw.isEmpty) return raw;
-    if (_girisTip == 'Sipariş No') return raw;
+    if (_isSiparisLike) return raw;
     return _birimKodlari[raw.toUpperCase()] ?? raw;
   }
 
@@ -251,7 +254,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _efaturaDbId = widget.efaturaDbId;
     _efatSirketId = widget.efatSirketId;
     if (_orderNumberController.text.trim().isEmpty) {
-      if (_girisTip == 'Sipariş No') {
+      if (_isSiparisLike) {
         _orderNumberController.text = '13';
       } else {
         _orderNumberController.text = '90cb2492-c6ef-4c7b-b44e-9b3359259c5d';
@@ -1650,7 +1653,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }
 
   void _processBarcodeWithQuantity(String barcode, double quantity) {
-    if (_girisTip != 'Sipariş No') {
+    if (!_isSiparisLike) {
       _orderNumberController.text = barcode;
       _loadByEttn();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1743,7 +1746,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   }
 
   void _processBarcode(String barcode) {
-    if (_girisTip != 'Sipariş No') {
+    if (!_isSiparisLike) {
       _orderNumberController.text = barcode;
       _loadByEttn();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2109,7 +2112,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
       if (databaseProvider.selectedDatabase != null && token != null) {
         // Fatura / İrsaliye akışı: önce önizleme, sonra kullanıcı onayıyla POST
-        if (_girisTip != 'Sipariş No') {
+        if (!_isSiparisLike) {
           final vergino = (_lastVergiNo ?? '').trim();
           if (vergino.isEmpty) {
             throw Exception('ETTN sorgusundan Vergino alınamadı');
@@ -2347,7 +2350,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isSiparis = _girisTip == 'Sipariş No';
+    final isSiparis = _isSiparisLike;
     final titleLabel = isSiparis ? 'Sipariş No' : 'ETTN';
     return Scaffold(
       appBar: AppBar(
