@@ -67,7 +67,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     SnackBarAction? action,
   }) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 5),
         content: Text(message),
@@ -75,6 +76,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         action: action,
       ),
     );
+    if (action != null) {
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) messenger.removeCurrentSnackBar();
+      });
+    }
   }
 
   void _showErrorSnackWithDetails({
