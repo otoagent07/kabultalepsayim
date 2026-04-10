@@ -2125,40 +2125,162 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final token = await StorageService.getToken();
 
       if (databaseProvider.selectedDatabase != null && token != null) {
-        // Fatura / İrsaliye akışı: önce önizleme, sonra kullanıcı onayıyla POST
-        if (!_isSiparisLike) {
-          final vergino = (_lastVergiNo ?? '').trim();
-          if (vergino.isEmpty) {
-            throw Exception('ETTN sorgusundan Vergino alınamadı');
+        // Mal Kabul Giriş: malkabul/insert API
+        if (_girisTip == 'Mal Kabul Giriş') {
+          final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+          final refNo = _orderNumberController.text.trim();
+
+          final satirlar = <Map<String, dynamic>>[];
+          for (var item in _orderItems) {
+            final acceptedQuantity = _acceptedQuantities[item.stokkod] ?? item.miktar;
+            satirlar.add({
+              'Id': 0,
+              'EfatId': item.id,
+              'Sira': 0,
+              'UrunAdi': 'Ürün ${item.stokkod}',
+              'Firma': 'Tedarikçi',
+              'Miktar': acceptedQuantity,
+              'Birim': item.birim,
+              'PartiNo': '${item.id}-${DateTime.now().millisecondsSinceEpoch}',
+              'SonKullanimTarih': DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 365))),
+              'UrunSicaklik': 24.5,
+              'AracSicaklik': 22.5,
+              'UrunOnay': true,
+              'AracOnay': true,
+              'PandemiOnay': true,
+              'HammaddeOnay': true,
+              'DezenfeksiyonOnay': true,
+              'PersonelOnay': true,
+            });
           }
 
+          final requestBody = {
+            'db_Id': databaseProvider.selectedDatabase!.id,
+            'Tarih': dateStr,
+            'RefTip': 'S',
+            'RefNo': refNo,
+            'Efat_Sirket': 1,
+            'Efat_Db': '10001_Rmos_E',
+            'Satirlar': satirlar,
+          };
+
+          const encoder = JsonEncoder.withIndent('  ');
+          developer.log(encoder.convert(requestBody), name: 'MAL_KABUL_REQUEST_JSON');
+
+          final ok = await _showMalKabulPreviewDialog(
+            body: requestBody,
+            refNo: refNo,
+            satirCount: satirlar.length,
+          );
+          if (!ok) {
+            if (mounted) setState(() => _isSaving = false);
+            return;
+          }
+
+          final response = await ApiService.saveMalKabul(
+            token,
+            databaseProvider.selectedDatabase!.id,
+            dateStr,
+            'S',
+            refNo,
+            1,
+            '10001_Rmos_E',
+            satirlar,
+          );
+
+          developer.log('isSucceded: ${response['isSucceded']}', name: 'MAL_KABUL_RESPONSE');
+          developer.log('message: ${response['message']}', name: 'MAL_KABUL_RESPONSE');
+          developer.log('messageList: ${response['messageList']}', name: 'MAL_KABUL_RESPONSE');
+          developer.log('value: ${response['value']}', name: 'MAL_KABUL_RESPONSE');
+
+          if (response['isSucceded'] == true) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Mal Kabul kaydedildi'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              setState(() {
+                _orderItems.clear();
+                _acceptedQuantities.clear();
+                _orderNumberController.text = refNo;
+              });
+              await _loadOrder();
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(response['message'] ?? 'Bilinmeyen hata'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
+          }
+        } else {
+          // İrsaliye / Fatura / Sipariş No: insertBarkod API
+          // Sipariş No: cari = seciliSatici (ilk satırdan), faturaNo boş, siparisNo = sipariş numarası
+          // İrsaliye / Fatura: cari = HesapPlan.Kod (vergiNo'dan), faturaNo = Eirsaliye_ENo, siparisNo yok
           final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
               databaseProvider.selectedDatabase!.id;
-          final cariKod =
-              await ApiService.getHesapPlanKodByVergiNo(
-                    token: token,
-                    dbId: backDbId,
-                    vergino: vergino,
-                  ) ??
-                  '';
-          if (cariKod.trim().isEmpty) {
-            throw Exception('HesapPlan.Kod bulunamadı (vergino: $vergino)');
-          }
 
-          final faturaNo = (_lastEirsaliyeENo ?? '').trim();
-          if (faturaNo.isEmpty) {
-            throw Exception('ETTN sorgusundan Eirsaliye_ENo alınamadı');
+          final String cariKod;
+          final String faturaNo;
+          final String? siparisNo;
+
+          if (_girisTip == 'Sipariş No') {
+            cariKod = _orderItems.isNotEmpty ? _orderItems.first.seciliSatici.trim() : '';
+            faturaNo = '';
+            siparisNo = _orderNumberController.text.trim();
+          } else {
+            final vergino = (_lastVergiNo ?? '').trim();
+            if (vergino.isEmpty) {
+              throw Exception('ETTN sorgusundan Vergino alınamadı');
+            }
+            cariKod = await ApiService.getHesapPlanKodByVergiNo(
+                  token: token,
+                  dbId: backDbId,
+                  vergino: vergino,
+                ) ?? '';
+            if (cariKod.trim().isEmpty) {
+              throw Exception('HesapPlan.Kod bulunamadı (vergino: $vergino)');
+            }
+            faturaNo = (_lastEirsaliyeENo ?? '').trim();
+            if (faturaNo.isEmpty) {
+              throw Exception('ETTN sorgusundan Eirsaliye_ENo alınamadı');
+            }
+            siparisNo = null;
           }
 
           final body = _buildInsertBarkodBody(
             dbId: backDbId,
             cariKod: cariKod,
             faturaNo: faturaNo,
-            siparisNo: null,
+            siparisNo: siparisNo,
           );
           final detaylar = body['detaylar'];
           if (detaylar is! List || detaylar.isEmpty) {
-            throw Exception('Gönderilecek satır yok (stokKod boş olanlar gönderilmez)');
+            if (mounted) {
+              await showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Gönderilecek Satır Yok'),
+                  content: const Text(
+                    'Hiçbir satırda stokKod eşleşmesi bulunamadı.\nBarkod okutulmayan satırlar gönderilmez.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Tamam'),
+                    ),
+                  ],
+                ),
+              );
+              setState(() => _isSaving = false);
+            }
+            return;
           }
 
           final ok = await _showInsertBarkodPreviewDialog(
@@ -2167,11 +2289,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             faturaNo: faturaNo,
           );
           if (!ok) {
-            if (mounted) {
-              setState(() {
-                _isSaving = false;
-              });
-            }
+            if (mounted) setState(() => _isSaving = false);
             return;
           }
 
@@ -2181,9 +2299,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           );
 
           final isOk = response['isSucceded'] == true;
-          final msg =
-              (response['message'] ?? (isOk ? 'Gönderildi' : 'Gönderim hatası'))
-                  .toString();
+          final msg = (response['message'] ?? (isOk ? 'Gönderildi' : 'Gönderim hatası')).toString();
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -2195,14 +2311,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             );
           }
 
-          final ettn = _orderNumberController.text.trim();
+          final refValue = _orderNumberController.text.trim();
 
           if (isOk && mounted) {
             setState(() {
               _orderItems.clear();
               _acceptedQuantities.clear();
-              // ETTN aynı kalsın: gönderim sonrası otomatik tekrar listele
-              _orderNumberController.text = ettn;
+              _orderNumberController.text = refValue;
               _lastVergiNo = null;
               _lastEirsaliyeENo = null;
               _lastSenaryo = null;
@@ -2211,144 +2326,16 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             });
           }
 
-          if (mounted) {
-            setState(() => _isSaving = false);
-          }
+          if (mounted) setState(() => _isSaving = false);
 
-          if (isOk && mounted && ettn.isNotEmpty) {
-            await _loadByEttn();
-          }
-          return;
-        }
-
-        final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-        final refNo = _orderNumberController.text
-            .trim(); // Use order number as RefNo
-
-        final satirlar = <Map<String, dynamic>>[];
-
-        for (var item in _orderItems) {
-          final acceptedQuantity =
-              _acceptedQuantities[item.stokkod] ?? item.miktar;
-
-
-          satirlar.add({
-            'Id': 0, // ID from the fetched order
-            'EfatId': item.id, // Use the same ID
-            'Sira': 0,
-            'UrunAdi': 'Ürün ${item.stokkod}',
-            'Firma': 'Tedarikçi',
-            'Miktar': acceptedQuantity,
-            'Birim': item.birim,
-            'PartiNo': '${item.id}-${DateTime.now().millisecondsSinceEpoch}',
-            'SonKullanimTarih': DateFormat(
-              'yyyy-MM-dd',
-            ).format(DateTime.now().add(const Duration(days: 365))),
-            'UrunSicaklik': 24.5,
-            'AracSicaklik': 22.5,
-            'UrunOnay': true,
-            'AracOnay': true,
-            'PandemiOnay': true,
-            'HammaddeOnay': true,
-            'DezenfeksiyonOnay': true,
-            'PersonelOnay': true,
-          });
-        }
-
-        final requestBody = {
-          'db_Id': databaseProvider.selectedDatabase!.id,
-          'Tarih': dateStr,
-          'RefTip': 'S',
-          'RefNo': refNo,
-          'Efat_Sirket': 1,
-          'Efat_Db': '10001_Rmos_E',
-          'Satirlar': satirlar,
-        };
-
-        // Log request details
-
-        // Log complete JSON request body
-        const encoder = JsonEncoder.withIndent('  ');
-        final jsonString = encoder.convert(requestBody);
-        developer.log(jsonString, name: 'MAL_KABUL_REQUEST_JSON');
-
-        // Log EfatId values being sent
-        for (var satir in satirlar) {
-        }
-
-        final ok = await _showMalKabulPreviewDialog(
-          body: requestBody,
-          refNo: refNo,
-          satirCount: satirlar.length,
-        );
-        if (!ok) {
-          if (mounted) {
-            setState(() {
-              _isSaving = false;
-            });
+          if (isOk && mounted && refValue.isNotEmpty) {
+            if (_girisTip == 'Sipariş No') {
+              await _loadOrder();
+            } else {
+              await _loadByEttn();
+            }
           }
           return;
-        }
-
-        final response = await ApiService.saveMalKabul(
-          token,
-          databaseProvider.selectedDatabase!.id,
-          dateStr,
-          'S',
-          refNo,
-          1,
-          '10001_Rmos_E',
-          satirlar,
-        );
-
-        // Log response details
-        developer.log(
-          'isSucceded: ${response['isSucceded']}',
-          name: 'MAL_KABUL_RESPONSE',
-        );
-        developer.log(
-          'message: ${response['message']}',
-          name: 'MAL_KABUL_RESPONSE',
-        );
-        developer.log(
-          'messageList: ${response['messageList']}',
-          name: 'MAL_KABUL_RESPONSE',
-        );
-        developer.log(
-          'value: ${response['value']}',
-          name: 'MAL_KABUL_RESPONSE',
-        );
-
-        if (response['isSucceded'] == true) {
-          final siparisNo = refNo;
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Mal Kabul kaydedildi'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            // Sipariş No aynı kalsın: kaydet sonrası otomatik tekrar listele
-            setState(() {
-              _orderItems.clear();
-              _acceptedQuantities.clear();
-              _orderNumberController.text = siparisNo;
-            });
-          }
-
-          if (mounted && siparisNo.trim().isNotEmpty) {
-            await _loadOrder();
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(response['message'] ?? 'Bilinmeyen hata'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
         }
       }
     } catch (e) {
