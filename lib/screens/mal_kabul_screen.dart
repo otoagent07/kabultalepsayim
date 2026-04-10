@@ -52,6 +52,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   final Map<String, _StokBarkodItem> _stokBarkodIndex = {};
   final Map<String, _StokBarkodItem?> _rowMatchedStokBarkod = {};
   final Map<String, double> _acceptedQuantities = {};
+  // Mal Kabul Giriş: sheet'ten Kaydet sonrası satır kartını "kayıtlı" yeşiline yakın göstermek için
+  final Set<String> _malKabulRowSheetSaved = {};
   // Mal Kabul Giriş'e özel per-satır ek alanlar
   final Map<String, _MalKabulSatirData> _satirData = {};
   final Map<String, TextEditingController> _rowTextControllers = {};
@@ -63,6 +65,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   bool get _isSiparisLike =>
       _girisTip == 'Sipariş No' || _girisTip == 'Mal Kabul Giriş';
 
+  double _displayAcceptedQty(MalKabulOrderItem item) {
+    if (_girisTip == 'Mal Kabul Giriş') {
+      return _acceptedQuantities[item.stokkod] ?? 0;
+    }
+    return _acceptedQuantities[item.stokkod] ?? item.miktar;
+  }
+
   void _snack(
     String message, {
     Color? backgroundColor,
@@ -73,16 +82,12 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     messenger.showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 5),
+        persist: false,
         content: Text(message),
         backgroundColor: backgroundColor,
         action: action,
       ),
     );
-    if (action != null) {
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted) messenger.removeCurrentSnackBar();
-      });
-    }
   }
 
   void _showErrorSnackWithDetails({
@@ -353,6 +358,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   /// Sipariş No akışında: Tesellum_Mevcut == true olan satırları
   /// barkod okutulmuş + miktar set edilmiş olarak işaretle.
   void _applyTesellumData() {
+    if (_girisTip == 'Mal Kabul Giriş') return;
     for (final item in _orderItems) {
       if (!item.tesellumMevcut) continue;
 
@@ -580,6 +586,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _rowMatchedStokBarkod.clear();
     _existingStokHareketByBelgeSatirId.clear();
     _satirData.clear();
+    _malKabulRowSheetSaved.clear();
   }
 
   Future<void> _loadOrder() async {
@@ -620,20 +627,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         if (response.isSucceded) {
           setState(() {
             _orderItems = response.value;
-            // Initialize accepted quantities with order quantities
-            for (var item in _orderItems) {
-              _acceptedQuantities[item.stokkod] = item.miktar;
+            // Mal Kabul Giriş: kabul miktarı kullanıcı sheet'ten girer; varsayılan 0
+            if (_girisTip != 'Mal Kabul Giriş') {
+              for (var item in _orderItems) {
+                _acceptedQuantities[item.stokkod] = item.miktar;
+              }
+              _applyTesellumData();
             }
-            _applyTesellumData();
           });
-
-          // Log the IDs from the fetched order
-          for (var item in _orderItems) {
-          }
-
-          if (mounted) {
-            _snack('${response.value.length} ürün yüklendi', backgroundColor: Colors.green);
-          }
         } else {
           if (mounted) {
             _snack(
@@ -2017,7 +2018,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
   Future<void> _showMalKabulEditDialog(MalKabulOrderItem item) async {
     final data = _satirData.putIfAbsent(item.stokkod, () => _MalKabulSatirData());
-    final currentQty = _acceptedQuantities[item.stokkod] ?? item.miktar;
+    final currentQty = _displayAcceptedQty(item);
 
     final result = await showModalBottomSheet<_MalKabulEditResult>(
       context: context,
@@ -2035,6 +2036,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         _acceptedQuantities[item.stokkod] = result.miktar;
         data.urunSicaklik = result.urunSicaklik;
         data.aracSicaklik = result.aracSicaklik;
+        _malKabulRowSheetSaved.add(item.stokkod);
       });
     }
   }
@@ -2161,7 +2163,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
           final satirlar = <Map<String, dynamic>>[];
           for (var item in _orderItems) {
-            final acceptedQuantity = _acceptedQuantities[item.stokkod] ?? item.miktar;
+            if (!_malKabulRowSheetSaved.contains(item.stokkod)) continue;
+            final acceptedQuantity = _displayAcceptedQty(item);
             final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
             satirlar.add({
               'Id': 0,
@@ -2182,6 +2185,17 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               'DezenfeksiyonOnay': extra.dezenfeksiyonOnay,
               'PersonelOnay': extra.personelOnay,
             });
+          }
+
+          if (satirlar.isEmpty) {
+            if (mounted) {
+              _snack(
+                'Göndermek için satırda Düzenle ile sheet açıp Kaydet seçin',
+                backgroundColor: Colors.orange,
+              );
+              setState(() => _isSaving = false);
+            }
+            return;
           }
 
           final requestBody = {
@@ -2382,6 +2396,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             setState(() {
               _orderItems.clear();
               _acceptedQuantities.clear();
+              _malKabulRowSheetSaved.clear();
               _orderNumberController.text = refValue;
               _lastVergiNo = null;
               _lastEirsaliyeENo = null;
@@ -2568,8 +2583,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     itemCount: _orderItems.length,
                     itemBuilder: (context, index) {
                       final item = _orderItems[index];
-                      final acceptedQuantity =
-                          _acceptedQuantities[item.stokkod] ?? item.miktar;
+                      final acceptedQuantity = _displayAcceptedQty(item);
+                      final malKabulSheetSaved = _girisTip == 'Mal Kabul Giriş' &&
+                          _malKabulRowSheetSaved.contains(item.stokkod);
                       final rowTextController = _rowTextControllers.putIfAbsent(
                         item.stokkod,
                         () => TextEditingController(),
@@ -2599,9 +2615,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         elevation: 1,
                         color: tesellumMevcut
                             ? Colors.green.shade50
-                            : matched != null
-                                ? const Color(0xFFFFFDF5)
-                                : null,
+                            : malKabulSheetSaved
+                                ? Colors.green.shade50
+                                : matched != null
+                                    ? const Color(0xFFFFFDF5)
+                                    : null,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
                           child: Column(
@@ -2850,25 +2868,45 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   Card(
                                     elevation: 2,
                                     margin: EdgeInsets.zero,
+                                    color: malKabulSheetSaved
+                                        ? Colors.green.shade100
+                                        : null,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
+                                      side: malKabulSheetSaved
+                                          ? BorderSide(
+                                              color: Colors.green.shade600,
+                                              width: 1,
+                                            )
+                                          : BorderSide.none,
                                     ),
                                     clipBehavior: Clip.antiAlias,
                                     child: InkWell(
                                       onTap: () => _editQuantity(item),
-                                      child: const Padding(
-                                        padding: EdgeInsets.symmetric(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 8,
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.edit, size: 18),
-                                            SizedBox(width: 8),
+                                            Icon(
+                                              Icons.edit,
+                                              size: 18,
+                                              color: malKabulSheetSaved
+                                                  ? Colors.green.shade800
+                                                  : null,
+                                            ),
+                                            const SizedBox(width: 8),
                                             Text(
                                               'Düzenle',
-                                              style: TextStyle(fontWeight: FontWeight.w600),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: malKabulSheetSaved
+                                                    ? Colors.green.shade900
+                                                    : null,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -2962,6 +3000,11 @@ class _MalKabulEditResult {
   const _MalKabulEditResult({required this.miktar, required this.urunSicaklik, required this.aracSicaklik});
 }
 
+String _formatSheetNumericField(double v) {
+  if (v == 0) return '0';
+  return v % 1 == 0 ? v.toInt().toString() : v.toString();
+}
+
 class _MalKabulEditSheet extends StatefulWidget {
   final MalKabulOrderItem item;
   final double initialQty;
@@ -2985,12 +3028,15 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
   @override
   void initState() {
     super.initState();
-    final qty = widget.initialQty;
     _miktarCtrl = TextEditingController(
-      text: qty % 1 == 0 ? qty.toInt().toString() : qty.toString(),
+      text: _formatSheetNumericField(widget.initialQty),
     );
-    _urunSicaklikCtrl = TextEditingController(text: widget.data.urunSicaklik.toString());
-    _aracSicaklikCtrl = TextEditingController(text: widget.data.aracSicaklik.toString());
+    _urunSicaklikCtrl = TextEditingController(
+      text: _formatSheetNumericField(widget.data.urunSicaklik),
+    );
+    _aracSicaklikCtrl = TextEditingController(
+      text: _formatSheetNumericField(widget.data.aracSicaklik),
+    );
   }
 
   @override
@@ -3002,12 +3048,29 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
   }
 
   void _save() {
-    final qty = double.tryParse(_miktarCtrl.text.replaceAll(',', '.'));
-    if (qty == null || qty <= 0) return;
-    final urun = double.tryParse(_urunSicaklikCtrl.text.replaceAll(',', '.')) ?? widget.data.urunSicaklik;
-    final arac = double.tryParse(_aracSicaklikCtrl.text.replaceAll(',', '.')) ?? widget.data.aracSicaklik;
-    // Onay değerleri data üzerinde zaten güncellendi (setState ile)
-    Navigator.of(context).pop(_MalKabulEditResult(miktar: qty, urunSicaklik: urun, aracSicaklik: arac));
+    final qtyRaw = _miktarCtrl.text.trim();
+    final qtyParsed = qtyRaw.isEmpty
+        ? 0.0
+        : double.tryParse(qtyRaw.replaceAll(',', '.'));
+    if (qtyParsed == null || qtyParsed < 0) return;
+
+    final urunRaw = _urunSicaklikCtrl.text.trim();
+    final urun = urunRaw.isEmpty
+        ? 0.0
+        : (double.tryParse(urunRaw.replaceAll(',', '.')) ?? 0.0);
+
+    final aracRaw = _aracSicaklikCtrl.text.trim();
+    final arac = aracRaw.isEmpty
+        ? 0.0
+        : (double.tryParse(aracRaw.replaceAll(',', '.')) ?? 0.0);
+
+    Navigator.of(context).pop(
+      _MalKabulEditResult(
+        miktar: qtyParsed,
+        urunSicaklik: urun,
+        aracSicaklik: arac,
+      ),
+    );
   }
 
   Widget _onayChip(String label, bool value, ValueChanged<bool> onChanged) {
@@ -3181,14 +3244,14 @@ class _MalKabulSatirData {
   bool personelOnay;
 
   _MalKabulSatirData({
-    this.urunSicaklik = 24.5,
-    this.aracSicaklik = 22.5,
-    this.urunOnay = true,
-    this.aracOnay = true,
-    this.pandemiOnay = true,
-    this.hammaddeOnay = true,
-    this.dezenfeksiyonOnay = true,
-    this.personelOnay = true,
+    this.urunSicaklik = 0,
+    this.aracSicaklik = 0,
+    this.urunOnay = false,
+    this.aracOnay = false,
+    this.pandemiOnay = false,
+    this.hammaddeOnay = false,
+    this.dezenfeksiyonOnay = false,
+    this.personelOnay = false,
   });
 }
 
