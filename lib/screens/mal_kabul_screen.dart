@@ -2475,7 +2475,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     },
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 140),
                     itemCount: _orderItems.length,
                     itemBuilder: (context, index) {
                       final item = _orderItems[index];
