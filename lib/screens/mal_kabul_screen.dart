@@ -277,7 +277,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     if (_orderNumberController.text.trim().isEmpty) {
       if (_isSiparisLike) {
         _orderNumberController.text = '13';
+      } else if (_girisTip == 'İrsaliye') {
+        _orderNumberController.text = '90cb2492-c6ef-4c7b-b44e-9b3359259c5d';
       } else {
+        // Fatura
         _orderNumberController.text = '495a4c72-71e1-4aaa-aa75-8693b7112ef6';
       }
     }
@@ -2604,73 +2607,50 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 420,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Barkod:',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.grey[700],
-                                        ),
+                              if (_girisTip != 'Mal Kabul Giriş') ...[
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Barkod:',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.grey[700],
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: TextField(
-                                          controller: rowTextController,
-                                          focusNode: rowTextFocusNode,
-                                          keyboardType: TextInputType.none,
-                                          textInputAction: TextInputAction.none,
-                                          maxLines: 1,
-                                          decoration: InputDecoration(
-                                            isDense: true,
-                                            border: OutlineInputBorder(),
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 10,
-                                            ),
-                                            suffixIcon: IconButton(
-                                              tooltip: 'Temizle',
-                                              icon: const Icon(Icons.close),
-                                              onPressed: () {
-                                                rowTextController.clear();
-                                                setState(() {
-                                                  _rowMatchedStokBarkod[
-                                                      item.stokkod] = null;
-                                                });
-                                                rowTextFocusNode.requestFocus();
-                                              },
-                                            ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: rowTextController,
+                                        focusNode: rowTextFocusNode,
+                                        keyboardType: TextInputType.none,
+                                        textInputAction: TextInputAction.none,
+                                        maxLines: 1,
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          border: const OutlineInputBorder(),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 10,
                                           ),
-                                          onChanged: (value) {
-                                            if (value.endsWith('\n')) {
-                                              final barcode =
-                                                  value.replaceAll('\n', '').trim();
-                                              if (barcode.isNotEmpty) {
-                                                rowTextController.text = barcode;
-                                                rowTextController.selection =
-                                                    TextSelection.fromPosition(
-                                                  TextPosition(
-                                                    offset: barcode.length,
-                                                  ),
-                                                );
-                                                _applyRowBarcodeMatch(
-                                                  rowItem: item,
-                                                  scannedBarcode: barcode,
-                                                );
-                                              }
-                                            }
-                                          },
-                                          onSubmitted: (value) {
-                                            final barcode = value.trim();
+                                          suffixIcon: IconButton(
+                                            tooltip: 'Temizle',
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () {
+                                              rowTextController.clear();
+                                              setState(() {
+                                                _rowMatchedStokBarkod[
+                                                    item.stokkod] = null;
+                                              });
+                                              rowTextFocusNode.requestFocus();
+                                            },
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          if (value.endsWith('\n')) {
+                                            final barcode =
+                                                value.replaceAll('\n', '').trim();
                                             if (barcode.isNotEmpty) {
                                               rowTextController.text = barcode;
                                               rowTextController.selection =
@@ -2684,76 +2664,30 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                                 scannedBarcode: barcode,
                                               );
                                             }
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Card(
-                                            elevation: 2,
-                                            margin: EdgeInsets.zero,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            clipBehavior: Clip.antiAlias,
-                                            child: InkWell(
-                                              onTap: () => _editQuantity(item),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 8,
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: const [
-                                                    Icon(Icons.edit, size: 18),
-                                                    SizedBox(width: 8),
-                                                    Text(
-                                                      'Düzenle',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
+                                          }
+                                        },
+                                        onSubmitted: (value) {
+                                          final barcode = value.trim();
+                                          if (barcode.isNotEmpty) {
+                                            rowTextController.text = barcode;
+                                            rowTextController.selection =
+                                                TextSelection.fromPosition(
+                                              TextPosition(
+                                                offset: barcode.length,
                                               ),
-                                            ),
-                                          ),
-                                          if (tesellumMevcut) ...[
-                                            const SizedBox(width: 6),
-                                            IconButton(
-                                              tooltip: 'Sil',
-                                              onPressed: () => _deleteTesellum(item: item),
-                                              icon: const Icon(Icons.delete_outline),
-                                            ),
-                                          ] else if (existingId != null &&
-                                              existingId > 0) ...[
-                                            const SizedBox(width: 6),
-                                            IconButton(
-                                              tooltip: 'Sil',
-                                              onPressed: () {
-                                                if (ettnForRefresh.isEmpty) return;
-                                                _deleteExistingStokHareket(
-                                                  existingId: existingId,
-                                                  ettn: ettnForRefresh,
-                                                  item: item,
-                                                );
-                                              },
-                                              icon: const Icon(Icons.delete_outline),
-                                            ),
-                                          ],
-                                        ],
+                                            );
+                                            _applyRowBarcodeMatch(
+                                              rowItem: item,
+                                              scannedBarcode: barcode,
+                                            );
+                                          }
+                                        },
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ),
+                                const SizedBox(height: 6),
+                              ],
                               if (matched != null) ...[
                                 const SizedBox(height: 6),
                                 Container(
@@ -2907,13 +2841,74 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                       color: Colors.green,
                                     ),
                                   ),
-                                  Expanded(
-                                    child: _metricText(
-                                      label: 'Fiyat',
-                                      value: priceStr,
-                                      color: Colors.orange,
+                                  _metricText(
+                                    label: 'Fiyat',
+                                    value: priceStr,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Card(
+                                    elevation: 2,
+                                    margin: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      onTap: () => _editQuantity(item),
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.edit, size: 18),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Düzenle',
+                                              style: TextStyle(fontWeight: FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
+                                  if (tesellumMevcut) ...[
+                                    const SizedBox(width: 2),
+                                    Tooltip(
+                                      message: 'Sil',
+                                      child: InkWell(
+                                        onTap: () => _deleteTesellum(item: item),
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(6),
+                                          child: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400),
+                                        ),
+                                      ),
+                                    ),
+                                  ] else if (existingId != null && existingId > 0) ...[
+                                    const SizedBox(width: 2),
+                                    Tooltip(
+                                      message: 'Sil',
+                                      child: InkWell(
+                                        onTap: () {
+                                          if (ettnForRefresh.isEmpty) return;
+                                          _deleteExistingStokHareket(
+                                            existingId: existingId,
+                                            ettn: ettnForRefresh,
+                                            item: item,
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(6),
+                                          child: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ],
