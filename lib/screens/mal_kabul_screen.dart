@@ -706,6 +706,23 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       setState(() {
         _malKabulRefnoItems = items;
         _orderItems = items.map(_refnoItemToOrderItem).toList();
+        for (final s in items) {
+          final key = s.id.toString();
+          _satirData[key] = _MalKabulSatirData(
+            urunSicaklik: s.urunSicaklik,
+            aracSicaklik: s.aracSicaklik,
+            urunOnay: s.urunOnay,
+            aracOnay: s.aracOnay,
+            pandemiOnay: s.pandemiOnay,
+            hammaddeOnay: s.hammaddeOnay,
+            dezenfeksiyonOnay: s.dezenfeksiyonOnay,
+            personelOnay: s.personelOnay,
+          );
+          if (s.urunOnay || s.aracOnay || s.pandemiOnay ||
+              s.hammaddeOnay || s.dezenfeksiyonOnay || s.personelOnay) {
+            _malKabulRowSheetSaved.add(key);
+          }
+        }
       });
     } catch (e) {
       if (mounted) _snack('Yükleme hatası: $e', backgroundColor: Colors.red);
