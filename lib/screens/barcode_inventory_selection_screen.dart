@@ -10,7 +10,6 @@ import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/date_selection_tile.dart';
-import '../widgets/department_selection_tile.dart';
 import 'barcode_inventory_screen.dart';
 import '../widgets/alice_inspector_button.dart';
 
@@ -178,12 +177,78 @@ class _BarcodeInventorySelectionScreenState
     );
   }
 
-  String _efaturaIdTextForSelected(Department? dept) {
-    if (dept == null || dept.eFatDb == null || dept.eFatDb!.isEmpty) {
-      return 'efutadb_id: id yok';
-    }
-    final id = _efaturaDbIdByName[dept.eFatDb!.trim().toLowerCase()];
-    return 'efutadb_id: ${id ?? 'id yok'}';
+  Widget _entryButtonWithValue({
+    required String text,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    List<String>? detailLines,
+  }) {
+    return Card(
+      margin: const EdgeInsets.all(3),
+      elevation: 2,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 34),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      value,
+                      maxLines: 2,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    if (detailLines != null && detailLines.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      for (final line in detailLines)
+                        Text(
+                          line,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.arrow_forward_ios, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _selectDepartment() {
@@ -273,6 +338,18 @@ class _BarcodeInventorySelectionScreenState
   }
 
   Widget _buildSelectionCards() {
+    final deptEfaturaId = (_selectedDepartment == null ||
+            _selectedDepartment!.eFatDb == null ||
+            _selectedDepartment!.eFatDb!.trim().isEmpty)
+        ? 'id yok'
+        : (_efaturaDbIdByName[
+                    _selectedDepartment!.eFatDb!.trim().toLowerCase()] ??
+                'id yok')
+            .toString();
+    final deptText = _selectedDepartment == null
+        ? 'Seçiniz'
+        : _selectedDepartment!.ad.trim();
+
     return Padding(
       padding: const EdgeInsets.all(3),
       child: Column(
@@ -284,15 +361,19 @@ class _BarcodeInventorySelectionScreenState
             label: 'Tarih Seçin',
           ),
           const SizedBox(height: 3),
-          DepartmentSelectionTile(
-            onTap: _selectDepartment,
-            departmentName: _selectedDepartment?.ad,
-            departmentKod: _selectedDepartment?.kod,
-            subeText: _selectedDepartment?.sube,
-            efutadbIdText: _selectedDepartment == null
+          _entryButtonWithValue(
+            text: 'Departman Seçin',
+            value: deptText,
+            icon: Icons.business,
+            color: Colors.blue,
+            onPressed: _selectDepartment,
+            detailLines: _selectedDepartment == null
                 ? null
-                : _efaturaIdTextForSelected(_selectedDepartment),
-            label: 'Departman Seçin',
+                : [
+                    'Kod: ${_selectedDepartment!.kod}',
+                    'Şube: ${_selectedDepartment!.sube}',
+                    'efutadb_id: $deptEfaturaId',
+                  ],
           ),
         ],
       ),
