@@ -699,6 +699,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       );
 
       if (!mounted) return;
+      if (items.isEmpty) {
+        _snack('Bu fişnoya ait veri yok', backgroundColor: Colors.orange);
+        return;
+      }
       setState(() {
         _malKabulRefnoItems = items;
         _orderItems = items.map(_refnoItemToOrderItem).toList();
@@ -3399,12 +3403,12 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
               spacing: 6,
               runSpacing: 6,
               children: [
-                _onayChip('Ürün', widget.data.urunOnay, (v) { setState(() => widget.data.urunOnay = v); if (v) _save(); }),
-                _onayChip('Araç', widget.data.aracOnay, (v) { setState(() => widget.data.aracOnay = v); if (v) _save(); }),
-                _onayChip('Pandemi', widget.data.pandemiOnay, (v) { setState(() => widget.data.pandemiOnay = v); if (v) _save(); }),
-                _onayChip('Hammadde', widget.data.hammaddeOnay, (v) { setState(() => widget.data.hammaddeOnay = v); if (v) _save(); }),
-                _onayChip('Dezenfeksiyon', widget.data.dezenfeksiyonOnay, (v) { setState(() => widget.data.dezenfeksiyonOnay = v); if (v) _save(); }),
-                _onayChip('Personel', widget.data.personelOnay, (v) { setState(() => widget.data.personelOnay = v); if (v) _save(); }),
+                _onayChip('Ürün', widget.data.urunOnay, (v) => setState(() => widget.data.urunOnay = v)),
+                _onayChip('Araç', widget.data.aracOnay, (v) => setState(() => widget.data.aracOnay = v)),
+                _onayChip('Pandemi', widget.data.pandemiOnay, (v) => setState(() => widget.data.pandemiOnay = v)),
+                _onayChip('Hammadde', widget.data.hammaddeOnay, (v) => setState(() => widget.data.hammaddeOnay = v)),
+                _onayChip('Dezenfeksiyon', widget.data.dezenfeksiyonOnay, (v) => setState(() => widget.data.dezenfeksiyonOnay = v)),
+                _onayChip('Personel', widget.data.personelOnay, (v) => setState(() => widget.data.personelOnay = v)),
               ],
             ),
             const SizedBox(height: 14),

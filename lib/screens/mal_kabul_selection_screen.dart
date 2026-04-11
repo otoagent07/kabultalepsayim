@@ -24,6 +24,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
   List<Department> _departments = [];
   final Map<String, int> _efaturaDbIdByName = {};
   bool _isLoading = true;
+  bool _isCheckingOrders = false;
   String? _token;
   int? _dbId;
 
@@ -258,23 +259,65 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     );
   }
 
-  void _goMalKabulGiris() {
+  Future<void> _goMalKabulGiris() async {
     final dept = _selectedDepartment!;
-    final efaturaDbId = (dept.eFatDb == null || dept.eFatDb!.isEmpty)
-        ? null
-        : _efaturaDbIdByName[dept.eFatDb!];
+    final token = _token;
+    final dbId = _dbId;
+    if (token == null || dbId == null) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => MalKabulScreen(
-          selectedDate: _selectedDate,
-          girisTip: 'Mal Kabul Giriş',
-          selectedDepartment: dept,
-          efaturaDbId: efaturaDbId,
-          efatSirketId: dept.eFatSirketId,
+    setState(() => _isCheckingOrders = true);
+    try {
+      final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final all = await ApiService.getStokHareketByDate(
+        token: token,
+        dbId: dbId,
+        tarih: tarih,
+        sirket: dept.sube,
+      );
+      final orders = all.where((o) {
+        final raw = o['Siparisno'];
+        final v = raw is int ? raw : int.tryParse('$raw');
+        return v != null && v != 0;
+      }).toList();
+
+      if (!mounted) return;
+
+      if (orders.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Seçilen tarih ve şube için sipariş bulunamadı'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final efaturaDbId = (dept.eFatDb == null || dept.eFatDb!.isEmpty)
+          ? null
+          : _efaturaDbIdByName[dept.eFatDb!];
+
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => MalKabulScreen(
+            selectedDate: _selectedDate,
+            girisTip: 'Mal Kabul Giriş',
+            selectedDepartment: dept,
+            efaturaDbId: efaturaDbId,
+            efatSirketId: dept.eFatSirketId,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sipariş sorgusu başarısız: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCheckingOrders = false);
+    }
   }
 
   Widget _entryButton({
@@ -388,7 +431,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
         ),
         actions: const [AliceInspectorButton()],
       ),
-      body: _isLoading
+      body: (_isLoading || _isCheckingOrders)
           ? const Center(child: CircularProgressIndicator())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
