@@ -273,6 +273,21 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     );
   }
 
+  Widget _miniTag(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -3070,6 +3085,31 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                                   ),
                                 ],
                               ),
+                              if (_girisTip == 'Mal Kabul Giriş') ...[
+                                Builder(builder: (context) {
+                                  final d = _satirData[item.stokkod];
+                                  if (d == null) return const SizedBox.shrink();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 4, bottom: 2),
+                                    child: Wrap(
+                                      spacing: 4,
+                                      runSpacing: 3,
+                                      children: [
+                                        if (d.urunSicaklik != 0)
+                                          _miniTag('🌡 Ürün ${d.urunSicaklik.toStringAsFixed(1)}°', Colors.blue.shade700),
+                                        if (d.aracSicaklik != 0)
+                                          _miniTag('🌡 Araç ${d.aracSicaklik.toStringAsFixed(1)}°', Colors.indigo.shade700),
+                                        _miniTag('Ürün', d.urunOnay ? Colors.green.shade700 : Colors.grey.shade500),
+                                        _miniTag('Araç', d.aracOnay ? Colors.green.shade700 : Colors.grey.shade500),
+                                        _miniTag('Pandemi', d.pandemiOnay ? Colors.green.shade700 : Colors.grey.shade500),
+                                        _miniTag('Hammadde', d.hammaddeOnay ? Colors.green.shade700 : Colors.grey.shade500),
+                                        _miniTag('Dezenfeksiyon', d.dezenfeksiyonOnay ? Colors.green.shade700 : Colors.grey.shade500),
+                                        _miniTag('Personel', d.personelOnay ? Colors.green.shade700 : Colors.grey.shade500),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
                               const SizedBox(height: 6),
                               Row(
                                 children: [
