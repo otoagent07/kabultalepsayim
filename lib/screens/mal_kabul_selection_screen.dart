@@ -19,6 +19,8 @@ class MalKabulSelectionScreen extends StatefulWidget {
 }
 
 class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
+  static const String _allowedSpecialEntryUser = 'mehmet@rmosyazilim.com';
+
   DateTime _selectedDate = DateTime.now();
   Department? _selectedDepartment;
   List<Department> _departments = [];
@@ -238,6 +240,29 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
       );
       return;
     }
+
+    if (girisTip == 'İrsaliye' || girisTip == 'Fatura') {
+      StorageService.getUsername().then((username) {
+        final normalized = (username ?? '').trim().toLowerCase();
+        if (!mounted) return;
+        if (normalized != _allowedSpecialEntryUser) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('şuanlık sadece mehmet@rmosyazilim.com çalışır'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+        _goWithAuthorizedType(girisTip);
+      });
+      return;
+    }
+
+    _goWithAuthorizedType(girisTip);
+  }
+
+  void _goWithAuthorizedType(String girisTip) {
     if (girisTip == 'Mal Kabul Giriş') {
       _goMalKabulGiris();
       return;
