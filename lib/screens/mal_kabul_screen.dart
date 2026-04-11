@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import '../models/department.dart';
 import '../models/mal_kabul_order_item.dart';
+import '../models/mal_kabul_save_item.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -22,6 +23,7 @@ class MalKabulScreen extends StatefulWidget {
     required this.selectedDepartment,
     this.efaturaDbId,
     this.efatSirketId,
+    this.initialOrderNumber,
   });
 
   final DateTime selectedDate;
@@ -29,6 +31,7 @@ class MalKabulScreen extends StatefulWidget {
   final Department selectedDepartment;
   final int? efaturaDbId;
   final int? efatSirketId;
+  final String? initialOrderNumber;
 
   @override
   State<MalKabulScreen> createState() => _MalKabulScreenState();
@@ -46,6 +49,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   String? _lastBelgeEttn;
   final Map<int, Map<String, dynamic>> _existingStokHareketByBelgeSatirId = {};
   List<MalKabulOrderItem> _orderItems = [];
+  // Mal Kabul Giriş: GetByRefno'dan gelen orijinal veriler
+  List<MalKabulSaveItem> _malKabulRefnoItems = [];
   bool _isLoadingOrder = false;
   bool _isSaving = false;
   bool _isLoadingStokBarkod = false;
@@ -276,7 +281,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _selectedDepartment = widget.selectedDepartment;
     _efaturaDbId = widget.efaturaDbId;
     _efatSirketId = widget.efatSirketId;
-    if (_orderNumberController.text.trim().isEmpty) {
+    if (widget.initialOrderNumber != null) {
+      _orderNumberController.text = widget.initialOrderNumber!;
+    } else if (_orderNumberController.text.trim().isEmpty) {
       if (_isSiparisLike) {
         _orderNumberController.text = '13';
       } else if (_girisTip == 'İrsaliye') {
@@ -288,8 +295,12 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     }
 
     // Stok barkod listesini baştan çek (eşleştirme için)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _preloadStokBarkodIndex();
+      // Mal Kabul Giriş: initialOrderNumber verilmişse otomatik yükle
+      if (_girisTip == 'Mal Kabul Giriş' && widget.initialOrderNumber != null) {
+        await _loadByRefno();
+      }
     });
   }
 
@@ -650,6 +661,88 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     setState(() {
       _isLoadingOrder = false;
     });
+  }
+
+  // Mal Kabul Giriş: GetByRefno ile ürünleri yükle
+  Future<void> _loadByRefno() async {
+    final refnoStr = _orderNumberController.text.trim();
+    final refno = int.tryParse(refnoStr);
+    if (refno == null) {
+      _snack('Geçersiz sipariş numarası', backgroundColor: Colors.orange);
+      return;
+    }
+
+    setState(() {
+      _orderItems.clear();
+      _malKabulRefnoItems.clear();
+      _acceptedQuantities.clear();
+      _clearRowScanMemory();
+      _isLoadingOrder = true;
+    });
+
+    try {
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      final token = await StorageService.getToken();
+      if (token == null || databaseProvider.selectedDatabase == null) return;
+
+      final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
+          databaseProvider.selectedDatabase!.id;
+
+      final items = await ApiService.getMalKabulByRefno(
+        token: token,
+        dbId: backDbId,
+        refno: refno,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _malKabulRefnoItems = items;
+        _orderItems = items.map(_refnoItemToOrderItem).toList();
+      });
+    } catch (e) {
+      if (mounted) _snack('Yükleme hatası: $e', backgroundColor: Colors.red);
+    } finally {
+      if (mounted) setState(() => _isLoadingOrder = false);
+    }
+  }
+
+  /// GetByRefno'dan gelen MalKabulSaveItem'ı UI için MalKabulOrderItem'a dönüştür.
+  MalKabulOrderItem _refnoItemToOrderItem(MalKabulSaveItem s) {
+    return MalKabulOrderItem(
+      id: s.id,
+      tarih: s.sonKullanimTarih,
+      fisno: 0,
+      departman: '',
+      altDepartman: '',
+      stokkod: s.id.toString(),
+      stokAd: s.urunAdi,
+      birim: s.birim,
+      miktar: s.miktar,
+      onayMiktar: 0,
+      stokMiktar: 0,
+      sonalim: 0,
+      tahmini: 0,
+      ortalama: 0,
+      tipi: '',
+      seciliSatici: s.firma,
+      seciliFiyat: 0,
+      seciliToplam: 0,
+      saticino: 0,
+      siparisno: 0,
+      siparisTr: false,
+      anlasmadan: false,
+      depo: '',
+      sonalimcari: '',
+      sonalimMiktar: 0,
+      barkodlandi: false,
+      depStokMiktar: 0,
+      tesellumId: 0,
+      tesellumMiktar: 0,
+      tesellumMevcut: false,
+    );
   }
 
   Future<void> _loadByEttn() async {
@@ -2159,24 +2252,29 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
           final refNo = _orderNumberController.text.trim();
 
+          // GetByRefno'dan gelen orijinal verileri stokkod(=id) ile eşleştir
+          final refnoMap = {
+            for (final s in _malKabulRefnoItems) s.id.toString(): s,
+          };
+
           final satirlar = <Map<String, dynamic>>[];
           for (var item in _orderItems) {
             if (!_malKabulRowSheetSaved.contains(item.stokkod)) continue;
+            final refnoItem = refnoMap[item.stokkod];
+            // Id == 0 olanları gönderme
+            if (refnoItem == null || refnoItem.id == 0) continue;
             final acceptedQuantity = _displayAcceptedQty(item);
             final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
-            final urunAdiEkran = item.stokAd.trim().isEmpty
-                ? '(StokAd yok)'
-                : item.stokAd.trim();
             satirlar.add({
-              'Id': 0,
-              'EfatId': item.id,
-              'Sira': 0,
-              'UrunAdi': urunAdiEkran,
-              'Firma': 'Tedarikçi',
+              'Id': refnoItem.id,
+              'EfatId': refnoItem.efatId,
+              'Sira': refnoItem.sira,
+              'UrunAdi': refnoItem.urunAdi,
+              'Firma': refnoItem.firma,
               'Miktar': acceptedQuantity,
-              'Birim': item.birim,
-              'PartiNo': '${item.id}-${DateTime.now().millisecondsSinceEpoch}',
-              'SonKullanimTarih': DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 365))),
+              'Birim': refnoItem.birim,
+              'PartiNo': refnoItem.partiNo,
+              'SonKullanimTarih': refnoItem.sonKullanimTarih,
               'UrunSicaklik': extra.urunSicaklik,
               'AracSicaklik': extra.aracSicaklik,
               'UrunOnay': extra.urunOnay,
@@ -2199,13 +2297,14 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             return;
           }
 
+          final firstRefno = _malKabulRefnoItems.isNotEmpty ? _malKabulRefnoItems.first : null;
           final requestBody = {
             'db_Id': databaseProvider.selectedDatabase!.id,
             'Tarih': dateStr,
             'RefTip': 'S',
             'RefNo': refNo,
-            'Efat_Sirket': 1,
-            'Efat_Db': '10001_Rmos_E',
+            'Efat_Sirket': firstRefno?.efatSirket ?? 1,
+            'Efat_Db': firstRefno?.efatDb ?? '',
             'Satirlar': satirlar,
           };
 
@@ -2228,8 +2327,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             dateStr,
             'S',
             refNo,
-            1,
-            '10001_Rmos_E',
+            firstRefno?.efatSirket ?? 1,
+            firstRefno?.efatDb ?? '',
             satirlar,
           );
 
@@ -2243,10 +2342,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 _snack('Mal Kabul kaydedildi', backgroundColor: Colors.green);
               setState(() {
                 _orderItems.clear();
+                _malKabulRefnoItems.clear();
                 _acceptedQuantities.clear();
                 _orderNumberController.text = refNo;
               });
-              await _loadOrder();
+              await _loadByRefno();
             }
           } else {
             if (mounted) {
@@ -2478,7 +2578,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                         onChanged: (_) => setState(() {}),
                         onSubmitted: (_) {
                           if (_isLoadingOrder) return;
-                          if (isSiparis) {
+                          if (_girisTip == 'Mal Kabul Giriş') {
+                            _loadByRefno();
+                          } else if (isSiparis) {
                             _loadOrder();
                           } else {
                             _loadByEttn();
@@ -2502,7 +2604,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                     FilledButton.tonalIcon(
                       onPressed: _isLoadingOrder
                           ? null
-                          : (isSiparis ? _loadOrder : _loadByEttn),
+                          : (_girisTip == 'Mal Kabul Giriş'
+                              ? _loadByRefno
+                              : (isSiparis ? _loadOrder : _loadByEttn)),
                       icon:
                           _isLoadingOrder
                               ? const SizedBox(

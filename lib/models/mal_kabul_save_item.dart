@@ -1,6 +1,8 @@
 class MalKabulSaveItem {
   final int id;
   final int efatId;
+  final int efatSirket;
+  final String efatDb;
   final int sira;
   final String urunAdi;
   final String firma;
@@ -20,6 +22,8 @@ class MalKabulSaveItem {
   MalKabulSaveItem({
     required this.id,
     required this.efatId,
+    required this.efatSirket,
+    required this.efatDb,
     required this.sira,
     required this.urunAdi,
     required this.firma,
@@ -41,6 +45,8 @@ class MalKabulSaveItem {
     return MalKabulSaveItem(
       id: json['Id'] ?? 0,
       efatId: json['EfatId'] ?? 0,
+      efatSirket: json['EfatSirket'] ?? 1,
+      efatDb: json['EfatDb'] ?? '',
       sira: json['Sira'] ?? 0,
       urunAdi: json['UrunAdi'] ?? '',
       firma: json['Firma'] ?? '',
@@ -63,6 +69,8 @@ class MalKabulSaveItem {
     return {
       'Id': id,
       'EfatId': efatId,
+      'EfatSirket': efatSirket,
+      'EfatDb': efatDb,
       'Sira': sira,
       'UrunAdi': urunAdi,
       'Firma': firma,

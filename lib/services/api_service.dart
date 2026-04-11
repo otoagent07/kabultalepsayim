@@ -8,6 +8,7 @@ import '../models/sube_response.dart';
 import '../models/stok_master_response.dart';
 import '../models/stok_birim_fiyat_response.dart';
 import '../models/mal_kabul_order_response.dart';
+import '../models/mal_kabul_save_item.dart';
 import '../models/efatura_irsaliye_response.dart';
 
 class ApiHttpException implements Exception {
@@ -66,6 +67,10 @@ class ApiService {
       '/api/StokHareket/DeleteById';
   static const String stokHareketInsertBarkodEndpoint =
       '/api/StokHareket/InsertBarkod';
+  static const String stokHareketByDateEndpoint =
+      '/api/StokHareket/GetByDate';
+  static const String malKabulByRefnoEndpoint =
+      '/api/MalKabul/GetByRefno';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -500,6 +505,69 @@ class ApiService {
         return MalKabulOrderResponse.fromJson(jsonData);
       } else {
         throw Exception('Sipariş getirme hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  // StokHareket - Tarihe göre getir (Mal Kabul Giriş için)
+  static Future<List<Map<String, dynamic>>> getStokHareketByDate({
+    required String token,
+    required int dbId,
+    required String tarih,
+    required String sirket,
+    String fisTip = 'E',
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$stokHareketByDateEndpoint')
+          .replace(queryParameters: {
+        'Db_Id': dbId.toString(),
+        'tarih': tarih,
+        'detay': 'false',
+        'sirket': sirket,
+        'fisTip': fisTip,
+      });
+      final response = await http.get(
+        uri,
+        headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        final list = json['value'] as List<dynamic>? ?? [];
+        return list.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('GetByDate hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  // MalKabul - RefNo ile getir
+  static Future<List<MalKabulSaveItem>> getMalKabulByRefno({
+    required String token,
+    required int dbId,
+    required int refno,
+    String tip = 'S',
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$malKabulByRefnoEndpoint')
+          .replace(queryParameters: {
+        'Db_Id': dbId.toString(),
+        'tip': tip,
+        'refno': refno.toString(),
+      });
+      final response = await http.get(
+        uri,
+        headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> json = jsonDecode(response.body);
+        final list = json['value'] as List<dynamic>? ?? [];
+        return list.map((e) => MalKabulSaveItem.fromJson(e as Map<String, dynamic>)).toList();
+      } else {
+        throw Exception('GetByRefno hatası: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
