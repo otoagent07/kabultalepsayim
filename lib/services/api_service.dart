@@ -96,6 +96,9 @@ class ApiService {
     }
   }
 
+  // Login sonrası cache - sadece bir kez çekilir
+  static LoginResponse? cachedLoginResponse;
+
   // Token ile login ve database listesi alma
   static Future<LoginResponse> loginByToken(String token) async {
     try {
@@ -109,7 +112,9 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = jsonDecode(response.body);
-        return LoginResponse.fromJson(jsonData);
+        final loginResponse = LoginResponse.fromJson(jsonData);
+        cachedLoginResponse = loginResponse;
+        return loginResponse;
       } else {
         throw Exception('Login hatası: ${response.statusCode}');
       }
@@ -118,11 +123,17 @@ class ApiService {
     }
   }
 
+  // Departman cache - dbId bazında
+  static final Map<int, DepartmentResponse> _departmentCache = {};
+
   // Departmanları getir
   static Future<DepartmentResponse> getDepartments(
     String token,
     int dbId,
   ) async {
+    if (_departmentCache.containsKey(dbId)) {
+      return _departmentCache[dbId]!;
+    }
     try {
       final response = await _client.get(
         Uri.parse('$backApiBaseUrl$departmentsEndpoint?Db_Id=$dbId'),
@@ -134,7 +145,9 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = jsonDecode(response.body);
-        return DepartmentResponse.fromJson(jsonData);
+        final departmentResponse = DepartmentResponse.fromJson(jsonData);
+        _departmentCache[dbId] = departmentResponse;
+        return departmentResponse;
       } else {
         throw Exception(
           'Departman listesi alma hatası: ${response.statusCode}',

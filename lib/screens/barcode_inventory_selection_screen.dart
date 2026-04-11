@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../models/department.dart';
 import '../models/department_response.dart';
-import '../models/login_response.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -75,21 +74,18 @@ class _BarcodeInventorySelectionScreenState
 
   Future<void> _loadDepartments() async {
     try {
-      final results = await Future.wait([
-        ApiService.getDepartments(_token!, _dbId!),
-        ApiService.loginByToken(_token!),
-      ]);
+      final response = await ApiService.getDepartments(_token!, _dbId!);
 
-      final response = results[0] as DepartmentResponse;
-      final login = results[1] as LoginResponse;
-
-      _efaturaDbIdByName
-        ..clear()
-        ..addAll({
-          for (final db in login.databases)
-            if (db.programId == 3 && (db.databaseName ?? '').trim().isNotEmpty)
-              db.databaseName!.trim().toLowerCase(): db.id,
-        });
+      final login = ApiService.cachedLoginResponse;
+      if (login != null) {
+        _efaturaDbIdByName
+          ..clear()
+          ..addAll({
+            for (final db in login.databases)
+              if (db.programId == 3 && (db.databaseName ?? '').trim().isNotEmpty)
+                db.databaseName!.trim().toLowerCase(): db.id,
+          });
+      }
 
       if (response.isSucceded) {
         setState(() {

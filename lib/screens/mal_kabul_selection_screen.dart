@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../models/department.dart';
 import '../models/department_response.dart';
-import '../models/login_response.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -60,21 +59,18 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final results = await Future.wait([
-        ApiService.getDepartments(_token!, _dbId!),
-        ApiService.loginByToken(_token!),
-      ]);
+      final response = await ApiService.getDepartments(_token!, _dbId!);
 
-      final response = results[0] as DepartmentResponse;
-      final login = results[1] as LoginResponse;
-
-      _efaturaDbIdByName
-        ..clear()
-        ..addAll({
-          for (final db in login.databases)
-            if (db.programId == 3 && (db.databaseName ?? '').isNotEmpty)
-              db.databaseName!: db.id,
-        });
+      final login = ApiService.cachedLoginResponse;
+      if (login != null) {
+        _efaturaDbIdByName
+          ..clear()
+          ..addAll({
+            for (final db in login.databases)
+              if (db.programId == 3 && (db.databaseName ?? '').isNotEmpty)
+                db.databaseName!: db.id,
+          });
+      }
 
       if (response.isSucceded) {
         setState(() {
