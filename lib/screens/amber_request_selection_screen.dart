@@ -281,7 +281,7 @@ class _AmberRequestSelectionScreenState
                         ),
                       ),
                       subtitle: Text(
-                        'Kod: ${department.kod}\nefutadb_id: ${efaturaId ?? 'id yok'}',
+                        'Kod: ${department.kod}   Şube: ${department.sube}\nefutadb_id: ${efaturaId ?? 'id yok'}',
                       ),
                       trailing: isSelected
                           ? const Icon(Icons.check, color: Colors.blue)
@@ -357,7 +357,7 @@ class _AmberRequestSelectionScreenState
                         ),
                       ),
                       subtitle: Text(
-                        'Kod: ${alanServis.kod}\nefutadb_id: ${efaturaId ?? 'id yok'}',
+                        'Kod: ${alanServis.kod}   Şube: ${alanServis.sube}\nefutadb_id: ${efaturaId ?? 'id yok'}',
                       ),
                       trailing: isSelected
                           ? const Icon(Icons.check, color: Colors.green)
@@ -506,6 +506,7 @@ class _AmberRequestSelectionScreenState
             onTap: _selectDepartment,
             departmentName: _selectedDepartment?.ad,
             departmentKod: _selectedDepartment?.kod,
+            subeText: _selectedDepartment?.sube,
             efutadbIdText: _selectedDepartment == null
                 ? null
                 : _efaturaIdTextFor(_selectedDepartment),

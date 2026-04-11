@@ -9,6 +9,7 @@ class DepartmentSelectionTile extends StatelessWidget {
     required this.departmentName,
     this.departmentKod,
     this.efutadbIdText,
+    this.subeText,
     this.label = 'Departman',
     this.selectedColor = Colors.blue,
     this.unselectedColor = Colors.grey,
@@ -22,6 +23,7 @@ class DepartmentSelectionTile extends StatelessWidget {
   final String? departmentName;
   final String? departmentKod;
   final String? efutadbIdText;
+  final String? subeText;
   final String label;
   final Color selectedColor;
   final Color unselectedColor;
@@ -37,11 +39,14 @@ class DepartmentSelectionTile extends StatelessWidget {
     final iconColor = _isSelected ? selectedColor : unselectedColor;
     final kod = departmentKod;
     final efatLine = efutadbIdText;
+    final subeLine = (subeText == null || subeText!.isEmpty) ? null : 'Şube: $subeText';
     final kodLine = (kod == null || kod.isEmpty)
         ? null
-        : (efatLine == null || efatLine.isEmpty)
-            ? 'Kod: $kod'
-            : 'Kod: $kod   $efatLine';
+        : [
+            'Kod: $kod',
+            if (subeLine != null) subeLine,
+            if (efatLine != null && efatLine.isNotEmpty) efatLine,
+          ].join('   ');
     return SelectionTile(
       onTap: onTap,
       icon: Icons.business,

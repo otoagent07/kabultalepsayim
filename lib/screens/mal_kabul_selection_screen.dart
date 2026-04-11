@@ -208,7 +208,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        'Kod: ${department.kod}\nefutadb_id: ${efaturaId ?? 'id yok'}',
+                        'Kod: ${department.kod}   Şube: ${department.sube}\nefutadb_id: ${efaturaId ?? 'id yok'}',
                       ),
                       trailing: isSelected
                           ? const Icon(Icons.check, color: Colors.blue)
@@ -348,7 +348,9 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('dd.MM.yyyy').format(_selectedDate);
-    final deptText = (_selectedDepartment?.ad ?? 'Seçiniz').trim();
+    final deptText = _selectedDepartment == null
+        ? 'Seçiniz'
+        : '${_selectedDepartment!.ad.trim()}  Şube: ${_selectedDepartment!.sube}';
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,

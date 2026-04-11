@@ -253,7 +253,7 @@ class _BarcodeInventorySelectionScreenState
                         ),
                       ),
                       subtitle: Text(
-                        'Kod: ${dept.kod}\nefutadb_id: ${efaturaId ?? 'id yok'}',
+                        'Kod: ${dept.kod}   Şube: ${dept.sube}\nefutadb_id: ${efaturaId ?? 'id yok'}',
                       ),
                       trailing: isSelected
                           ? const Icon(Icons.check, color: Colors.blue)
@@ -291,6 +291,7 @@ class _BarcodeInventorySelectionScreenState
             onTap: _selectDepartment,
             departmentName: _selectedDepartment?.ad,
             departmentKod: _selectedDepartment?.kod,
+            subeText: _selectedDepartment?.sube,
             efutadbIdText: _selectedDepartment == null
                 ? null
                 : _efaturaIdTextForSelected(_selectedDepartment),
