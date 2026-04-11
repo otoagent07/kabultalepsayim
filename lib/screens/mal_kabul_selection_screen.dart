@@ -362,6 +362,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
+    List<String>? detailLines,
   }) {
     return Card(
       margin: const EdgeInsets.all(3),
@@ -386,17 +387,38 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
               ),
               const SizedBox(width: 10),
               Flexible(
-                child: Text(
-                  value,
-                  maxLines: 2,
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      value,
+                      maxLines: 2,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    if (detailLines != null && detailLines.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      for (final line in detailLines)
+                        Text(
+                          line,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(width: 10),
@@ -411,9 +433,15 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('dd.MM.yyyy').format(_selectedDate);
+    final deptEfaturaId = (_selectedDepartment == null ||
+        _selectedDepartment!.eFatDb == null ||
+        _selectedDepartment!.eFatDb!.isEmpty)
+      ? 'id yok'
+      : (_efaturaDbIdByName[_selectedDepartment!.eFatDb!] ?? 'id yok')
+        .toString();
     final deptText = _selectedDepartment == null
         ? 'Seçiniz'
-        : '${_selectedDepartment!.ad.trim()}  Şube: ${_selectedDepartment!.sube}';
+      : _selectedDepartment!.ad.trim();
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,
@@ -456,6 +484,13 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
                             icon: Icons.business,
                             color: Colors.blue,
                             onPressed: _selectDepartment,
+                            detailLines: _selectedDepartment == null
+                                ? null
+                                : [
+                                    'Kod: ${_selectedDepartment!.kod}',
+                                    'Şube: ${_selectedDepartment!.sube}',
+                                    'efutadb_id: $deptEfaturaId',
+                                  ],
                           ),
                           const SizedBox(height: 6),
                           _entryButton(
