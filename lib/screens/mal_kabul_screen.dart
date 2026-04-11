@@ -39,6 +39,8 @@ class MalKabulScreen extends StatefulWidget {
 }
 
 class _MalKabulScreenState extends State<MalKabulScreen> {
+  static const String _devSampleUser = 'mehmet@rmosyazilim.com';
+
   late DateTime _selectedDate;
   late String _girisTip;
   late Department _selectedDepartment;
@@ -299,15 +301,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     _efatSirketId = widget.efatSirketId;
     if (widget.initialOrderNumber != null) {
       _orderNumberController.text = widget.initialOrderNumber!;
-    } else if (_orderNumberController.text.trim().isEmpty) {
-      if (_isSiparisLike) {
-        _orderNumberController.text = '13';
-      } else if (_girisTip == 'İrsaliye') {
-        _orderNumberController.text = '90cb2492-c6ef-4c7b-b44e-9b3359259c5d';
-      } else {
-        // Fatura
-        _orderNumberController.text = '495a4c72-71e1-4aaa-aa75-8693b7112ef6';
-      }
+    } else {
+      _orderNumberController.clear();
+      _applySampleInputDefaultsIfAllowed();
     }
 
     // Stok barkod listesini baştan çek (eşleştirme için)
@@ -316,6 +312,23 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       // Mal Kabul Giriş: GetByDate ile siparişleri getir ve seçtir
       if (_girisTip == 'Mal Kabul Giriş') {
         await _loadOrdersFromDate();
+      }
+    });
+  }
+
+  Future<void> _applySampleInputDefaultsIfAllowed() async {
+    final username = (await StorageService.getUsername())?.trim().toLowerCase();
+    if (!mounted || username != _devSampleUser) return;
+    if (_orderNumberController.text.trim().isNotEmpty) return;
+
+    setState(() {
+      if (_isSiparisLike) {
+        _orderNumberController.text = '13';
+      } else if (_girisTip == 'İrsaliye') {
+        _orderNumberController.text = '90cb2492-c6ef-4c7b-b44e-9b3359259c5d';
+      } else {
+        // Fatura
+        _orderNumberController.text = '495a4c72-71e1-4aaa-aa75-8693b7112ef6';
       }
     });
   }
