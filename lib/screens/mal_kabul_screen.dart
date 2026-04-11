@@ -651,6 +651,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       );
       final token = await StorageService.getToken();
 
+      if (!mounted) return;
+
       if (databaseProvider.selectedDatabase != null && token != null) {
         final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
             databaseProvider.selectedDatabase!.id;
@@ -660,6 +662,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           _orderNumberController.text.trim(),
           true,
         );
+
+        if (!mounted) return;
 
         if (response.isSucceded) {
           setState(() {
@@ -685,11 +689,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       if (mounted) {
                 _snack('Sipariş yükleme hatası: $e', backgroundColor: Colors.red);
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingOrder = false;
+        });
+      }
     }
-
-    setState(() {
-      _isLoadingOrder = false;
-    });
   }
 
   // Mal Kabul Giriş: GetByRefno ile ürünleri yükle
@@ -992,43 +998,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             );
           }
         }
-        if (mounted) {
-          final headers = <String, String>{
-            'accept': 'application/json',
-            'Authorization': 'Bearer {token}',
-          };
-          final endpointPath = _girisTip == 'Fatura'
-              ? '/api/Fatura/GetByETTN_Gelen'
-              : '/api/Irsaliye/GetByETTN_Gelen';
-          final uri = Uri.parse('${ApiService.efaturaApiBaseUrl}$endpointPath').replace(
-            queryParameters: <String, String>{
-              'Db_Id': _efaturaDbId!.toString(),
-              'sirketId': _efatSirketId!.toString(),
-              'ETTN': ettn,
-              'detay': 'true',
-            },
-          );
-
-          final hasZero = _orderItems.isEmpty;
-        _snack(
-            '${_orderItems.length} satır yüklendi (${_girisTip == 'Fatura' ? 'Fatura' : 'İrsaliye'})',
-            backgroundColor: Colors.green,
-            action: hasZero
-                  ? SnackBarAction(
-                      label: 'Göster',
-                      onPressed: () {
-                        if (!mounted) return;
-                        _showCurlRequestDialog(
-                          title: 'ETTN Listele - CURL',
-                          method: 'GET',
-                          uri: uri,
-                          headers: headers,
-                        );
-                      },
-                    )
-                  : null,
-          );
-        }
+        
       } else {
         if (mounted) {
         _snack(response.message ?? 'İrsaliye/Fatura yüklenemedi', backgroundColor: Colors.red);
@@ -1674,82 +1644,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     }
 
     return body;
-  }
-
-  Future<bool> _showInsertBarkodPreviewDialog({
-    required Map<String, dynamic> body,
-    required String cariKod,
-    required String faturaNo,
-  }) async {
-    final curl = [
-      "curl -X POST 'https://backapis.rmosweb.com/api/StokHareket/InsertBarkod' \\",
-      "-H 'Content-Type: application/json' \\",
-      "-H 'Authorization: Bearer {token}' \\",
-      "-d '{JSON_BODY}'",
-    ].join('\n');
-
-    final mappingLines = <String>[
-      'tarih → seçilen tarih (yyyy-MM-dd, saat yok)',
-      'cari → HesapPlan.Kod (GetAllByVergiNo endpointinden alındı)',
-      'faturaNo → Eirsaliye_ENo (GetByETTN_Gelen)',
-      'fatIRS → kullanıcı seçimi (Fatura/Irsaliye)',
-      'subeKodu → departman seçimi',
-      'anaDepo → depo seçimi',
-      'barkod → okutulan değer',
-      'stokKod → barkod sorgusundan geldi',
-      'miktar → kullanıcı input',
-    ];
-
-    final d = body['detaylar'];
-    final sentCount = d is List ? d.length : 0;
-    final skipped = _orderItems.length - sentCount;
-    final note = skipped > 0
-        ? 'Not: stokKod boş olduğu için $skipped satır gönderilmeyecek.'
-        : null;
-
-    return await AppDialogs.requestPreview(
-      context,
-      title: 'Gönderim Önizleme',
-      curlPreview: curl,
-      jsonBody: body,
-      mappingLines: mappingLines,
-      note: note,
-      cancelText: 'İptal',
-      confirmText: 'Gönder',
-    );
-  }
-
-  Future<bool> _showMalKabulPreviewDialog({
-    required Map<String, dynamic> body,
-    required String refNo,
-    required int satirCount,
-  }) async {
-    final curl = [
-      "curl -X POST 'https://backapis.rmosweb.com/api/MalKabul/Insert' \\",
-      "-H 'Content-Type: application/json' \\",
-      "-H 'Authorization: Bearer {token}' \\",
-      "-d '{JSON_BODY}'",
-    ].join('\n');
-
-    final mappingLines = <String>[
-      'db_Id → seçili db',
-      'Tarih → seçilen tarih',
-      'RefTip → S (Sipariş)',
-      'RefNo → sipariş no',
-      'Satirlar[].EfatId → sipariş satır id',
-      'Satirlar[].Miktar → kullanıcı input',
-    ];
-
-    return await AppDialogs.requestPreview(
-      context,
-      title: 'Gönderim Önizleme',
-      curlPreview: curl,
-      jsonBody: body,
-      mappingLines: mappingLines,
-      note: 'Özet: refNo=$refNo, satır=$satirCount',
-      cancelText: 'İptal',
-      confirmText: 'Gönder',
-    );
   }
 
   // Sayısal klavye
@@ -2465,16 +2359,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           const encoder = JsonEncoder.withIndent('  ');
           developer.log(encoder.convert(requestBody), name: 'MAL_KABUL_REQUEST_JSON');
 
-          final ok = await _showMalKabulPreviewDialog(
-            body: requestBody,
-            refNo: refNo,
-            satirCount: satirlar.length,
-          );
-          if (!ok) {
-            if (mounted) setState(() => _isSaving = false);
-            return;
-          }
-
           final response = await ApiService.saveMalKabul(
             token,
             databaseProvider.selectedDatabase!.id,
@@ -2620,16 +2504,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               );
               setState(() => _isSaving = false);
             }
-            return;
-          }
-
-          final ok = await _showInsertBarkodPreviewDialog(
-            body: body,
-            cariKod: cariKod,
-            faturaNo: faturaNo,
-          );
-          if (!ok) {
-            if (mounted) setState(() => _isSaving = false);
             return;
           }
 
