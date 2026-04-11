@@ -70,6 +70,21 @@ The `SerialBarcodeService` is a singleton initialized in `main()` but port-opene
 | `win32` | Win32 API (SendInput for keyboard injection) |
 | `intl` | Turkish locale formatting |
 
+## Windows Build Notları
+
+### `atlbase.h` Hatası
+`flutter build windows --release` sırasında şu hata alınırsa:
+```
+error C1083: 'atlbase.h': No such file or directory
+```
+**Çözüm:** Visual Studio Installer → Modify → Individual components → şunu yükle:
+> **Son v143 derleme araçları için C++ ATL (x86 ve x64)**
+
+Sebep: `alice` paketi → `flutter_local_notifications_windows` bağımlılığı ATL header gerektirir. Sadece build makinesinde gerekli, dağıtım PC'lerinde değil.
+
+### Dağıtım
+Build tamamlandıktan sonra `build/windows/x64/runner/Release/` klasörünün **tamamı** hedef PC'ye taşınmalı (sadece .exe değil). Hedef PC'lerde ek kurulum gerekmez.
+
 ## Turkish Locale
 
 The app is Turkish-language. UI strings are in Turkish. The app initializes with `tr_TR` locale. Model field names often use Turkish (e.g., `Sube` = branch, `Sayim` = inventory count, `MalKabul` = goods receiving).
