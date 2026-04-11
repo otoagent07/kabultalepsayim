@@ -283,13 +283,8 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
       if (!mounted) return;
 
       if (orders.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Seçilen tarih ve şube için sipariş bulunamadı'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
+        final shouldContinueWithManual = await _showManualSiparisDialog();
+        if (!mounted || !shouldContinueWithManual) return;
       }
 
       final efaturaDbId = (dept.eFatDb == null || dept.eFatDb!.isEmpty)
@@ -318,6 +313,95 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     } finally {
       if (mounted) setState(() => _isCheckingOrders = false);
     }
+  }
+
+  Future<bool> _showManualSiparisDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(child: Text('Sipariş Bulunamadı')),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Seçilen tarih ve şube için sipariş bulunamadı.\n\nManuel sipariş no ile devam etmek ister misiniz?',
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => Navigator.of(dialogContext).pop(false),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 12,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Hayır',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Card(
+                      margin: EdgeInsets.zero,
+                      color: theme.colorScheme.error,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => Navigator.of(dialogContext).pop(true),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 12,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Evet',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    return result ?? false;
   }
 
   Widget _entryButton({
