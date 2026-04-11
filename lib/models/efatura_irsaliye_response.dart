@@ -76,6 +76,7 @@ class EfaturaIrsaliyeValue {
   final String? ettn;
   final String? entegreEttn;
   final String? vergino;
+  final String? efaturaNo;
   final String? eirsaliyeENo;
   final String? senaryo;
   final List<EfaturaIrsaliyeLine> lines;
@@ -86,6 +87,7 @@ class EfaturaIrsaliyeValue {
     this.ettn,
     this.entegreEttn,
     this.vergino,
+    this.efaturaNo,
     this.eirsaliyeENo,
     this.senaryo,
     required this.lines,
@@ -102,7 +104,7 @@ class EfaturaIrsaliyeValue {
             : <EfaturaIrsaliyeLine>[];
     return EfaturaIrsaliyeValue(
       id: json['Id'],
-      tarihi: json['Tarihi'],
+      tarihi: (json['Tarihi'] ?? json['Tarih'])?.toString().trim(),
       ettn: (json['ETTN'] ?? json['Ettn'] ?? json['ettn'])?.toString().trim(),
       entegreEttn:
           (json['Entegre_ETTN'] ??
@@ -116,6 +118,14 @@ class EfaturaIrsaliyeValue {
           (json['Vergino'] ?? json['VergiNo'] ?? json['Vkn'] ?? json['VKN'])
               ?.toString()
               .trim(),
+        efaturaNo:
+          (json['EfaturaNo'] ??
+              json['E_FaturaNo'] ??
+              json['FaturaNo'] ??
+              json['Faturano'] ??
+              json['BelgeNo'])
+            ?.toString()
+            .trim(),
       eirsaliyeENo:
           (json['Eirsaliye_ENo'] ??
                   json['EirsaliyeENo'] ??
@@ -151,17 +161,26 @@ class EfaturaIrsaliyeLine {
   });
 
   factory EfaturaIrsaliyeLine.fromJson(Map<String, dynamic> json) {
+    final miktarRaw = json['Miktar'] ?? json['miktar'];
+    final fiyatRaw = json['Fiyat'] ?? json['BirimFiyat'] ?? json['birimFiyat'];
+    final tutarRaw =
+        json['Tutar'] ?? json['Toplam'] ?? json['Net'] ?? json['tutar'];
+
     return EfaturaIrsaliyeLine(
       id: json['Id'] ?? 0,
       irsEttn: (json['IrsETTN'] ?? json['IrsEttn'] ?? json['irsETTN'] ?? json['irsEttn'])
           ?.toString()
           .trim(),
-      stokKod: json['StokKod'],
-      hizmet: json['Hizmet'],
-      miktar: (json['Miktar'] == null) ? null : (json['Miktar'] as num).toDouble(),
-      birim: json['Birim'],
-      fiyat: (json['Fiyat'] == null) ? null : (json['Fiyat'] as num).toDouble(),
-      tutar: (json['Tutar'] == null) ? null : (json['Tutar'] as num).toDouble(),
+      stokKod: (json['StokKod'] ?? json['Stokkod'] ?? json['stokKod'])
+          ?.toString()
+          .trim(),
+      hizmet: (json['Hizmet'] ?? json['Aciklama'] ?? json['StokAd'] ?? json['stokAd'])
+          ?.toString()
+          .trim(),
+      miktar: (miktarRaw is num) ? miktarRaw.toDouble() : double.tryParse('$miktarRaw'),
+      birim: (json['Birim'] ?? json['birim'])?.toString().trim(),
+      fiyat: (fiyatRaw is num) ? fiyatRaw.toDouble() : double.tryParse('$fiyatRaw'),
+      tutar: (tutarRaw is num) ? tutarRaw.toDouble() : double.tryParse('$tutarRaw'),
     );
   }
 }

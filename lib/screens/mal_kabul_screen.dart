@@ -47,7 +47,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   int? _efaturaDbId;
   int? _efatSirketId;
   String? _lastVergiNo;
-  String? _lastEirsaliyeENo;
+  String? _lastBelgeNo;
   String? _lastSenaryo;
   String? _lastBelgeEttn;
   final Map<int, Map<String, dynamic>> _existingStokHareketByBelgeSatirId = {};
@@ -960,7 +960,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             _acceptedQuantities[item.stokkod] = item.miktar;
           }
           _lastVergiNo = response.value?.vergino;
-          _lastEirsaliyeENo = response.value?.eirsaliyeENo;
+          _lastBelgeNo = _girisTip == 'Fatura'
+              ? response.value?.efaturaNo
+              : response.value?.eirsaliyeENo;
           _lastSenaryo = response.value?.senaryo;
           _lastBelgeEttn = (response.value?.entegreEttn ??
                   response.value?.ettn ??
@@ -2394,7 +2396,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         } else {
           // İrsaliye / Fatura / Sipariş No: insertBarkod API
           // Sipariş No: cari = seciliSatici (ilk satırdan), faturaNo boş, siparisNo = sipariş numarası
-          // İrsaliye / Fatura: cari = HesapPlan.Kod (vergiNo'dan), faturaNo = Eirsaliye_ENo, siparisNo yok
+          // İrsaliye / Fatura: cari = HesapPlan.Kod (vergiNo'dan), faturaNo = belge no, siparisNo yok
           final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
               databaseProvider.selectedDatabase!.id;
 
@@ -2419,9 +2421,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             if (cariKod.trim().isEmpty) {
               throw Exception('HesapPlan.Kod bulunamadı (vergino: $vergino)');
             }
-            faturaNo = (_lastEirsaliyeENo ?? '').trim();
+            faturaNo = (_lastBelgeNo ?? '').trim();
             if (faturaNo.isEmpty) {
-              throw Exception('ETTN sorgusundan Eirsaliye_ENo alınamadı');
+              throw Exception(
+                _girisTip == 'Fatura'
+                    ? 'ETTN sorgusundan EfaturaNo alınamadı'
+                    : 'ETTN sorgusundan Eirsaliye_ENo alınamadı',
+              );
             }
             siparisNo = null;
           }
@@ -2528,7 +2534,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               _malKabulRowSheetSaved.clear();
               _orderNumberController.text = refValue;
               _lastVergiNo = null;
-              _lastEirsaliyeENo = null;
+              _lastBelgeNo = null;
               _lastSenaryo = null;
               _lastBelgeEttn = null;
               _existingStokHareketByBelgeSatirId.clear();
