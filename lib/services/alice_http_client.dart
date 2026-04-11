@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:alice/model/alice_http_call.dart';
 import 'package:alice/model/alice_http_request.dart';
 import 'package:alice/model/alice_http_response.dart';
@@ -6,6 +8,41 @@ import 'alice_service.dart';
 
 class AliceHttpClient extends http.BaseClient {
   final http.Client _inner = http.Client();
+
+  static String _fixMojibake(String input) {
+    // Example: "Ä°Ålem GÃ¼ncellendi" -> "İşlem Güncellendi"
+    const mojibakeMarkers = ['Ã', 'Ä', 'Å', '�'];
+    final hasMarker = mojibakeMarkers.any(input.contains);
+    if (!hasMarker) return input;
+    try {
+      return utf8.decode(latin1.encode(input));
+    } catch (_) {
+      return input;
+    }
+  }
+
+  static String _decodeBodyBytes(
+    List<int> bytes,
+    Map<String, String> headers,
+  ) {
+    final contentType = headers['content-type'] ?? '';
+    final charsetMatch = RegExp(r'charset=([^;\s]+)', caseSensitive: false)
+        .firstMatch(contentType);
+    final charset = charsetMatch?.group(1)?.trim().toLowerCase();
+
+    if (charset != null) {
+      final encoding = Encoding.getByName(charset);
+      if (encoding != null) {
+        return _fixMojibake(encoding.decode(bytes));
+      }
+    }
+
+    try {
+      return _fixMojibake(utf8.decode(bytes));
+    } catch (_) {
+      return _fixMojibake(latin1.decode(bytes, allowInvalid: true));
+    }
+  }
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -23,7 +60,7 @@ class AliceHttpClient extends http.BaseClient {
       ..time = DateTime.now()
       ..headers = Map<String, String>.from(request.headers)
       ..queryParameters = uri.queryParameters
-      ..body = request is http.Request ? request.body : ''
+      ..body = request is http.Request ? _fixMojibake(request.body) : ''
       ..contentType = request.headers['content-type'] ?? '';
     call.request = aliceRequest;
 
@@ -46,7 +83,7 @@ class AliceHttpClient extends http.BaseClient {
       ..time = DateTime.now()
       ..headers = Map<String, String>.from(streamedResponse.headers)
       ..size = bytes.length
-      ..body = String.fromCharCodes(bytes);
+      ..body = _decodeBodyBytes(bytes, streamedResponse.headers);
 
     call
       ..response = aliceResponse
