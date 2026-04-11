@@ -10,6 +10,7 @@ import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'mal_kabul_screen.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class MalKabulSelectionScreen extends StatefulWidget {
   const MalKabulSelectionScreen({super.key});
@@ -261,103 +262,8 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
     );
   }
 
-  Future<void> _goMalKabulGiris() async {
+  void _goMalKabulGiris() {
     final dept = _selectedDepartment!;
-    final token = _token;
-    if (token == null || _dbId == null) return;
-
-    final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final sirket = dept.sube;
-
-    List<Map<String, dynamic>> orders;
-    try {
-      if (mounted) setState(() => _isLoading = true);
-      orders = await ApiService.getStokHareketByDate(
-        token: token,
-        dbId: _dbId!,
-        tarih: tarih,
-        sirket: sirket,
-        fisTip: 'E',
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-        );
-      }
-      return;
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-
-    final filtered = orders.where((o) => (o['Siparisno'] ?? 0) != 0).toList();
-
-    if (!mounted) return;
-
-    if (filtered.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Seçilen tarih ve şubede sipariş bulunamadı'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final selected = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Sipariş Seçiniz',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView.builder(
-                itemCount: filtered.length,
-                itemBuilder: (_, i) {
-                  final order = filtered[i];
-                  final sirketAdi = order['SirketAdi'] ?? '';
-                  final fisno = order['Fisno']?.toString() ?? '';
-                  final faturano = (order['Faturano'] ?? '').toString().trim();
-                  final siparisno = order['Siparisno']?.toString() ?? '';
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: const Icon(Icons.receipt_long, color: Colors.blue),
-                      title: Text(
-                        sirketAdi,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        'Fiş No: $fisno'
-                        '${faturano.isNotEmpty ? '   Fatura: $faturano' : ''}'
-                        '\nSipariş No: $siparisno',
-                      ),
-                      onTap: () => Navigator.pop(ctx, order),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (selected == null || !mounted) return;
-
-    final siparisno = selected['Siparisno'] as int;
     final efaturaDbId = (dept.eFatDb == null || dept.eFatDb!.isEmpty)
         ? null
         : _efaturaDbIdByName[dept.eFatDb!];
@@ -370,7 +276,6 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
           selectedDepartment: dept,
           efaturaDbId: efaturaDbId,
           efatSirketId: dept.eFatSirketId,
-          initialOrderNumber: siparisno.toString(),
         ),
       ),
     );
@@ -485,6 +390,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
           overflow: TextOverflow.visible,
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
         ),
+        actions: const [AliceInspectorButton()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

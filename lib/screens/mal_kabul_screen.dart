@@ -14,6 +14,7 @@ import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/app_dialogs.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class MalKabulScreen extends StatefulWidget {
   const MalKabulScreen({
@@ -297,9 +298,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     // Stok barkod listesini baştan çek (eşleştirme için)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _preloadStokBarkodIndex();
-      // Mal Kabul Giriş: initialOrderNumber verilmişse otomatik yükle
-      if (_girisTip == 'Mal Kabul Giriş' && widget.initialOrderNumber != null) {
-        await _loadByRefno();
+      // Mal Kabul Giriş: GetByDate ile siparişleri getir ve seçtir
+      if (_girisTip == 'Mal Kabul Giriş') {
+        await _loadOrdersFromDate();
       }
     });
   }
@@ -707,6 +708,110 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     } finally {
       if (mounted) setState(() => _isLoadingOrder = false);
     }
+  }
+
+  // Mal Kabul Giriş: seçilen tarih + şube için açık siparişleri getir, seçtir, yükle
+  Future<void> _loadOrdersFromDate() async {
+    final token = await StorageService.getToken();
+    final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+      context,
+      listen: false,
+    );
+    if (token == null || databaseProvider.selectedDatabase == null) return;
+
+    final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
+        databaseProvider.selectedDatabase!.id;
+    final tarih = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final sirket = _selectedDepartment.sube;
+
+    if (!mounted) return;
+    setState(() => _isLoadingOrder = true);
+
+    List<Map<String, dynamic>> orders;
+    try {
+      final all = await ApiService.getStokHareketByDate(
+        token: token,
+        dbId: backDbId,
+        tarih: tarih,
+        sirket: sirket,
+      );
+      orders = all.where((o) {
+        final raw = o['Siparisno'];
+        final v = raw is int ? raw : int.tryParse('$raw');
+        return v != null && v != 0;
+      }).toList();
+    } catch (e) {
+      if (mounted) {
+        _snack('GetByDate hatası: $e', backgroundColor: Colors.red);
+        setState(() => _isLoadingOrder = false);
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _isLoadingOrder = false);
+    }
+
+    if (!mounted) return;
+
+    if (orders.isEmpty) {
+      _snack('Seçilen tarih ve şube için sipariş bulunamadı',
+          backgroundColor: Colors.orange);
+      return;
+    }
+
+    final selected = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Sipariş Seçin',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: orders.length,
+                itemBuilder: (ctx, i) {
+                  final o = orders[i];
+                  final siparisno = o['Siparisno'];
+                  final firma = (o['Firma'] ?? o['CariAd'] ?? '').toString();
+                  final tarihStr = (o['Tarih'] ?? '').toString();
+                  return ListTile(
+                    leading: const Icon(Icons.receipt_long),
+                    title: Text(
+                      'Sipariş No: $siparisno',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      [if (firma.isNotEmpty) firma, if (tarihStr.isNotEmpty) tarihStr]
+                          .join('  ·  '),
+                    ),
+                    onTap: () => Navigator.pop(ctx, o),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selected == null || !mounted) return;
+
+    final siparisno = selected['Siparisno'];
+    _orderNumberController.text = siparisno.toString();
+    await _loadByRefno();
   }
 
   /// GetByRefno'dan gelen MalKabulSaveItem'ı UI için MalKabulOrderItem'a dönüştür.
@@ -2644,7 +2749,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             ),
           ],
         ),
-        actions: const [],
+        actions: const [AliceInspectorButton()],
       ),
       body: Column(
         children: [
@@ -3294,12 +3399,12 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
               spacing: 6,
               runSpacing: 6,
               children: [
-                _onayChip('Ürün', widget.data.urunOnay, (v) => setState(() => widget.data.urunOnay = v)),
-                _onayChip('Araç', widget.data.aracOnay, (v) => setState(() => widget.data.aracOnay = v)),
-                _onayChip('Pandemi', widget.data.pandemiOnay, (v) => setState(() => widget.data.pandemiOnay = v)),
-                _onayChip('Hammadde', widget.data.hammaddeOnay, (v) => setState(() => widget.data.hammaddeOnay = v)),
-                _onayChip('Dezenfeksiyon', widget.data.dezenfeksiyonOnay, (v) => setState(() => widget.data.dezenfeksiyonOnay = v)),
-                _onayChip('Personel', widget.data.personelOnay, (v) => setState(() => widget.data.personelOnay = v)),
+                _onayChip('Ürün', widget.data.urunOnay, (v) { setState(() => widget.data.urunOnay = v); if (v) _save(); }),
+                _onayChip('Araç', widget.data.aracOnay, (v) { setState(() => widget.data.aracOnay = v); if (v) _save(); }),
+                _onayChip('Pandemi', widget.data.pandemiOnay, (v) { setState(() => widget.data.pandemiOnay = v); if (v) _save(); }),
+                _onayChip('Hammadde', widget.data.hammaddeOnay, (v) { setState(() => widget.data.hammaddeOnay = v); if (v) _save(); }),
+                _onayChip('Dezenfeksiyon', widget.data.dezenfeksiyonOnay, (v) { setState(() => widget.data.dezenfeksiyonOnay = v); if (v) _save(); }),
+                _onayChip('Personel', widget.data.personelOnay, (v) { setState(() => widget.data.personelOnay = v); if (v) _save(); }),
               ],
             ),
             const SizedBox(height: 14),
@@ -3408,6 +3513,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
         title: const Text('Barkod Tara'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: const [AliceInspectorButton()],
       ),
       body: Column(
         children: <Widget>[

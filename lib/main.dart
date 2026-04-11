@@ -6,6 +6,7 @@ import 'theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/selected_database_provider.dart';
 import 'screens/login_screen.dart';
+import 'services/alice_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,7 @@ void main() async {
 }
 
 
-//  asd asd asd adas asd asd asd  asd
+//  aasd
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             title: 'Rmos Sayım',
+            navigatorKey: AliceService.instance.navigatorKey,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.isDarkMode

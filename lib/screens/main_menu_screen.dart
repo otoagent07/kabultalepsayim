@@ -5,6 +5,7 @@ import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_selection_screen.dart';
 import 'amber_request_selection_screen.dart';
 import 'mal_kabul_selection_screen.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -29,6 +30,7 @@ class MainMenuScreen extends StatelessWidget {
                 ),
                 title: Text('Ana Menü'),
                 actions: [
+                  const AliceInspectorButton(),
                   Consumer<ThemeProvider>(
                     builder: (context, themeProvider, child) {
                       return IconButton(

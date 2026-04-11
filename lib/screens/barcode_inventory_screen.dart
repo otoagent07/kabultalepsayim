@@ -11,6 +11,7 @@ import '../models/sayim_item.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class BarcodeInventoryScreen extends StatefulWidget {
   const BarcodeInventoryScreen({
@@ -2078,6 +2079,7 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           ),
         ),
         actions: [
+          const AliceInspectorButton(),
           // Kamera ile barkod okuma butonu
           Card(
             margin: const EdgeInsets.only(left: 5, right: 5),
@@ -2164,6 +2166,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
         title: const Text('Barkod Tara'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: const [AliceInspectorButton()],
       ),
       body: Column(
         children: <Widget>[

@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../widgets/date_selection_tile.dart';
 import '../widgets/department_selection_tile.dart';
 import 'barcode_inventory_screen.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class BarcodeInventorySelectionScreen extends StatefulWidget {
   const BarcodeInventorySelectionScreen({super.key});
@@ -340,6 +341,7 @@ class _BarcodeInventorySelectionScreenState
           overflow: TextOverflow.visible,
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
         ),
+        actions: const [AliceInspectorButton()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

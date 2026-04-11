@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'alice_http_client.dart';
 import '../models/login_response.dart';
 import '../models/department_response.dart';
 import '../models/sayim_response.dart';
@@ -33,6 +34,8 @@ class ApiHttpException implements Exception {
 }
 
 class ApiService {
+  static final _client = AliceHttpClient();
+
   static const String baseUrl = 'https://service.rmosweb.com';
   static const String backApiBaseUrl = 'https://backapis.rmosweb.com';
   static const String efaturaApiBaseUrl = 'https://efaturaapis.rmosweb.com';
@@ -75,7 +78,7 @@ class ApiService {
   // Token alma
   static Future<String> getToken(String username, String password) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl$tokenEndpoint'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'userName': username, 'password': password}),
@@ -96,7 +99,7 @@ class ApiService {
   // Token ile login ve database listesi alma
   static Future<LoginResponse> loginByToken(String token) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl$loginByTokenEndpoint'),
         headers: {
           'Authorization': 'Bearer $token',
@@ -121,7 +124,7 @@ class ApiService {
     int dbId,
   ) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse('$backApiBaseUrl$departmentsEndpoint?Db_Id=$dbId'),
         headers: {
           'accept': 'application/json',
@@ -150,7 +153,7 @@ class ApiService {
     String anaDepo,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$sayimListeEndpoint'),
         headers: {
           'accept': '*/*',
@@ -181,7 +184,7 @@ class ApiService {
   // Sayım öğesini sil
   static Future<bool> deleteSayimItem(String token, int dbId, int id) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$sayimDeleteEndpoint?Db_Id=$dbId&Id=$id'),
         headers: {'accept': '*/*', 'Authorization': 'Bearer $token'},
       );
@@ -210,7 +213,7 @@ class ApiService {
     int miktar,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$sayimUpdateEndpoint'),
         headers: {
           'accept': '*/*',
@@ -249,7 +252,7 @@ class ApiService {
     String barkod,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$barkodKontrolEndpoint'),
         headers: {
           'accept': '*/*',
@@ -289,7 +292,7 @@ class ApiService {
     int miktar,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$sayimKaydetEndpoint'),
         headers: {
           'accept': '*/*',
@@ -327,7 +330,7 @@ class ApiService {
     bool detayli,
   ) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse(
           '$backApiBaseUrl$amberDepartmentsEndpoint?Db_Id=$dbId&sinif=$sinif&detayli=$detayli',
         ),
@@ -358,7 +361,7 @@ class ApiService {
     bool detayli,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$subeEndpoint'),
         headers: {
           'accept': 'application/json',
@@ -386,7 +389,7 @@ class ApiService {
     bool detayli,
   ) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse(
           '$backApiBaseUrl$stokMasterEndpoint?Db_Id=$dbId&detayli=$detayli',
         ),
@@ -414,7 +417,7 @@ class ApiService {
     String anaDepo,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$stokBirimFiyatEndpoint'),
         headers: {
           'accept': 'application/json',
@@ -454,7 +457,7 @@ class ApiService {
     List<Map<String, dynamic>> satirlar,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$amberTalepKaydetEndpoint'),
         headers: {
           'accept': 'application/json',
@@ -493,7 +496,7 @@ class ApiService {
     bool detayli,
   ) async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse(
           '$backApiBaseUrl$malKabulOrderEndpoint?Db_Id=$dbId&siparisno=$siparisno&detayli=$detayli',
         ),
@@ -528,7 +531,7 @@ class ApiService {
         'sirket': sirket,
         'fisTip': fisTip,
       });
-      final response = await http.get(
+      final response = await _client.get(
         uri,
         headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
       );
@@ -558,7 +561,7 @@ class ApiService {
         'tip': tip,
         'refno': refno.toString(),
       });
-      final response = await http.get(
+      final response = await _client.get(
         uri,
         headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
       );
@@ -601,7 +604,7 @@ class ApiService {
         'accept': 'application/json',
         'Authorization': 'Bearer $token',
       };
-      final response = await http.get(
+      final response = await _client.get(
         uri,
         headers: headers,
       );
@@ -637,7 +640,7 @@ class ApiService {
     List<Map<String, dynamic>> satirlar,
   ) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$backApiBaseUrl$malKabulSaveEndpoint'),
         headers: {
           'accept': '*/*',
@@ -689,7 +692,7 @@ class ApiService {
         'accept': 'application/json',
         'Authorization': 'Bearer $token',
       };
-      final response = await http.get(
+      final response = await _client.get(
         uri,
         headers: headers,
       );
@@ -747,7 +750,7 @@ class ApiService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
-      final response = await http.post(
+      final response = await _client.post(
         uri,
         headers: headers,
         body: jsonEncode(body),
@@ -792,7 +795,7 @@ class ApiService {
         'Authorization': 'Bearer $token',
       };
 
-      final response = await http.get(uri, headers: headers);
+      final response = await _client.get(uri, headers: headers);
       if (response.statusCode != 200) {
         throw ApiHttpException(
           method: 'GET',
@@ -836,7 +839,7 @@ class ApiService {
         'Authorization': 'Bearer $token',
       };
 
-      final response = await http.delete(uri, headers: headers);
+      final response = await _client.delete(uri, headers: headers);
       if (response.statusCode != 200) {
         throw ApiHttpException(
           method: 'DELETE',

@@ -13,6 +13,7 @@ import '../models/amber_talep_item.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class AmberRequestScreen extends StatefulWidget {
   const AmberRequestScreen({
@@ -1755,6 +1756,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           ),
         ),
         actions: [
+          const AliceInspectorButton(),
           // Kamera ile barkod okuma butonu
           Card(
             margin: const EdgeInsets.only(left: 5, right: 5),
@@ -2145,6 +2147,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
         title: const Text('Barkod Tara'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: const [AliceInspectorButton()],
       ),
       body: Column(
         children: <Widget>[

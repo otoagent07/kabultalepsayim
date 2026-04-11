@@ -4,6 +4,7 @@ import '../models/api_database.dart';
 import '../models/api_company.dart';
 import '../providers/selected_database_provider.dart';
 import 'main_menu_screen.dart';
+import '../widgets/alice_inspector_button.dart';
 
 class DatabaseSelectionScreen extends StatefulWidget {
   final List<ApiDatabase> databases;
@@ -128,6 +129,7 @@ class _DatabaseSelectionScreenState extends State<DatabaseSelectionScreen> {
             ),
             title: Text('Veritabanı Seçiniz'),
             centerTitle: true,
+            actions: const [AliceInspectorButton()],
           ),
           body: ListView.builder(
             padding: const EdgeInsets.all(32.0),

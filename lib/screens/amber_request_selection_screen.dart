@@ -15,6 +15,7 @@ import '../widgets/date_selection_tile.dart';
 import '../widgets/department_selection_tile.dart';
 import '../widgets/selection_tile.dart';
 import 'amber_request_screen.dart';
+import '../widgets/alice_inspector_button.dart';
 
 /// Amber talep öncesi tarih, departman, alan/servis ve şube seçimi.
 class AmberRequestSelectionScreen extends StatefulWidget {
@@ -585,6 +586,7 @@ class _AmberRequestSelectionScreenState
           overflow: TextOverflow.visible,
           style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
         ),
+        actions: const [AliceInspectorButton()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
