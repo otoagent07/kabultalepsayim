@@ -345,9 +345,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final dbId = databaseProvider.selectedDatabase?.id;
       if (token == null || dbId == null) return;
 
-      final uri = Uri.parse(
-        'https://backapis.rmosweb.com/api/Stok_Barkod/GetAll?Db_Id=$dbId',
-      );
+      final uri = Uri.parse('${ApiService.backApiBaseUrl}/api/Stok_Barkod/GetAll')
+          .replace(queryParameters: {'Db_Id': dbId.toString()});
       final res = await http.get(
         uri,
         headers: {

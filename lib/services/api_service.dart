@@ -37,8 +37,8 @@ class ApiService {
   static final _client = AliceHttpClient();
 
   static const String baseUrl = 'https://service.rmosweb.com';
-  static const String backApiBaseUrl = 'https://backapis.rmosweb.com';
-  static const String efaturaApiBaseUrl = 'https://efaturaapis.rmosweb.com';
+  static const String backApiBaseUrl = 'https://backapi.rmosweb.com';
+  static const String efaturaApiBaseUrl = 'https://efaturaapi.rmosweb.com';
   static const String tokenEndpoint = '/security/createToken';
   static const String loginByTokenEndpoint = '/api/Users/LoginByToken';
   static const String departmentsEndpoint =
