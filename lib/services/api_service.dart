@@ -74,6 +74,8 @@ class ApiService {
       '/api/StokHareket/GetByDate';
   static const String malKabulByRefnoEndpoint =
       '/api/MalKabul/GetByRefno';
+  static const String stokHareketByFisnoEndpoint =
+      '/api/StokHareket/GetByFisno';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -560,6 +562,32 @@ class ApiService {
     }
   }
 
+  // StokHareket - Fiş numarası ile getir (Mal Kabul Giriş)
+  static Future<Map<String, dynamic>> getStokHareketByFisno({
+    required String token,
+    required int dbId,
+    required int fisno,
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$stokHareketByFisnoEndpoint')
+          .replace(queryParameters: {
+        'Db_Id': dbId.toString(),
+        'Fisno': fisno.toString(),
+      });
+      final response = await _client.get(
+        uri,
+        headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('GetByFisno hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
   // MalKabul - RefNo ile getir
   static Future<List<MalKabulSaveItem>> getMalKabulByRefno({
     required String token,
@@ -648,8 +676,7 @@ class ApiService {
     String tarih,
     String refTip,
     String refNo,
-    int efatSirket,
-    String efatDb,
+    int shrkId,
     List<Map<String, dynamic>> satirlar,
   ) async {
     try {
@@ -665,8 +692,7 @@ class ApiService {
           'Tarih': tarih,
           'RefTip': refTip,
           'RefNo': refNo,
-          'Efat_Sirket': efatSirket,
-          'Efat_Db': efatDb,
+          'Shrk_Id': shrkId,
           'Satirlar': satirlar,
         }),
       );

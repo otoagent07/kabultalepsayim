@@ -4,10 +4,9 @@ packages:
   alice:
     dependency: "direct main"
     description:
-      name: alice
-      sha256: e396be8458b312edd0c7c8e726f2ded8afc9a10deb7fcddce1529757be72896e
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/alice"
+      relative: true
+    source: path
     version: "1.0.0"
   args:
     dependency: transitive

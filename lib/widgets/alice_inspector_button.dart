@@ -4,78 +4,12 @@ import '../services/alice_service.dart';
 class AliceInspectorButton extends StatelessWidget {
   const AliceInspectorButton({super.key});
 
-  static const String _inspectorPassword = '*3*';
-
   static void _showPasswordDialog(BuildContext context) {
-    final passwordController = TextEditingController();
-    var wrong = '';
-
     showDialog<void>(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          return AlertDialog(
-            title: const Text('HTTP istekleri'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Alice denetçisini açmak için şifreyi girin.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: 'Şifre',
-                    errorText: wrong.isEmpty ? null : wrong,
-                    border: const OutlineInputBorder(),
-                  ),
-                  onChanged: (_) {
-                    if (wrong.isNotEmpty) {
-                      setDialogState(() => wrong = '');
-                    }
-                  },
-                  onSubmitted: (_) {
-                    if (passwordController.text == _inspectorPassword) {
-                      Navigator.of(ctx).pop();
-                      AliceService.instance.showInspector();
-                    } else {
-                      setDialogState(() => wrong = 'Şifre yanlış');
-                    }
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('İptal'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (passwordController.text == _inspectorPassword) {
-                    Navigator.of(ctx).pop();
-                    AliceService.instance.showInspector();
-                  } else {
-                    setDialogState(() => wrong = 'Şifre yanlış');
-                  }
-                },
-                child: const Text('Aç'),
-              ),
-            ],
-          );
-        },
-      ),
-    ).whenComplete(passwordController.dispose);
+      builder: (_) => const _PasswordDialog(),
+    );
   }
 
   @override
@@ -84,6 +18,85 @@ class AliceInspectorButton extends StatelessWidget {
       icon: const Icon(Icons.info_outline),
       tooltip: 'HTTP İstekleri',
       onPressed: () => _showPasswordDialog(context),
+    );
+  }
+}
+
+class _PasswordDialog extends StatefulWidget {
+  const _PasswordDialog();
+
+  @override
+  State<_PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<_PasswordDialog> {
+  static const String _password = '*3*';
+
+  final _controller = TextEditingController();
+  String _error = '';
+  bool _submitted = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _tryOpen(BuildContext ctx) {
+    if (_submitted) return;
+    if (_controller.text == _password) {
+      _submitted = true;
+      Navigator.of(ctx).pop();
+      AliceService.instance.showInspector();
+    } else {
+      setState(() => _error = 'Şifre yanlış');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('HTTP istekleri'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Alice denetçisini açmak için şifreyi girin.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            obscureText: true,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Şifre',
+              errorText: _error.isEmpty ? null : _error,
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              if (_error.isNotEmpty) setState(() => _error = '');
+              if (value == _password) _tryOpen(context);
+            },
+            onSubmitted: (_) => _tryOpen(context),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('İptal'),
+        ),
+        FilledButton(
+          onPressed: () => _tryOpen(context),
+          child: const Text('Aç'),
+        ),
+      ],
     );
   }
 }

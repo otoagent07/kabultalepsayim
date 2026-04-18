@@ -54,6 +54,9 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   List<MalKabulOrderItem> _orderItems = [];
   // Mal Kabul Giriş: GetByRefno'dan gelen orijinal veriler
   List<MalKabulSaveItem> _malKabulRefnoItems = [];
+  // Mal Kabul Giriş: GetByFisno'dan gelen üst düzey bilgiler
+  int? _currentFisno;
+  String? _currentCari;
   bool _isLoadingOrder = false;
   bool _isSaving = false;
   bool _isLoadingStokBarkod = false;
@@ -831,12 +834,12 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     }
   }
 
-  // Mal Kabul Giriş: GetByRefno ile ürünleri yükle
+  // Mal Kabul Giriş: GetByFisno ile ürünleri yükle
   Future<void> _loadByRefno() async {
-    final refnoStr = _orderNumberController.text.trim();
-    final refno = int.tryParse(refnoStr);
-    if (refno == null) {
-      _snack('Geçersiz sipariş numarası', backgroundColor: Colors.orange);
+    final fisnoStr = _orderNumberController.text.trim();
+    final fisno = int.tryParse(fisnoStr);
+    if (fisno == null) {
+      _snack('Geçersiz fiş numarası', backgroundColor: Colors.orange);
       return;
     }
 
@@ -846,6 +849,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       _acceptedQuantities.clear();
       _clearRowScanMemory();
       _isLoadingOrder = true;
+      _currentFisno = null;
+      _currentCari = null;
     });
 
     try {
@@ -859,36 +864,69 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
           databaseProvider.selectedDatabase!.id;
 
-      final items = await ApiService.getMalKabulByRefno(
+      final result = await ApiService.getStokHareketByFisno(
         token: token,
         dbId: backDbId,
-        refno: refno,
+        fisno: fisno,
       );
 
       if (!mounted) return;
-      if (items.isEmpty) {
-        _snack('Bu fişnoya ait veri yok', backgroundColor: Colors.orange);
+
+      final value = result['value'] as Map<String, dynamic>?;
+      if (value == null) {
+        _snack('Bu fişe ait veri yok', backgroundColor: Colors.orange);
         return;
       }
+
+      final satirlarRaw = (value['Satirlar'] as List<dynamic>?) ?? [];
+      if (satirlarRaw.isEmpty) {
+        _snack('Bu fişe ait satır yok', backgroundColor: Colors.orange);
+        return;
+      }
+
+      final cari = (value['Cari'] ?? '').toString();
+      final items = satirlarRaw.map((s) {
+        final m = s as Map<String, dynamic>;
+        return MalKabulOrderItem(
+          id: (m['Id'] as num?)?.toInt() ?? 0,
+          tarih: '',
+          fisno: fisno,
+          departman: '',
+          altDepartman: '',
+          stokkod: (m['Stokkod'] ?? '').toString(),
+          stokAd: (m['StokAd'] ?? '').toString(),
+          birim: (m['Birim'] ?? '').toString(),
+          miktar: (m['Miktar'] as num?)?.toDouble() ?? 0.0,
+          onayMiktar: 0,
+          stokMiktar: 0,
+          sonalim: 0,
+          tahmini: 0,
+          ortalama: (m['Ortalama'] as num?)?.toDouble() ?? 0.0,
+          tipi: '',
+          seciliSatici: cari,
+          seciliFiyat: (m['Birimfiyat'] as num?)?.toDouble() ?? 0.0,
+          seciliToplam: (m['Toplam'] as num?)?.toDouble() ?? 0.0,
+          saticino: 0,
+          siparisno: (m['TalepId'] as num?)?.toInt() ?? 0,
+          siparisTr: false,
+          anlasmadan: false,
+          depo: (value['Depo'] ?? '').toString(),
+          sonalimcari: '',
+          sonalimMiktar: 0,
+          barkodlandi: false,
+          depStokMiktar: 0,
+          tesellumId: 0,
+          tesellumMiktar: 0,
+          tesellumMevcut: false,
+        );
+      }).toList();
+
       setState(() {
-        _malKabulRefnoItems = items;
-        _orderItems = items.map(_refnoItemToOrderItem).toList();
-        for (final s in items) {
-          final key = s.id.toString();
-          _satirData[key] = _MalKabulSatirData(
-            urunSicaklik: s.urunSicaklik,
-            aracSicaklik: s.aracSicaklik,
-            urunOnay: s.urunOnay,
-            aracOnay: s.aracOnay,
-            pandemiOnay: s.pandemiOnay,
-            hammaddeOnay: s.hammaddeOnay,
-            dezenfeksiyonOnay: s.dezenfeksiyonOnay,
-            personelOnay: s.personelOnay,
-          );
-          if (s.urunOnay || s.aracOnay || s.pandemiOnay ||
-              s.hammaddeOnay || s.dezenfeksiyonOnay || s.personelOnay) {
-            _malKabulRowSheetSaved.add(key);
-          }
+        _currentFisno = fisno;
+        _currentCari = cari;
+        _orderItems = items;
+        for (final item in items) {
+          _satirData[item.stokkod] = _MalKabulSatirData();
         }
       });
     } catch (e) {
@@ -972,13 +1010,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
                 itemCount: orders.length,
                 itemBuilder: (ctx, i) {
                   final o = orders[i];
-                  final siparisno = o['Siparisno'];
+                  final fisno = o['Fisno'];
                   final firma = (o['Firma'] ?? o['CariAd'] ?? '').toString();
                   final tarihStr = (o['Tarih'] ?? '').toString();
                   return ListTile(
                     leading: const Icon(Icons.receipt_long),
                     title: Text(
-                      'Sipariş No: $siparisno',
+                      'Fiş No: $fisno',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
@@ -997,7 +1035,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
     if (selected == null || !mounted) return;
 
-    final siparisno = selected['Siparisno'];
+    final siparisno = selected['Fisno'];
     _orderNumberController.text = siparisno.toString();
     await _loadByRefno();
   }

@@ -88,7 +88,7 @@ class _BarcodeInventorySelectionScreenState
 
       if (response.isSucceded) {
         setState(() {
-          _departments = response.value.where((d) => d.anadepo == true).toList();
+          _departments = response.value;
           if (_selectedDepartment == null && _departments.isNotEmpty) {
             _selectedDepartment = _departments.first;
           }
