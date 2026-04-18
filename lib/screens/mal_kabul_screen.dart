@@ -867,7 +867,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final backDbId = databaseProvider.selectedDatabase!.dbBackOfficeId ??
           databaseProvider.selectedDatabase!.id;
 
-      final result = await ApiService.getStokHareketByFisno(
+      final satirlarRaw = await ApiService.getStokHareketByFisnoForMalKabul(
         token: token,
         dbId: backDbId,
         fisno: fisno,
@@ -875,45 +875,76 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
       if (!mounted) return;
 
-      final value = result['value'] as Map<String, dynamic>?;
-      if (value == null) {
-        _snack('Bu fişe ait veri yok', backgroundColor: Colors.orange);
-        return;
-      }
-
-      final satirlarRaw = (value['Satirlar'] as List<dynamic>?) ?? [];
       if (satirlarRaw.isEmpty) {
         _snack('Bu fişe ait satır yok', backgroundColor: Colors.orange);
         return;
       }
 
-      final cari = (value['Cari'] ?? '').toString();
-      final items = satirlarRaw.map((s) {
-        final m = s as Map<String, dynamic>;
+      // Üst düzey bilgileri ilk satırdan al
+      final firstRow = satirlarRaw.first;
+      final cari = (firstRow['CariKod'] ?? '').toString();
+
+      // Satırları StokHareketId bazında indexle (save için)
+      final satirIndex = <String, Map<String, dynamic>>{};
+      for (final m in satirlarRaw) {
+        final key = (m['StokHareketId'] as num?)?.toInt().toString() ?? '';
+        if (key.isNotEmpty) satirIndex[key] = m;
+      }
+
+      // MalKabul verisi zaten girilmiş satırlar için _satirData doldur
+      final newSatirData = <String, _MalKabulSatirData>{};
+      final newAcceptedQty = <String, double>{};
+      final newSheetSaved = <String>{};
+      for (final m in satirlarRaw) {
+        final key = (m['StokHareketId'] as num?)?.toInt().toString() ?? '';
+        if (key.isEmpty) continue;
+        final malKabulId = (m['MalKabulId'] as num?)?.toInt() ?? 0;
+        final sd = _MalKabulSatirData(
+          urunSicaklik: (m['UrunSicaklik'] as num?)?.toDouble() ?? 0,
+          aracSicaklik: (m['AracSicaklik'] as num?)?.toDouble() ?? 0,
+          urunOnay: m['UrunOnay'] as bool? ?? false,
+          aracOnay: m['AracOnay'] as bool? ?? false,
+          pandemiOnay: m['PandemiOnay'] as bool? ?? false,
+          hammaddeOnay: m['HammaddeOnay'] as bool? ?? false,
+          dezenfeksiyonOnay: m['DezenfeksiyonOnay'] as bool? ?? false,
+          personelOnay: m['PersonelOnay'] as bool? ?? false,
+          sonKullanimTarih: (m['SonKullanimTarih'] ?? '').toString().split('T').first,
+        );
+        newSatirData[key] = sd;
+        // Daha önce kaydedilmiş satırları işaretli yükle
+        if (malKabulId > 0) {
+          final miktarGirilmis = (m['Miktar'] as num?)?.toDouble() ?? 0;
+          if (miktarGirilmis > 0) newAcceptedQty[key] = miktarGirilmis;
+          newSheetSaved.add(key);
+        }
+      }
+
+      final items = satirlarRaw.map((m) {
+        final key = (m['StokHareketId'] as num?)?.toInt().toString() ?? '';
         return MalKabulOrderItem(
-          id: (m['Id'] as num?)?.toInt() ?? 0,
+          id: (m['MalKabulId'] as num?)?.toInt() ?? 0,
           tarih: '',
           fisno: fisno,
           departman: '',
           altDepartman: '',
-          stokkod: (m['Stokkod'] ?? '').toString(),
+          stokkod: key,
           stokAd: (m['StokAd'] ?? '').toString(),
-          birim: (m['Birim'] ?? '').toString(),
-          miktar: (m['Miktar'] as num?)?.toDouble() ?? 0.0,
+          birim: (m['StokBirim'] ?? '').toString(),
+          miktar: (m['StokMiktar'] as num?)?.toDouble() ?? 0.0,
           onayMiktar: 0,
           stokMiktar: 0,
           sonalim: 0,
           tahmini: 0,
-          ortalama: (m['Ortalama'] as num?)?.toDouble() ?? 0.0,
+          ortalama: 0,
           tipi: '',
-          seciliSatici: cari,
-          seciliFiyat: (m['Birimfiyat'] as num?)?.toDouble() ?? 0.0,
-          seciliToplam: (m['Toplam'] as num?)?.toDouble() ?? 0.0,
+          seciliSatici: (m['CariAd'] ?? cari).toString(),
+          seciliFiyat: 0,
+          seciliToplam: 0,
           saticino: 0,
-          siparisno: (m['TalepId'] as num?)?.toInt() ?? 0,
+          siparisno: 0,
           siparisTr: false,
           anlasmadan: false,
-          depo: (value['Depo'] ?? '').toString(),
+          depo: (m['Depo'] ?? '').toString(),
           sonalimcari: '',
           sonalimMiktar: 0,
           barkodlandi: false,
@@ -924,14 +955,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         );
       }).toList();
 
-      // GetByFisno satirlarını stokkod bazında indexle (save için)
-      final satirIndex = <String, Map<String, dynamic>>{};
-      for (final raw in satirlarRaw) {
-        final m = raw as Map<String, dynamic>;
-        final sk = (m['Stokkod'] ?? '').toString();
-        if (sk.isNotEmpty) satirIndex[sk] = m;
-      }
-
       setState(() {
         _currentFisno = fisno;
         _currentCari = cari;
@@ -939,9 +962,11 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         _fisnoSatirByStok
           ..clear()
           ..addAll(satirIndex);
-        for (final item in items) {
-          _satirData[item.stokkod] = _MalKabulSatirData();
-        }
+        _satirData
+          ..clear()
+          ..addAll(newSatirData);
+        _acceptedQuantities.addAll(newAcceptedQty);
+        _malKabulRowSheetSaved.addAll(newSheetSaved);
       });
     } catch (e) {
       if (mounted) _snack('Yükleme hatası: $e', backgroundColor: Colors.red);
@@ -2499,28 +2524,28 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
           final refNo = _orderNumberController.text.trim();
 
-          // GetByFisno'dan gelen satırları stokkod ile eşleştir
+          // GetByFisnoForMalKabul'dan gelen satırları StokHareketId ile eşleştir
           final satirlar = <Map<String, dynamic>>[];
           for (var item in _orderItems) {
             if (!_malKabulRowSheetSaved.contains(item.stokkod)) continue;
             final rawSatir = _fisnoSatirByStok[item.stokkod];
-            // Satır Id == 0 olanları gönderme
-            final satirId = (rawSatir?['Id'] as num?)?.toInt() ?? 0;
-            if (satirId == 0) continue;
+            final stokHareketId = (rawSatir?['StokHareketId'] as num?)?.toInt() ?? 0;
+            if (stokHareketId == 0) continue;
+            final malKabulId = (rawSatir?['MalKabulId'] as num?)?.toInt() ?? 0;
             final acceptedQuantity = _displayAcceptedQty(item);
             final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
             final sonKullTarih = extra.sonKullanimTarih.isNotEmpty
                 ? extra.sonKullanimTarih
                 : DateFormat('yyyy-MM-dd').format(DateTime.now());
             satirlar.add({
-              'Id': satirId,
-              'EfatId': databaseProvider.selectedDatabase!.id,
+              'Id': malKabulId,
+              'EfatId': stokHareketId,
               'Sira': 0,
               'UrunAdi': (rawSatir?['StokAd'] ?? item.stokAd).toString(),
-              'Firma': _currentCari ?? '',
+              'Firma': (rawSatir?['CariAd'] ?? _currentCari ?? '').toString(),
               'Miktar': acceptedQuantity,
               'Birim': item.birim,
-              'PartiNo': (rawSatir?['Partino'] ?? '').toString(),
+              'PartiNo': (rawSatir?['PartiNo'] ?? '').toString(),
               'SonKullanimTarih': sonKullTarih,
               'UrunSicaklik': extra.urunSicaklik,
               'AracSicaklik': extra.aracSicaklik,
@@ -2547,7 +2572,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final requestBody = {
             'db_Id': databaseProvider.selectedDatabase!.id,
             'Tarih': dateStr,
-            'RefTip': 'S',
+            'RefTip': 'E',
             'RefNo': refNo,
             'Efat_Sirket': 1,
             'Efat_Db': '',
@@ -2561,7 +2586,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             token,
             databaseProvider.selectedDatabase!.id,
             dateStr,
-            'S',
+            'E',
             refNo,
             1,
             '',

@@ -76,6 +76,8 @@ class ApiService {
       '/api/MalKabul/GetByRefno';
   static const String stokHareketByFisnoEndpoint =
       '/api/StokHareket/GetByFisno';
+  static const String stokHareketByFisnoForMalKabulEndpoint =
+      '/api/StokHareket/GetByFisnoForMalKabul';
 
   // Token alma
   static Future<String> getToken(String username, String password) async {
@@ -582,6 +584,34 @@ class ApiService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         throw Exception('GetByFisno hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  // StokHareket - Fiş numarası ile MalKabul satırlarını getir
+  static Future<List<Map<String, dynamic>>> getStokHareketByFisnoForMalKabul({
+    required String token,
+    required int dbId,
+    required int fisno,
+  }) async {
+    try {
+      final uri = Uri.parse('$backApiBaseUrl$stokHareketByFisnoForMalKabulEndpoint')
+          .replace(queryParameters: {
+        'Db_Id': dbId.toString(),
+        'Fisno': fisno.toString(),
+      });
+      final response = await _client.get(
+        uri,
+        headers: {'accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final list = decoded['value'] as List<dynamic>? ?? [];
+        return list.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('GetByFisnoForMalKabul hatası: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
