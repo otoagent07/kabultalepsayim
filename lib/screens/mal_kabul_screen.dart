@@ -386,6 +386,140 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     required String scannedBarcode,
   }) {
     final matched = _stokBarkodIndex[scannedBarcode];
+
+    if (_girisTip == 'Sipariş No' &&
+        matched != null &&
+        matched.stokkod.trim() != rowItem.stokkod.trim()) {
+      if (!mounted) return;
+      final siparisStok = rowItem.stokkod.trim();
+      final barkodStok = matched.stokkod.trim();
+      final theme = Theme.of(context);
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: 30,
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Stok kodları uyuşmuyor',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Okutulan barkod bu sipariş satırına girilemez. '
+                  'Satırdaki stok ile barkodun bağlı olduğu stok farklı.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sipariş satırı',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        siparisStok,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Barkod (stok)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        barkodStok,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      if (!mounted) return;
+                      _rowTextControllers[rowItem.stokkod]?.clear();
+                      setState(() {
+                        _rowMatchedStokBarkod[rowItem.stokkod] = null;
+                      });
+                      _rowTextFocusNodes[rowItem.stokkod]?.requestFocus();
+                    },
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Tamam'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _rowMatchedStokBarkod[rowItem.stokkod] = matched;
     });
@@ -1596,7 +1730,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       final birim = (item.birim).trim();
       final miktar = _acceptedQuantities[item.stokkod] ?? item.miktar;
 
-      const birimFiyat = 0;
+      final siparisFlow =
+          (siparisNo != null && siparisNo.trim().isNotEmpty);
+      final lineFiyat = item.seciliFiyat;
+      // Sipariş: satır fiyatı. İrsaliye/fatura: tutar/netTutar 0 kalacaksa belge birim fiyatı varsa kullan.
+      final birimFiyat = siparisFlow
+          ? lineFiyat
+          : (lineFiyat != 0 ? lineFiyat : 0.0);
       final tutar = miktar * birimFiyat;
 
       final belgeSatirId = item.id;
