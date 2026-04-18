@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/alice_service.dart';
+import '../services/storage_service.dart';
 
 class AliceInspectorButton extends StatelessWidget {
   const AliceInspectorButton({super.key});
+
+  static const String _aliceInspectorBypassUsername = 'mehmet@rmosyazilim.com';
 
   static void _showPasswordDialog(BuildContext context) {
     showDialog<void>(
@@ -12,12 +15,22 @@ class AliceInspectorButton extends StatelessWidget {
     );
   }
 
+  static Future<void> _onPressed(BuildContext context) async {
+    final username = (await StorageService.getUsername())?.trim() ?? '';
+    if (!context.mounted) return;
+    if (username.toLowerCase() == _aliceInspectorBypassUsername) {
+      AliceService.instance.showInspector();
+    } else {
+      _showPasswordDialog(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.info_outline),
       tooltip: 'HTTP İstekleri',
-      onPressed: () => _showPasswordDialog(context),
+      onPressed: () => _onPressed(context),
     );
   }
 }
