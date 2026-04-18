@@ -2373,6 +2373,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         _acceptedQuantities[item.stokkod] = result.miktar;
         data.urunSicaklik = result.urunSicaklik;
         data.aracSicaklik = result.aracSicaklik;
+        data.sonKullanimTarih = result.sonKullanimTarih;
         _malKabulRowSheetSaved.add(item.stokkod);
       });
     }
@@ -2508,16 +2509,19 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             if (satirId == 0) continue;
             final acceptedQuantity = _displayAcceptedQty(item);
             final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
+            final sonKullTarih = extra.sonKullanimTarih.isNotEmpty
+                ? extra.sonKullanimTarih
+                : DateFormat('yyyy-MM-dd').format(DateTime.now());
             satirlar.add({
               'Id': satirId,
-              'EfatId': 0,
+              'EfatId': databaseProvider.selectedDatabase!.id,
               'Sira': 0,
               'UrunAdi': (rawSatir?['StokAd'] ?? item.stokAd).toString(),
               'Firma': _currentCari ?? '',
               'Miktar': acceptedQuantity,
               'Birim': item.birim,
               'PartiNo': (rawSatir?['Partino'] ?? '').toString(),
-              'SonKullanimTarih': '',
+              'SonKullanimTarih': sonKullTarih,
               'UrunSicaklik': extra.urunSicaklik,
               'AracSicaklik': extra.aracSicaklik,
               'UrunOnay': extra.urunOnay,
@@ -3355,7 +3359,13 @@ class _MalKabulEditResult {
   final double miktar;
   final double urunSicaklik;
   final double aracSicaklik;
-  const _MalKabulEditResult({required this.miktar, required this.urunSicaklik, required this.aracSicaklik});
+  final String sonKullanimTarih;
+  const _MalKabulEditResult({
+    required this.miktar,
+    required this.urunSicaklik,
+    required this.aracSicaklik,
+    required this.sonKullanimTarih,
+  });
 }
 
 String _formatSheetNumericField(double v) {
@@ -3382,6 +3392,7 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
   late final TextEditingController _miktarCtrl;
   late final TextEditingController _urunSicaklikCtrl;
   late final TextEditingController _aracSicaklikCtrl;
+  DateTime? _sonKullanimTarih;
 
   @override
   void initState() {
@@ -3395,6 +3406,11 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
     _aracSicaklikCtrl = TextEditingController(
       text: _formatSheetNumericField(widget.data.aracSicaklik),
     );
+    // Daha önce seçilmiş tarih varsa yükle
+    final existing = widget.data.sonKullanimTarih;
+    if (existing.isNotEmpty) {
+      _sonKullanimTarih = DateTime.tryParse(existing);
+    }
   }
 
   @override
@@ -3403,6 +3419,18 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
     _urunSicaklikCtrl.dispose();
     _aracSicaklikCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _sonKullanimTarih ?? now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 10),
+      helpText: 'Son Kullanım Tarihi',
+    );
+    if (picked != null) setState(() => _sonKullanimTarih = picked);
   }
 
   void _save() {
@@ -3422,11 +3450,16 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
         ? 0.0
         : (double.tryParse(aracRaw.replaceAll(',', '.')) ?? 0.0);
 
+    final tarihStr = _sonKullanimTarih != null
+        ? DateFormat('yyyy-MM-dd').format(_sonKullanimTarih!)
+        : '';
+
     Navigator.of(context).pop(
       _MalKabulEditResult(
         miktar: qtyParsed,
         urunSicaklik: urun,
         aracSicaklik: arac,
+        sonKullanimTarih: tarihStr,
       ),
     );
   }
@@ -3540,6 +3573,41 @@ class _MalKabulEditSheetState extends State<_MalKabulEditSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            // Son Kullanım Tarihi
+            GestureDetector(
+              onTap: _pickDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined, size: 16, color: Colors.grey.shade600),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Son Kullanım Tarihi',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _sonKullanimTarih != null
+                          ? DateFormat('dd.MM.yyyy').format(_sonKullanimTarih!)
+                          : 'Seç (boşsa bugün)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _sonKullanimTarih != null ? Colors.black : Colors.grey.shade400,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.chevron_right, size: 16, color: Colors.grey.shade400),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             // Onaylar — 2 sütunlu wrap
             Wrap(
@@ -3600,6 +3668,7 @@ class _MalKabulSatirData {
   bool hammaddeOnay;
   bool dezenfeksiyonOnay;
   bool personelOnay;
+  String sonKullanimTarih;
 
   _MalKabulSatirData({
     this.urunSicaklik = 0,
@@ -3610,6 +3679,7 @@ class _MalKabulSatirData {
     this.hammaddeOnay = false,
     this.dezenfeksiyonOnay = false,
     this.personelOnay = false,
+    this.sonKullanimTarih = '',
   });
 }
 
