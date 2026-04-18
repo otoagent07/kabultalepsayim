@@ -676,7 +676,8 @@ class ApiService {
     String tarih,
     String refTip,
     String refNo,
-    int shrkId,
+    int efatSirket,
+    String efatDb,
     List<Map<String, dynamic>> satirlar,
   ) async {
     try {
@@ -692,7 +693,8 @@ class ApiService {
           'Tarih': tarih,
           'RefTip': refTip,
           'RefNo': refNo,
-          'Shrk_Id': shrkId,
+          'Efat_Sirket': efatSirket,
+          'Efat_Db': efatDb,
           'Satirlar': satirlar,
         }),
       );

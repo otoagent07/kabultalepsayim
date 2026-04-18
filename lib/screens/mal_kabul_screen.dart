@@ -52,8 +52,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
   String? _lastBelgeEttn;
   final Map<int, Map<String, dynamic>> _existingStokHareketByBelgeSatirId = {};
   List<MalKabulOrderItem> _orderItems = [];
-  // Mal Kabul Giriş: GetByRefno'dan gelen orijinal veriler
+  // Mal Kabul Giriş: GetByRefno'dan gelen orijinal veriler (artık kullanılmıyor, ileride kaldırılabilir)
   List<MalKabulSaveItem> _malKabulRefnoItems = [];
+  // Mal Kabul Giriş: GetByFisno'dan gelen satırlar, stokkod → raw satır verisi
+  final Map<String, Map<String, dynamic>> _fisnoSatirByStok = {};
   // Mal Kabul Giriş: GetByFisno'dan gelen üst düzey bilgiler
   int? _currentFisno;
   String? _currentCari;
@@ -846,6 +848,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
     setState(() {
       _orderItems.clear();
       _malKabulRefnoItems.clear();
+      _fisnoSatirByStok.clear();
       _acceptedQuantities.clear();
       _clearRowScanMemory();
       _isLoadingOrder = true;
@@ -921,10 +924,21 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         );
       }).toList();
 
+      // GetByFisno satirlarını stokkod bazında indexle (save için)
+      final satirIndex = <String, Map<String, dynamic>>{};
+      for (final raw in satirlarRaw) {
+        final m = raw as Map<String, dynamic>;
+        final sk = (m['Stokkod'] ?? '').toString();
+        if (sk.isNotEmpty) satirIndex[sk] = m;
+      }
+
       setState(() {
         _currentFisno = fisno;
         _currentCari = cari;
         _orderItems = items;
+        _fisnoSatirByStok
+          ..clear()
+          ..addAll(satirIndex);
         for (final item in items) {
           _satirData[item.stokkod] = _MalKabulSatirData();
         }
@@ -1823,6 +1837,10 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       body['Siparisno'] = sNo;
     }
 
+    if (_girisTip == 'Sipariş No' || _girisTip == 'Mal Kabul Giriş') {
+      body['RefTip'] = 'T';
+    }
+
     return body;
   }
 
@@ -2480,29 +2498,26 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
           final refNo = _orderNumberController.text.trim();
 
-          // GetByRefno'dan gelen orijinal verileri stokkod(=id) ile eşleştir
-          final refnoMap = {
-            for (final s in _malKabulRefnoItems) s.id.toString(): s,
-          };
-
+          // GetByFisno'dan gelen satırları stokkod ile eşleştir
           final satirlar = <Map<String, dynamic>>[];
           for (var item in _orderItems) {
             if (!_malKabulRowSheetSaved.contains(item.stokkod)) continue;
-            final refnoItem = refnoMap[item.stokkod];
-            // Id == 0 olanları gönderme
-            if (refnoItem == null || refnoItem.id == 0) continue;
+            final rawSatir = _fisnoSatirByStok[item.stokkod];
+            // Satır Id == 0 olanları gönderme
+            final satirId = (rawSatir?['Id'] as num?)?.toInt() ?? 0;
+            if (satirId == 0) continue;
             final acceptedQuantity = _displayAcceptedQty(item);
             final extra = _satirData[item.stokkod] ?? _MalKabulSatirData();
             satirlar.add({
-              'Id': refnoItem.id,
-              'EfatId': refnoItem.efatId,
-              'Sira': refnoItem.sira,
-              'UrunAdi': refnoItem.urunAdi,
-              'Firma': refnoItem.firma,
+              'Id': satirId,
+              'EfatId': 0,
+              'Sira': 0,
+              'UrunAdi': (rawSatir?['StokAd'] ?? item.stokAd).toString(),
+              'Firma': _currentCari ?? '',
               'Miktar': acceptedQuantity,
-              'Birim': refnoItem.birim,
-              'PartiNo': refnoItem.partiNo,
-              'SonKullanimTarih': refnoItem.sonKullanimTarih,
+              'Birim': item.birim,
+              'PartiNo': (rawSatir?['Partino'] ?? '').toString(),
+              'SonKullanimTarih': '',
               'UrunSicaklik': extra.urunSicaklik,
               'AracSicaklik': extra.aracSicaklik,
               'UrunOnay': extra.urunOnay,
@@ -2525,14 +2540,13 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             return;
           }
 
-          final firstRefno = _malKabulRefnoItems.isNotEmpty ? _malKabulRefnoItems.first : null;
           final requestBody = {
             'db_Id': databaseProvider.selectedDatabase!.id,
             'Tarih': dateStr,
             'RefTip': 'S',
             'RefNo': refNo,
-            'Efat_Sirket': firstRefno?.efatSirket ?? 1,
-            'Efat_Db': firstRefno?.efatDb ?? '',
+            'Efat_Sirket': 1,
+            'Efat_Db': '',
             'Satirlar': satirlar,
           };
 
@@ -2545,8 +2559,8 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
             dateStr,
             'S',
             refNo,
-            firstRefno?.efatSirket ?? 1,
-            firstRefno?.efatDb ?? '',
+            1,
+            '',
             satirlar,
           );
 
@@ -2561,6 +2575,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
               setState(() {
                 _orderItems.clear();
                 _malKabulRefnoItems.clear();
+                _fisnoSatirByStok.clear();
                 _acceptedQuantities.clear();
                 _orderNumberController.text = refNo;
               });
