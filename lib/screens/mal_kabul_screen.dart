@@ -1755,6 +1755,7 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
         'birim': birim,
         'miktar': miktar,
         'birimFiyat': birimFiyat,
+        'IlkBirimfiyat': birimFiyat,
         'tutar': tutar,
         'netTutar': tutar,
         'TalepId': belgeSatirId,
