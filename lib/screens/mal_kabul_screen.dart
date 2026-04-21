@@ -2521,7 +2521,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
       if (databaseProvider.selectedDatabase != null && token != null) {
         // Mal Kabul Giriş: malkabul/insert API
         if (_girisTip == 'Mal Kabul Giriş') {
-          final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
           final refNo = _orderNumberController.text.trim();
 
           // GetByFisnoForMalKabul'dan gelen satırları StokHareketId ile eşleştir
@@ -2571,7 +2570,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
 
           final requestBody = {
             'db_Id': databaseProvider.selectedDatabase!.id,
-            'Tarih': dateStr,
             'RefTip': 'E',
             'RefNo': refNo,
             'Efat_Sirket': 1,
@@ -2585,7 +2583,6 @@ class _MalKabulScreenState extends State<MalKabulScreen> {
           final response = await ApiService.saveMalKabul(
             token,
             databaseProvider.selectedDatabase!.id,
-            dateStr,
             'E',
             refNo,
             1,

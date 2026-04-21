@@ -703,7 +703,6 @@ class ApiService {
   static Future<Map<String, dynamic>> saveMalKabul(
     String token,
     int dbId,
-    String tarih,
     String refTip,
     String refNo,
     int efatSirket,
@@ -720,7 +719,6 @@ class ApiService {
         },
         body: jsonEncode({
           'db_Id': dbId,
-          'Tarih': tarih,
           'RefTip': refTip,
           'RefNo': refNo,
           'Efat_Sirket': efatSirket,
