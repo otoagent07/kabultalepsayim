@@ -77,7 +77,7 @@ class _MalKabulSelectionScreenState extends State<MalKabulSelectionScreen> {
 
       if (response.isSucceded) {
         setState(() {
-          _departments = response.value;
+          _departments = response.value.where((d) => d.anadepo == true).toList();
           if (_selectedDepartment == null && _departments.isNotEmpty) {
             _selectedDepartment = _departments.first;
           }
