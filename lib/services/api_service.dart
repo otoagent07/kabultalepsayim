@@ -7,6 +7,7 @@ import '../models/sayim_response.dart';
 import '../models/barkod_kontrol_response.dart';
 import '../models/sube_response.dart';
 import '../models/stok_master_response.dart';
+import '../models/stok_barkod_response.dart';
 import '../models/stok_birim_fiyat_response.dart';
 import '../models/mal_kabul_order_response.dart';
 import '../models/mal_kabul_save_item.dart';
@@ -54,6 +55,7 @@ class ApiService {
   static const String stokMasterEndpoint = '/api/StokMaster/GetAllOnlyBarcode';
   static const String stokMasterGetAllEndpoint = '/api/StokMaster/GetAll';
   static const String stokBarkodKaydetEndpoint = '/api/Stok_Barkod/Kaydet';
+  static const String stokBarkodGetAllEndpoint = '/api/Stok_Barkod/GetAll';
   static const String stokBirimFiyatEndpoint =
       '/api/Procedure/Stok_Birim_Fiyat';
   static const String amberTalepKaydetEndpoint =
@@ -446,6 +448,30 @@ class ApiService {
         return StokMasterResponse.fromJson(jsonData);
       } else {
         throw Exception('Stok listesi alma hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<StokBarkodResponse> getStokBarkodAll(
+    String token,
+    int dbId,
+  ) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$backApiBaseUrl$stokBarkodGetAllEndpoint?Db_Id=$dbId'),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(response.body);
+        return StokBarkodResponse.fromJson(jsonData);
+      } else {
+        throw Exception('Stok barkod listesi alma hatası: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');

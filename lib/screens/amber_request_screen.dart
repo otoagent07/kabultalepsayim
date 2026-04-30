@@ -8,7 +8,7 @@ import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 
 import '../models/department.dart';
 import '../models/sube.dart';
-import '../models/stok_master.dart';
+import '../models/stok_barkod.dart';
 import '../models/amber_talep_item.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
@@ -39,7 +39,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   late Department _selectedAlanServis;
   late Sube _selectedSube;
 
-  List<StokMaster> _allStoklar = []; // Tüm stoklar (ilk açılışta yüklenir)
+  List<StokBarkod> _allStoklar = [];
   final List<AmberTalepItem> _talepItems = []; // Talep edilen ürünler
 
   final TextEditingController _manualBarcodeController =
@@ -95,7 +95,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
     try {
       log('Stoklar API\'den yükleniyor...');
-      final response = await ApiService.getStokMaster(_token!, _dbId!, false);
+      final response = await ApiService.getStokBarkodAll(_token!, _dbId!);
 
       if (response.isSucceded) {
         setState(() {
@@ -161,7 +161,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     }
 
     String searchQuery = '';
-    List<StokMaster> filteredStoklar = _allStoklar;
+    List<StokBarkod> filteredStoklar = _allStoklar;
     String? loadingGenelKod;
 
     showModalBottomSheet(
@@ -171,10 +171,9 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           // Ürün seçimi fonksiyonu
-          Future<void> processStokSelection(StokMaster stok) async {
-            // Loading başlat
+          Future<void> processStokSelection(StokBarkod stok) async {
             setDialogState(() {
-              loadingGenelKod = stok.genelKod;
+              loadingGenelKod = stok.bStokkod;
             });
 
             try {
@@ -182,11 +181,11 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
               final tarih1 = DateTime(now.year, now.month, 1).toIso8601String();
               final tarih2 = now.toIso8601String();
 
-              log('Stok fiyat bilgisi alınıyor: ${stok.genelKod}');
+              log('Stok fiyat bilgisi alınıyor: ${stok.bStokkod}');
               final response = await ApiService.getStokBirimFiyat(
                 _token!,
                 _dbId!,
-                stok.genelKod,
+                stok.bStokkod,
                 tarih1,
                 tarih2,
                 _selectedDepartment.kod,
@@ -222,7 +221,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                stok.ad,
+                                stok.stokAdi,
                                 style: const TextStyle(fontSize: 32),
                               ),
                             ),
@@ -408,13 +407,13 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                           setDialogState(() {
                             searchQuery = value.toLowerCase();
                             filteredStoklar = _allStoklar.where((stok) {
-                              return stok.ad.toLowerCase().contains(
+                              return stok.stokAdi.toLowerCase().contains(
                                     searchQuery,
                                   ) ||
-                                  stok.genelKod.toLowerCase().contains(
+                                  stok.bStokkod.toLowerCase().contains(
                                     searchQuery,
                                   ) ||
-                                  stok.barkod1.toLowerCase().contains(
+                                  stok.bBarkod.toLowerCase().contains(
                                     searchQuery,
                                   );
                             }).toList();
@@ -463,7 +462,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                             final stok = filteredStoklar[index];
                             final isRowLoading =
                                 loadingGenelKod != null &&
-                                loadingGenelKod == stok.genelKod;
+                                loadingGenelKod == stok.bStokkod;
                             return Container(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: Material(
@@ -478,102 +477,37 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                                         },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Padding(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     child: Row(
                                       children: [
-                                        // Product icon
-                                        Container(
-                                          width: 48,
-                                          height: 48,
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue[50],
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            Icons.inventory,
-                                            color: Colors.blue[600],
-                                            size: 24,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        // Product info
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                stok.ad,
+                                                'Stok Adı: ${stok.stokAdi}',
                                                 style: const TextStyle(
-                                                  fontSize: 16,
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 2,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[100],
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            4,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      stok.kod,
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color: Colors.grey[700],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  if (stok.barkod1.isNotEmpty)
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            Colors.green[100],
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
-                                                      ),
-                                                      child: Text(
-                                                        'Barkod',
-                                                        style: TextStyle(
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color:
-                                                              Colors.green[700],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 2),
                                               Text(
-                                                '${stok.anabirim} • ${stok.genelKod}',
+                                                'Stok Kod: ${stok.bStokkod}',
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Colors.grey[600],
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Barkod: ${stok.bBarkod.isNotEmpty ? stok.bBarkod : '-'}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.green[700],
                                                 ),
                                               ),
                                             ],
@@ -612,24 +546,12 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   }
 
   void _processBarcode(String barcode) {
-    // Barkod ile ürün ara
-    final foundStok = _allStoklar.firstWhere(
-      (stok) => stok.barkod1 == barcode,
-      orElse: () => StokMaster(
-        id: 0,
-        anagrup: '',
-        aragrup: '',
-        altgrup: '',
-        kod: '',
-        genelKod: '',
-        ad: '',
-        anabirim: '',
-        altbirim: '',
-        barkod1: '',
-      ),
-    );
+    StokBarkod? foundStok;
+    try {
+      foundStok = _allStoklar.firstWhere((stok) => stok.bBarkod == barcode);
+    } catch (_) {}
 
-    if (foundStok.id != 0) {
+    if (foundStok != null) {
       _processStokSelection(foundStok);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -644,7 +566,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
     _barcodeFocusNode.requestFocus();
   }
 
-  Future<void> _processStokSelection(StokMaster stok) async {
+  Future<void> _processStokSelection(StokBarkod stok) async {
     try {
       final now = DateTime.now();
       final tarih1 = DateTime(now.year, now.month, 1).toIso8601String();
@@ -653,7 +575,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
       final response = await ApiService.getStokBirimFiyat(
         _token!,
         _dbId!,
-        stok.genelKod,
+        stok.bStokkod,
         tarih1,
         tarih2,
         _selectedDepartment.kod,
@@ -732,8 +654,8 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   }
 
   void _showQuantityDialog(
-    StokMaster stok,
-    double kalanMiktar, // API'den gelen toplam stok miktarı
+    StokBarkod stok,
+    double kalanMiktar,
     double birimFiyat,
     String birim,
   ) {
@@ -747,7 +669,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
           final isValidQuantity = miktar > 0 && miktar <= kalanMiktar;
 
           return AlertDialog(
-            title: Text('Miktar Gir - ${stok.ad}'),
+            title: Text('Miktar Gir - ${stok.stokAdi}'),
             content: SizedBox(
               width: double.maxFinite,
               height: MediaQuery.of(context).size.height * 0.9,
@@ -768,7 +690,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Stok Kodu: ${stok.genelKod}',
+                            'Stok Kodu: ${stok.bStokkod}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
@@ -1102,50 +1024,46 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
   }
 
   void _addTalepItem(
-    StokMaster stok,
+    StokBarkod stok,
     int miktar,
     double birimFiyat,
     String birim,
-    double toplamMiktar, // API'den gelen kalan miktar (stoktaki toplam)
+    double toplamMiktar,
   ) {
     final tutar = miktar * birimFiyat;
 
-    // Aynı üründen var mı kontrol et
     final existingIndex = _talepItems.indexWhere(
-      (item) => item.stokkod == stok.genelKod,
+      (item) => item.stokkod == stok.bStokkod,
     );
 
     if (existingIndex != -1) {
-      // Var olan ürünü güncelle
       setState(() {
         _talepItems[existingIndex] = AmberTalepItem(
-          stokkod: stok.genelKod,
-          stokAd: stok.ad,
-          birim: stok.altbirim, // Altbirim kullan
-          barkod: stok.barkod1,
+          stokkod: stok.bStokkod,
+          stokAd: stok.stokAdi,
+          birim: stok.birimKod,
+          barkod: stok.bBarkod,
           miktar: miktar,
           birimFiyat: birimFiyat,
           tutar: tutar,
-          kalanMiktar: toplamMiktar, // API'den gelen toplam stok miktarı
+          kalanMiktar: toplamMiktar,
         );
-        // Üste taşı
         final item = _talepItems.removeAt(existingIndex);
         _talepItems.insert(0, item);
       });
     } else {
-      // Yeni ürün ekle
       setState(() {
         _talepItems.insert(
           0,
           AmberTalepItem(
-            stokkod: stok.genelKod,
-            stokAd: stok.ad,
-            birim: stok.altbirim, // Altbirim kullan
-            barkod: stok.barkod1,
+            stokkod: stok.bStokkod,
+            stokAd: stok.stokAdi,
+            birim: stok.birimKod,
+            barkod: stok.bBarkod,
             miktar: miktar,
             birimFiyat: birimFiyat,
             tutar: tutar,
-            kalanMiktar: toplamMiktar, // API'den gelen toplam stok miktarı
+            kalanMiktar: toplamMiktar,
           ),
         );
       });
@@ -1153,7 +1071,7 @@ class _AmberRequestScreenState extends State<AmberRequestScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${stok.ad} eklendi'),
+        content: Text('${stok.stokAdi} eklendi'),
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 1),
       ),
