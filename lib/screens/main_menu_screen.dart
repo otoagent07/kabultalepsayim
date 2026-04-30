@@ -5,6 +5,7 @@ import '../providers/selected_database_provider.dart';
 import 'barcode_inventory_selection_screen.dart';
 import 'amber_request_selection_screen.dart';
 import 'mal_kabul_selection_screen.dart';
+import 'barkod_tanimla_screen.dart';
 import '../widgets/alice_inspector_button.dart';
 
 class MainMenuScreen extends StatelessWidget {
@@ -188,6 +189,24 @@ class MainMenuScreen extends StatelessWidget {
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       const BarcodeInventorySelectionScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 112),
+                          child: _buildMenuButton(
+                            themedContext,
+                            'Barkod Tanımla',
+                            Icons.qr_code,
+                            Colors.purple,
+                            () {
+                              Navigator.of(themedContext).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const BarkodTanimlaScreen(),
                                 ),
                               );
                             },

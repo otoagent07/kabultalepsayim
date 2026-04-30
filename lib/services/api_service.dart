@@ -52,6 +52,8 @@ class ApiService {
   static const String amberDepartmentsEndpoint = '/api/StokKodlar/GetBySinif';
   static const String subeEndpoint = '/api/MuhasebeKodlar/GetBySinif';
   static const String stokMasterEndpoint = '/api/StokMaster/GetAllOnlyBarcode';
+  static const String stokMasterGetAllEndpoint = '/api/StokMaster/GetAll';
+  static const String stokBarkodKaydetEndpoint = '/api/Stok_Barkod/Kaydet';
   static const String stokBirimFiyatEndpoint =
       '/api/Procedure/Stok_Birim_Fiyat';
   static const String amberTalepKaydetEndpoint =
@@ -418,6 +420,57 @@ class ApiService {
         return StokMasterResponse.fromJson(jsonData);
       } else {
         throw Exception('Stok listesi alma hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<StokMasterResponse> getStokMasterAll(
+    String token,
+    int dbId,
+  ) async {
+    try {
+      final response = await _client.get(
+        Uri.parse(
+          '$backApiBaseUrl$stokMasterGetAllEndpoint?Db_Id=$dbId&detayli=false',
+        ),
+        headers: {
+          'accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = jsonDecode(response.body);
+        return StokMasterResponse.fromJson(jsonData);
+      } else {
+        throw Exception('Stok listesi alma hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Bağlantı hatası: $e');
+    }
+  }
+
+  static Future<void> stokBarkodKaydet(
+    String token,
+    int dbId,
+    String stokKod,
+    String barkod,
+  ) async {
+    try {
+      final response = await _client.post(
+        Uri.parse(
+          '$backApiBaseUrl$stokBarkodKaydetEndpoint?Db_Id=$dbId&Stokkod=$stokKod&barkod=$barkod',
+        ),
+        headers: {
+          'accept': '*/*',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Barkod kayıt hatası: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Bağlantı hatası: $e');
