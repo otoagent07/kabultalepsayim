@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'v0.2.1',
+                                    'v0.2.2',
                                     style: Theme.of(themedContext)
                                         .textTheme
                                         .bodySmall
