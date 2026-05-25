@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import '../models/department.dart';
 import '../models/sayim_item.dart';
+import '../models/stok_barkod.dart';
 import '../providers/selected_database_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -33,6 +34,8 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
   List<SayimItem> _sayimItems = [];
   bool _isLoadingSayim = false;
   final Map<String, int> _countedItems = {};
+  List<StokBarkod> _allStoklar = [];
+  bool _isLoadingStoklar = false;
   final TextEditingController _manualBarcodeController =
       TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
@@ -1749,6 +1752,349 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
     }
   }
 
+  Future<void> _loadStoklar() async {
+    if (_allStoklar.isNotEmpty) return;
+
+    setState(() {
+      _isLoadingStoklar = true;
+    });
+
+    try {
+      final token = await StorageService.getToken();
+      final databaseProvider = Provider.of<SelectedDatabaseProvider>(
+        context,
+        listen: false,
+      );
+      if (token != null && databaseProvider.selectedDatabase != null) {
+        final response = await ApiService.getStokBarkodAll(
+          token,
+          databaseProvider.selectedDatabase!.id,
+        );
+
+        if (response.isSucceded) {
+          setState(() {
+            _allStoklar = response.value;
+          });
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Stok listesi alınamadı: ${response.message ?? 'Bilinmeyen hata'}',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Stok yükleme hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingStoklar = false;
+        });
+      }
+    }
+  }
+
+  void _showProductSelectionDialog() {
+    if (_isLoadingStoklar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stoklar yükleniyor, lütfen bekleyiniz...'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (_allStoklar.isEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+      _loadStoklar().then((_) {
+        Navigator.pop(context);
+        if (_allStoklar.isNotEmpty) {
+          _showProductSelectionDialog();
+        }
+      });
+      return;
+    }
+
+    String searchQuery = '';
+    List<StokBarkod> filteredStoklar = _allStoklar;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.inventory_2,
+                            color: Colors.blue[700],
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Ürün Seçiniz',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              '${filteredStoklar.length} ürün',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Card(
+                            margin: EdgeInsets.zero,
+                            elevation: 1,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              tooltip: 'Kapat',
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Ürün adı, kod veya barkod ile arayın...',
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Colors.grey[600],
+                          ),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    color: Colors.grey[600],
+                                  ),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      searchQuery = '';
+                                      filteredStoklar = _allStoklar;
+                                    });
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            searchQuery = value.toLowerCase();
+                            filteredStoklar = _allStoklar.where((stok) {
+                              return stok.stokAdi.toLowerCase().contains(
+                                    searchQuery,
+                                  ) ||
+                                  stok.bStokkod.toLowerCase().contains(
+                                    searchQuery,
+                                  ) ||
+                                  stok.bBarkod.toLowerCase().contains(
+                                    searchQuery,
+                                  );
+                            }).toList();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: filteredStoklar.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Ürün bulunamadı',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredStoklar.length,
+                          itemBuilder: (context, index) {
+                            final stok = filteredStoklar[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Material(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                elevation: 1,
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    
+                                    final existingItem = _sayimItems.firstWhere(
+                                      (item) => (stok.bBarkod.isNotEmpty && item.sayimBarkod == stok.bBarkod) ||
+                                                item.sayimStokkod == stok.bStokkod,
+                                      orElse: () => SayimItem(
+                                        sayimId: 0,
+                                        sayimTarih: DateFormat('yyyy-MM-dd').format(_selectedDate),
+                                        sayimDepartman: _selectedDepartment.kod,
+                                        sayimStokkod: stok.bStokkod,
+                                        sayimBarkod: stok.bBarkod,
+                                        sayimAltbirim: stok.birimKod,
+                                        sayimMiktar: 0.0,
+                                        sayimTipi: 'S',
+                                        depAd: _selectedDepartment.ad,
+                                        masterAd: stok.stokAdi,
+                                        sayimOrtalama: 0.0,
+                                        sayimTutar: 0.0,
+                                      ),
+                                    );
+                                    
+                                    _showProductQuantityDialog(existingItem);
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                stok.stokAdi,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Kod: ${stok.bStokkod}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                              if (stok.bBarkod.isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Barkod: ${stok.bBarkod}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.green[700],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 16,
+                                          color: Colors.grey[400],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // Başarı mesajı
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2082,32 +2428,47 @@ class _BarcodeInventoryScreenState extends State<BarcodeInventoryScreen> {
           const AliceInspectorButton(),
           // Kamera ile barkod okuma butonu
           Card(
-            margin: const EdgeInsets.only(left: 5, right: 5),
+            margin: const EdgeInsets.only(left: 3, right: 3),
             elevation: 2,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.antiAlias,
             child: IconButton(
               icon: const Icon(Icons.qr_code_scanner),
-              iconSize: 48,
+              iconSize: 24,
               onPressed: _scanBarcode,
               tooltip: 'Kamera ile Tara',
             ),
           ),
           // Manuel barkod ekleme butonu
           Card(
-            margin: const EdgeInsets.only(left: 5, right: 8),
+            margin: const EdgeInsets.only(left: 3, right: 3),
             elevation: 2,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.antiAlias,
             child: IconButton(
               icon: const Icon(Icons.add),
-              iconSize: 48,
+              iconSize: 24,
               onPressed: _showManualBarcodeDialog,
               tooltip: 'Manuel Barkod Ekle',
+            ),
+          ),
+          // Ürün arama butonu
+          Card(
+            margin: const EdgeInsets.only(left: 3, right: 8),
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: IconButton(
+              icon: const Icon(Icons.search),
+              iconSize: 24,
+              onPressed: _showProductSelectionDialog,
+              tooltip: 'Ürün Arama',
             ),
           ),
         ],
