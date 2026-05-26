@@ -6,7 +6,11 @@
       "Bash(flutter pub:*)",
       "Bash(dart pub *)",
       "Bash(cp -r \"/c/Users/Zeynep/AppData/Local/Pub/Cache/hosted/pub.dev/alice-1.0.0/lib\" \"/c/Users/Zeynep/StudioProjects/kabultalepsayim/packages/alice/lib\")",
-      "Bash(cp \"/c/Users/Zeynep/AppData/Local/Pub/Cache/hosted/pub.dev/alice-1.0.0/pubspec.yaml\" \"/c/Users/Zeynep/StudioProjects/kabultalepsayim/packages/alice/pubspec.yaml\")"
+      "Bash(cp \"/c/Users/Zeynep/AppData/Local/Pub/Cache/hosted/pub.dev/alice-1.0.0/pubspec.yaml\" \"/c/Users/Zeynep/StudioProjects/kabultalepsayim/packages/alice/pubspec.yaml\")",
+      "Bash(flutter build *)",
+      "PowerShell(Start-Process \"ms-settings:developers\")",
+      "PowerShell($vsPath = \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\"; Test-Path \"$vsPath\\\\Common7\\\\IDE\\\\CommonExtensions\\\\Microsoft\\\\CMake\\\\CMake\\\\bin\\\\cmake.exe\"; Get-ChildItem \"C:\\\\Program Files \\(x86\\)\\\\Windows Kits\\\\10\\\\Include\" -ErrorAction SilentlyContinue | Select-Object -Last 3 Name)",
+      "Bash(grep -n \"vswhere\\\\|installationPath\\\\|SSMS\\\\|requires\\\\|sql\\\\|SQL\\\\|_bestVisualStudioDetails\\\\|_visualStudioDetails\\\\|_getVswhereDetails\" C:/src/flutter/packages/flutter_tools/lib/src/windows/visual_studio.dart | head -60)"
     ]
   }
 }
